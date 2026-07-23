@@ -1,0 +1,47 @@
+name: Contract Sync
+
+# BE 계약 변경 자동 동기화 (architecture.md §1)
+# - repository_dispatch: BE가 openapi/ 변경 push 시 즉시 트리거 (contract-notify.yml)
+# - schedule: dispatch 토큰이 없거나 유실됐을 때의 일일 폴백 (00:00 UTC = 09:00 KST)
+# - 변경이 없으면 PR을 만들지 않는다 (no-op)
+
+on:
+  repository_dispatch:
+    types: [contract-updated]
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: BE 스펙 fetch + 타입 재생성
+        run: pnpm api:sync
+      - name: 동기화 PR 생성/갱신
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: chore/contract-sync
+          delete-branch: true
+          title: '[CHORE] OpenAPI 계약 동기화'
+          commit-message: |
+            [CHORE] OpenAPI 계약 동기화 (BE ${{ github.event.client_payload.sha || github.event_name }})
+
+            Co-Authored-By: Claude Code <noreply@anthropic.com>
+          body: |
+            BE 계약 변경을 자동 동기화한 PR입니다.
+
+            - 트리거: `${{ github.event_name }}`
+            - BE 커밋: `${{ github.event.client_payload.sha || 'n/a' }}`
+            - 이 PR의 **typecheck 실패 = breaking change** → FE 적응 커밋을 이 브랜치에 쌓은 뒤 머지하세요 (architecture.md §1)
