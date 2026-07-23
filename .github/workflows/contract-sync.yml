@@ -2,15 +2,13 @@ name: Contract Sync
 
 # BE 계약 변경 자동 동기화 (architecture.md §1)
 # - repository_dispatch: BE가 openapi/ 변경 push 시 즉시 트리거 (contract-notify.yml)
-# - schedule: dispatch 토큰이 없거나 유실됐을 때의 일일 폴백 (00:00 UTC = 09:00 KST)
+#   토큰 문제로 dispatch가 실패하면 BE 쪽 job이 빨갛게 실패한다 — cron 폴백은 두지 않는다
 # - 변경이 없으면 PR을 만들지 않는다 (no-op)
 
 on:
   repository_dispatch:
     types: [contract-updated]
-  schedule:
-    - cron: '0 0 * * *'
-  workflow_dispatch:
+  workflow_dispatch: # 재시도·검증용 수동 트리거
 
 permissions:
   contents: write

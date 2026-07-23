@@ -105,7 +105,7 @@ cure-agent-fe/
 ## 3. Codegen 규칙
 
 - `openapi/cure-agent.v1.json`은 `scripts/generate-api.mjs`가 BE 레포에서 fetch해 동기화한다. **직접 편집 금지** — CI가 재생성 diff = 0을 검사해 강제한다.
-- **자동 동기화**: BE 계약이 main에 반영되면 `contract-sync` 워크플로우(repository_dispatch + 일일 cron 폴백)가 `api:sync`를 실행해 **동기화 PR(`chore/contract-sync`)을 자동 생성**한다. 그 PR의 typecheck 실패 = breaking change → FE 적응 커밋을 같은 브랜치에 쌓은 뒤 머지한다.
+- **자동 동기화**: BE 계약이 main에 반영되면 `contract-sync` 워크플로우(repository_dispatch)가 `api:sync`를 실행해 **동기화 PR(`chore/contract-sync`)을 자동 생성**한다. dispatch 실패는 BE `contract-notify` job의 hard-fail로 감지하며 cron 폴백은 두지 않는다. 그 PR의 typecheck 실패 = breaking change → FE 적응 커밋을 같은 브랜치에 쌓은 뒤 머지한다.
 - `shared/api/generated/`는 codegen 산출물이다. 수동 편집 금지.
 - 수동 DTO(`interfaces/response/*` 류)를 만들지 않는다. 타입은 전부 generated에서 가져온다.
 - **enum 전방 호환**: OpenAPI enum에 값이 추가될 수 있음을 전제로, unknown variant를 안전하게 무시/기본 렌더링한다. exhaustive switch에는 `default`를 반드시 둔다.
