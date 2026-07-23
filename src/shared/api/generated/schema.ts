@@ -191,6 +191,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 내 대화 목록 (커서 기반) */
+        get: operations["ConversationController_list"];
+        put?: never;
+        /** 대화 생성 (GUIDELINE_QA) */
+        post: operations["ConversationController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{conversationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 대화 상세 */
+        get: operations["ConversationController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{conversationId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 메시지 목록 (시간순, §8 복구 폴백) */
+        get: operations["ConversationController_listMessages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{conversationId}/messages/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 질문 전송 + SSE 스트리밍 답변 (§8 — 봉투 미적용)
+         * @description message.accepted → retrieval.started/completed → answer.delta(seq) → answer.completed | answer.abstained | error. 15초 heartbeat 주석 전송.
+         */
+        post: operations["ConversationController_streamMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messages/{messageId}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 답변 평가 (재제출 시 갱신) */
+        post: operations["FeedbackController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -329,6 +418,81 @@ export interface components {
             pageStart?: number;
             pageEnd?: number;
             sourceUrl: string;
+        };
+        ConversationSummaryResponseDto: {
+            id: string;
+            /** @enum {string} */
+            type: "GUIDELINE_QA" | "PATIENT_GUIDANCE";
+            title: string;
+            /** @description 마지막 메시지 미리보기 (80자) */
+            lastMessagePreview?: string;
+            /** @description ISO 8601 */
+            updatedAt: string;
+        };
+        CreateConversationRequestDto: {
+            /**
+             * @description PATIENT_GUIDANCE는 9단계 활성화 예정
+             * @enum {string}
+             */
+            type: "GUIDELINE_QA" | "PATIENT_GUIDANCE";
+            patientId?: string;
+            title?: string;
+        };
+        ConversationDetailResponseDto: {
+            id: string;
+            /** @enum {string} */
+            type: "GUIDELINE_QA" | "PATIENT_GUIDANCE";
+            title: string;
+            /** @description 마지막 메시지 미리보기 (80자) */
+            lastMessagePreview?: string;
+            /** @description ISO 8601 */
+            updatedAt: string;
+            /** @description ISO 8601 */
+            createdAt: string;
+        };
+        AnswerCitationResponseDto: {
+            /** @description 답변 내 인용 마커 번호 */
+            marker: number;
+            /** @description EvidenceChunk id — GET /evidence/{id}로 원문 조회 */
+            evidenceId: string;
+            guidelineTitle: string;
+            guidelineVersion: string;
+            sectionPath: string[];
+            /** @description 인용 발췌 */
+            quote: string;
+            sourceUrl: string;
+        };
+        MessageResponseDto: {
+            id: string;
+            /** @enum {string} */
+            role: "USER" | "ASSISTANT";
+            content: string;
+            /** @enum {string} */
+            status: "STREAMING" | "COMPLETED" | "ABSTAINED" | "FAILED" | "CANCELLED";
+            /** @enum {string} */
+            answerKind?: "GUIDELINE_ANSWER" | "CLINICAL_GUIDANCE";
+            citations: components["schemas"]["AnswerCitationResponseDto"][];
+            /** @description ISO 8601 */
+            createdAt: string;
+        };
+        GuidelineSearchFilterDto: {
+            guidelineIds?: string[];
+            /** @description 권고등급 code 목록 */
+            recommendationGrades?: string[];
+            /** @description 근거수준 code 목록 */
+            evidenceLevels?: string[];
+        };
+        SendMessageRequestDto: {
+            content: string;
+            filters?: components["schemas"]["GuidelineSearchFilterDto"];
+            /** @description 중복 생성 방지 키 — 재시도 시 같은 값 사용 (§8 복구 계약) */
+            clientRequestId: string;
+        };
+        SubmitFeedbackRequestDto: {
+            /** @enum {string} */
+            rating: "HELPFUL" | "NOT_HELPFUL";
+            reasonCodes?: string[];
+            comment?: string;
         };
     };
     responses: never;
@@ -593,6 +757,156 @@ export interface operations {
                         data?: components["schemas"]["EvidenceDetailResponseDto"];
                     };
                 };
+            };
+        };
+    };
+    ConversationController_list: {
+        parameters: {
+            query?: {
+                type?: "GUIDELINE_QA" | "PATIENT_GUIDANCE";
+                patientId?: string;
+                /** @description 불투명 커서 (§10.4) */
+                cursor?: string;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["ConversationSummaryResponseDto"][];
+                        page?: components["schemas"]["PageMetaDto"];
+                    };
+                };
+            };
+        };
+    };
+    ConversationController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateConversationRequestDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["ConversationSummaryResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    ConversationController_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["ConversationDetailResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    ConversationController_listMessages: {
+        parameters: {
+            query?: {
+                /** @description 불투명 커서 (§10.4) */
+                cursor?: string;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["MessageResponseDto"][];
+                        page?: components["schemas"]["PageMetaDto"];
+                    };
+                };
+            };
+        };
+    };
+    ConversationController_streamMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendMessageRequestDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FeedbackController_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                messageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitFeedbackRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
