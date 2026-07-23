@@ -18,3 +18,6 @@ coverage/
 .idea/
 *.log
 *.tsbuildinfo
+
+# SDD 하네스 스크래치 (BE implement.md Phase 2)
+.cure-implement/
