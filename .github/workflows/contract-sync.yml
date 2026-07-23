@@ -27,6 +27,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: BE 스펙 fetch + 타입 재생성
         run: pnpm api:sync
+      # GITHUB_TOKEN이 만든 PR에는 pull_request CI가 트리거되지 않으므로(재귀 방지),
+      # breaking 판정은 이 run의 typecheck가 담당한다
+      - name: typecheck (breaking 판정)
+        id: typecheck
+        continue-on-error: true
+        run: pnpm typecheck
       - name: 동기화 PR 생성/갱신
         uses: peter-evans/create-pull-request@v7
         with:
@@ -42,4 +48,10 @@ jobs:
 
             - 트리거: `${{ github.event_name }}`
             - BE 커밋: `${{ github.event.client_payload.sha || 'n/a' }}`
-            - 이 PR의 **typecheck 실패 = breaking change** → FE 적응 커밋을 이 브랜치에 쌓은 뒤 머지하세요 (architecture.md §1)
+            - **typecheck 판정: `${{ steps.typecheck.outcome }}`** (이 PR에는 CI가 자동 트리거되지 않음 — contract-sync run이 판정)
+            - `failure`면 breaking change → FE 적응 커밋을 이 브랜치에 쌓은 뒤 머지하세요 (architecture.md §1)
+      - name: breaking change 신호
+        if: steps.typecheck.outcome == 'failure'
+        run: |
+          echo "::error::typecheck 실패 = breaking change — 동기화 PR에서 FE 적응이 필요합니다"
+          exit 1
