@@ -1,0 +1,20 @@
+# dependencies
+node_modules/
+
+# next.js (7단계에서 도입)
+.next/
+out/
+
+# env
+.env
+.env.*
+!.env.example
+
+# test
+coverage/
+
+# ide/os
+.DS_Store
+.idea/
+*.log
+*.tsbuildinfo
