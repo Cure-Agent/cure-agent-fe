@@ -123,6 +123,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/guidelines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 지침 검색·필터 목록 (커서 기반) */
+        get: operations["GuidelineController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/guidelines/{guidelineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 지침 상세 (현재 버전 포함) */
+        get: operations["GuidelineController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/guidelines/{guidelineId}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 지침의 섹션·권고문(근거 청크) 목록 */
+        get: operations["GuidelineController_listEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evidence/{evidenceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 인용 근거 원문 상세 */
+        get: operations["EvidenceController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -189,6 +257,78 @@ export interface components {
         };
         EmailAvailabilityResponseDto: {
             available: boolean;
+        };
+        GuidelineSummaryResponseDto: {
+            id: string;
+            /** @example 요통 한의표준임상진료지침 */
+            title: string;
+            /** @example 한국한의약진흥원 */
+            publisher: string;
+            /** @example 1.0 */
+            currentVersion: string;
+            /** @description 현재 버전 발행일 (ISO 8601) */
+            publishedAt: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "SUPERSEDED";
+        };
+        GuidelineDetailResponseDto: {
+            id: string;
+            /** @example 요통 한의표준임상진료지침 */
+            title: string;
+            /** @example 한국한의약진흥원 */
+            publisher: string;
+            /** @example 1.0 */
+            currentVersion: string;
+            /** @description 현재 버전 발행일 (ISO 8601) */
+            publishedAt: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "SUPERSEDED";
+            /** @description NCKM 원문 링크 — PDF는 재배포하지 않는다 (§5.4) */
+            sourceUrl: string;
+        };
+        RatingResponseDto: {
+            /** @example GRADE */
+            system: string;
+            /** @example A */
+            code: string;
+            /** @example 강한 권고 */
+            label: string;
+        };
+        EvidenceSummaryResponseDto: {
+            id: string;
+            /**
+             * @example [
+             *       "2",
+             *       "치료",
+             *       "침치료"
+             *     ]
+             */
+            sectionPath: string[];
+            /** @example R1 */
+            recommendationNumber?: string;
+            /** @description 본문 발췌 (200자 축약) */
+            excerpt: string;
+            recommendationGrade?: components["schemas"]["RatingResponseDto"];
+            evidenceLevel?: components["schemas"]["RatingResponseDto"];
+        };
+        EvidenceDetailResponseDto: {
+            id: string;
+            guidelineId: string;
+            guidelineVersionId: string;
+            guidelineTitle: string;
+            /** @example 1.0 */
+            version: string;
+            sectionPath: string[];
+            recommendationNumber?: string;
+            /** @description 권고문 원문 (권고 청크인 경우) */
+            recommendationText?: string;
+            recommendationGrade?: components["schemas"]["RatingResponseDto"];
+            evidenceLevel?: components["schemas"]["RatingResponseDto"];
+            /** @description 본문 발췌 전문 */
+            excerpt: string;
+            pageStart?: number;
+            pageEnd?: number;
+            sourceUrl: string;
         };
     };
     responses: never;
@@ -347,6 +487,110 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponseDto"] & {
                         data?: components["schemas"]["EmailAvailabilityResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    GuidelineController_list: {
+        parameters: {
+            query?: {
+                /** @description 제목 부분일치 검색 */
+                query?: string;
+                status?: "ACTIVE" | "SUPERSEDED";
+                publisher?: string;
+                /** @description 불투명 커서 (§10.4) */
+                cursor?: string;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["GuidelineSummaryResponseDto"][];
+                        page?: components["schemas"]["PageMetaDto"];
+                    };
+                };
+            };
+        };
+    };
+    GuidelineController_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                guidelineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["GuidelineDetailResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    GuidelineController_listEvidence: {
+        parameters: {
+            query?: {
+                /** @description 불투명 커서 (§10.4) */
+                cursor?: string;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                guidelineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["EvidenceSummaryResponseDto"][];
+                        page?: components["schemas"]["PageMetaDto"];
+                    };
+                };
+            };
+        };
+    };
+    EvidenceController_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evidenceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["EvidenceDetailResponseDto"];
                     };
                 };
             };
