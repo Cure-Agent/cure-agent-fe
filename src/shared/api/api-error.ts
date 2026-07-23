@@ -28,7 +28,58 @@ export interface FetchResult {
   response: Response;
 }
 
+function isEnvelope(value: unknown): value is ApiEnvelope {
+  return typeof value === 'object' && value !== null && 'success' in value && 'code' in value;
+}
+
 /** openapi-fetch 결과에서 봉투를 해석한다: 성공 → data, 실패 → ApiError throw */
-export function unwrap<T>(_result: FetchResult): T {
-  throw new Error('NOT_IMPLEMENTED');
+export function unwrap<T>(result: FetchResult): T {
+  const payload = result.error ?? result.data;
+  if (!isEnvelope(payload)) {
+    throw new ApiError(
+      'INTERNAL_ERROR',
+      '응답 형식이 올바르지 않습니다.',
+      result.response.status,
+      '',
+    );
+  }
+  if (!payload.success) {
+    throw new ApiError(
+      payload.code,
+      payload.message,
+      result.response.status,
+      payload.traceId,
+      payload.data ?? undefined,
+    );
+  }
+  return payload.data as T;
+}
+
+/** 목록 응답(data + page) 해석 */
+export function unwrapPage<T>(result: FetchResult): {
+  items: T[];
+  page: NonNullable<ApiEnvelope['page']>;
+} {
+  const payload = result.error ?? result.data;
+  if (!isEnvelope(payload)) {
+    throw new ApiError(
+      'INTERNAL_ERROR',
+      '응답 형식이 올바르지 않습니다.',
+      result.response.status,
+      '',
+    );
+  }
+  if (!payload.success) {
+    throw new ApiError(
+      payload.code,
+      payload.message,
+      result.response.status,
+      payload.traceId,
+      payload.data ?? undefined,
+    );
+  }
+  return {
+    items: (payload.data ?? []) as T[],
+    page: payload.page ?? { size: 0, hasNext: false, nextCursor: null },
+  };
 }

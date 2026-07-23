@@ -20,6 +20,8 @@ jobs:
       - run: pnpm api:generate
       - run: git diff --exit-code openapi src/shared/api/generated
       - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
 
   gitleaks:
     runs-on: ubuntu-latest
