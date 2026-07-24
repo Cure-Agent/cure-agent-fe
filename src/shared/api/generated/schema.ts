@@ -639,6 +639,8 @@ export interface components {
             medications?: string[];
             allergies?: string[];
             clinicalNotes?: string;
+            /** @description 낙관적 잠금 버전 — 상세 조회의 version을 그대로 전송 */
+            version: number;
         };
     };
     responses: never;
