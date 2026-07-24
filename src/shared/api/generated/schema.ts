@@ -223,6 +223,41 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /** 대화명 변경 (§5.7) */
+        patch: operations["ConversationController_rename"];
+        trace?: never;
+    };
+    "/api/v1/conversations/{conversationId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 대화 보관 (§5.7 — 멱등) */
+        post: operations["ConversationController_archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{conversationId}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 대화 보관 해제 (§5.7 — 멱등) */
+        post: operations["ConversationController_unarchive"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -528,6 +563,11 @@ export interface components {
             /** @enum {string} */
             type: "GUIDELINE_QA" | "PATIENT_GUIDANCE";
             title: string;
+            /**
+             * @description 보관 여부 (docs/specs/11 additive)
+             * @enum {string}
+             */
+            status: "ACTIVE" | "ARCHIVED";
             /** @description 마지막 메시지 미리보기 (80자) */
             lastMessagePreview?: string;
             /** @description ISO 8601 */
@@ -547,12 +587,20 @@ export interface components {
             /** @enum {string} */
             type: "GUIDELINE_QA" | "PATIENT_GUIDANCE";
             title: string;
+            /**
+             * @description 보관 여부 (docs/specs/11 additive)
+             * @enum {string}
+             */
+            status: "ACTIVE" | "ARCHIVED";
             /** @description 마지막 메시지 미리보기 (80자) */
             lastMessagePreview?: string;
             /** @description ISO 8601 */
             updatedAt: string;
             /** @description ISO 8601 */
             createdAt: string;
+        };
+        UpdateConversationRequestDto: {
+            title: string;
         };
         AnswerCitationResponseDto: {
             /** @description 답변 내 인용 마커 번호 */
@@ -976,6 +1024,10 @@ export interface operations {
             query?: {
                 type?: "GUIDELINE_QA" | "PATIENT_GUIDANCE";
                 patientId?: string;
+                /** @description 미지정 시 전체 (docs/specs/11) */
+                status?: "ACTIVE" | "ARCHIVED";
+                /** @description 제목 부분일치 검색 (§6) */
+                query?: string;
                 /** @description 불투명 커서 (§10.4) */
                 cursor?: string;
                 size?: number;
@@ -1044,6 +1096,71 @@ export interface operations {
                         data?: components["schemas"]["ConversationDetailResponseDto"];
                     };
                 };
+            };
+        };
+    };
+    ConversationController_rename: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateConversationRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["ConversationSummaryResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    ConversationController_archive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConversationController_unarchive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
