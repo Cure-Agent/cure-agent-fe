@@ -1,5 +1,5 @@
 /** postStream 래퍼 — ChatPanel이 사용한다. 테스트에서 vi.mock 대상. */
-import type { StreamEvent } from '@/shared/api/stream-client';
+import { postStream, type StreamEvent } from '@/shared/api/stream-client';
 
 export interface SendMessageArgs {
   conversationId: string;
@@ -15,6 +15,11 @@ export interface SendMessageArgs {
   signal?: AbortSignal;
 }
 
-export function sendMessageStream(_args: SendMessageArgs): Promise<void> {
-  throw new Error('NOT_IMPLEMENTED');
+export async function sendMessageStream(args: SendMessageArgs): Promise<void> {
+  const { conversationId, content, clientRequestId, filters, onEvent, signal } = args;
+  await postStream(
+    `/api/v1/conversations/${conversationId}/messages/stream`,
+    { content, clientRequestId, ...(filters ? { filters } : {}) },
+    { onEvent, signal },
+  );
 }
