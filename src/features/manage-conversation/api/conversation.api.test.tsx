@@ -30,12 +30,14 @@ describe('useConversations', () => {
         id: 'conversation-1',
         type: 'GUIDELINE_QA',
         title: '요통 진료 상담',
+        status: 'ACTIVE',
         updatedAt: '2026-07-24T00:00:00.000Z',
       },
       {
         id: 'conversation-2',
         type: 'GUIDELINE_QA',
         title: '불면 진료 상담',
+        status: 'ACTIVE',
         updatedAt: '2026-07-24T01:00:00.000Z',
       },
     ];
