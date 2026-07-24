@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
+import { RequestGuidanceButton } from '@/features/request-clinical-guidance/ui/request-guidance-button';
 import { ApiError } from '@/shared/api/api-error';
 import {
   useArchivePatient,
@@ -84,14 +85,17 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
             {isArchived && ' · 보관됨'}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleToggleArchive}
-          disabled={archivePatient.isPending || unarchivePatient.isPending}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
-        >
-          {isArchived ? '보관 해제' : '보관'}
-        </button>
+        <div className="flex items-start gap-2">
+          {!isArchived && <RequestGuidanceButton patientId={patientId} />}
+          <button
+            type="button"
+            onClick={handleToggleArchive}
+            disabled={archivePatient.isPending || unarchivePatient.isPending}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+          >
+            {isArchived ? '보관 해제' : '보관'}
+          </button>
+        </div>
       </header>
 
       <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">

@@ -3,6 +3,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useEffect, useReducer, useState } from 'react';
 import { messagesKey, useMessages } from '@/features/manage-conversation/api/conversation.api';
+import { GuidanceCard } from '@/features/review-clinical-guidance/ui/guidance-card';
 import { sendMessageStream } from '../api/send-message';
 import {
   type EvidenceDetail,
@@ -101,6 +102,10 @@ export function ChatPanel({
 
         {localFinal && (
           <MessageBubble message={localFinal} onSelectMarker={onSelectMarker} />
+        )}
+
+        {state.phase === 'completed' && state.guidance && (
+          <GuidanceCard key={state.guidance.id} guidance={state.guidance} />
         )}
 
         {inFlight && (

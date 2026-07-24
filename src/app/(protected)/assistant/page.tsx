@@ -1,19 +1,20 @@
 'use client';
 
-import { useCallback, useState } from 'react';
-import { sendMessageStream } from '@/features/ask-guideline/api/send-message';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useState } from 'react';
 import type { EvidenceDetail } from '@/features/ask-guideline/model/stream-state.model';
 import { ChatPanel } from '@/features/ask-guideline/ui/chat-panel';
 import type { ConversationSummary } from '@/features/manage-conversation/api/conversation.api';
 import { ConversationList } from '@/features/manage-conversation/ui/conversation-list';
 import { EvidenceInspector } from '@/widgets/evidence-inspector/evidence-inspector';
 
-// sendMessageStream은 ChatPanel 내부에서 사용되지만, 트리셰이킹 경고 방지용 참조가 아니라
 // 3단 화면의 조립만 담당한다 (§5.3: 대화 목록 | 질문·스트리밍 답변 | 인용 근거 패널)
-void sendMessageStream;
-
-export default function AssistantPage(): React.ReactElement {
-  const [selected, setSelected] = useState<ConversationSummary | null>(null);
+function AssistantScreen(): React.ReactElement {
+  const searchParams = useSearchParams();
+  // 환자 상세의 "임상 참고 대화 시작"이 /assistant?conversation={id}로 진입한다 (spec 10 기준 9)
+  const [selectedId, setSelectedId] = useState<string | null>(
+    searchParams.get('conversation'),
+  );
   const [evidence, setEvidence] = useState<EvidenceDetail[]>([]);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
 
@@ -23,7 +24,7 @@ export default function AssistantPage(): React.ReactElement {
   }, []);
 
   const handleSelectConversation = useCallback((conversation: ConversationSummary) => {
-    setSelected(conversation);
+    setSelectedId(conversation.id);
     setEvidence([]);
     setActiveMarker(null);
   }, []);
@@ -31,12 +32,12 @@ export default function AssistantPage(): React.ReactElement {
   return (
     <div className="grid h-[calc(100vh-4rem)] grid-cols-[16rem_1fr_20rem] gap-4">
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white p-3">
-        <ConversationList selectedId={selected?.id ?? null} onSelect={handleSelectConversation} />
+        <ConversationList selectedId={selectedId} onSelect={handleSelectConversation} />
       </div>
 
-      {selected ? (
+      {selectedId ? (
         <ChatPanel
-          conversationId={selected.id}
+          conversationId={selectedId}
           onEvidenceChange={handleEvidenceChange}
           onSelectMarker={setActiveMarker}
         />
@@ -52,5 +53,14 @@ export default function AssistantPage(): React.ReactElement {
         onSelectMarker={setActiveMarker}
       />
     </div>
+  );
+}
+
+export default function AssistantPage(): React.ReactElement {
+  // useSearchParams는 prerender 경계에서 Suspense가 필요하다 (Next.js 규약)
+  return (
+    <Suspense fallback={null}>
+      <AssistantScreen />
+    </Suspense>
   );
 }
