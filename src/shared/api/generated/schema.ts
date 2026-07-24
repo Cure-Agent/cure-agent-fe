@@ -350,6 +350,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/clinical-guidance/{guidanceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 가이던스 상세 (검토 상태 포함) */
+        get: operations["ClinicalGuidanceController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical-guidance/{guidanceId}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 의료인 검토 확정 — DRAFT 상태에서 1회만 허용 (§5.6) */
+        post: operations["ClinicalGuidanceController_review"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -641,6 +675,35 @@ export interface components {
             clinicalNotes?: string;
             /** @description 낙관적 잠금 버전 — 상세 조회의 version을 그대로 전송 */
             version: number;
+        };
+        GuidanceConsiderationResponseDto: {
+            title: string;
+            rationale: string;
+            citations: components["schemas"]["AnswerCitationResponseDto"][];
+        };
+        SafetyAlertResponseDto: {
+            /** @enum {string} */
+            severity: "INFO" | "WARNING" | "CRITICAL";
+            description: string;
+            citations: components["schemas"]["AnswerCitationResponseDto"][];
+        };
+        ClinicalGuidanceResponseDto: {
+            id: string;
+            patientId: string;
+            patientProfileSnapshotId: string;
+            summary: string;
+            considerations: components["schemas"]["GuidanceConsiderationResponseDto"][];
+            safetyAlerts: components["schemas"]["SafetyAlertResponseDto"][];
+            missingInformation: string[];
+            /** @enum {string} */
+            reviewStatus: "DRAFT" | "ACCEPTED" | "MODIFIED" | "REJECTED";
+            /** @description ISO 8601 */
+            generatedAt: string;
+        };
+        ReviewClinicalGuidanceRequestDto: {
+            /** @enum {string} */
+            decision: "ACCEPTED" | "MODIFIED" | "REJECTED";
+            note?: string;
         };
     };
     responses: never;
@@ -1197,6 +1260,56 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ClinicalGuidanceController_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                guidanceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["ClinicalGuidanceResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    ClinicalGuidanceController_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                guidanceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewClinicalGuidanceRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["ClinicalGuidanceResponseDto"];
+                    };
+                };
             };
         };
     };
