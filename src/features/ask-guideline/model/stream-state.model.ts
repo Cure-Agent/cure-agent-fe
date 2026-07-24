@@ -58,6 +58,79 @@ export type StreamAction =
   | { type: 'streamFailed'; message: string }
   | { type: 'reset' };
 
-export function streamReducer(_state: StreamState, _action: StreamAction): StreamState {
-  throw new Error('NOT_IMPLEMENTED');
+export function streamReducer(state: StreamState, action: StreamAction): StreamState {
+  switch (action.type) {
+    case 'reset':
+      return initialStreamState;
+    case 'streamFailed':
+      // 이미 종결된 스트림의 사후 실패(네트워크 정리 등)는 무시
+      if (state.phase === 'completed' || state.phase === 'abstained' || state.phase === 'error') {
+        return state;
+      }
+      return {
+        ...state,
+        phase: 'error',
+        error: {
+          code: 'STREAM_DISCONNECTED',
+          message: action.message,
+          retryable: true,
+          traceId: '',
+        },
+      };
+    case 'event':
+      return applyEvent(state, action.event);
+  }
+}
+
+function applyEvent(state: StreamState, event: StreamEvent): StreamState {
+  switch (event.eventType) {
+    case 'message.accepted':
+      return {
+        ...initialStreamState,
+        phase: 'accepted',
+        requestId: (event.requestId as string) ?? null,
+        userMessageId: (event.userMessageId as string) ?? null,
+        assistantMessageId: (event.assistantMessageId as string) ?? null,
+      };
+    case 'retrieval.started':
+      return { ...state, phase: 'retrieving' };
+    case 'retrieval.completed':
+      return {
+        ...state,
+        phase: 'retrieving',
+        evidence: (event.evidence as EvidenceDetail[]) ?? [],
+      };
+    case 'answer.delta': {
+      if (event.seq !== state.nextSeq) return state; // 중복·역행 seq 무시
+      return {
+        ...state,
+        phase: 'streaming',
+        content: state.content + ((event.delta as string) ?? ''),
+        nextSeq: state.nextSeq + 1,
+      };
+    }
+    case 'answer.completed':
+      return { ...state, phase: 'completed', message: (event.message as MessageDto) ?? null };
+    case 'answer.abstained':
+      return {
+        ...state,
+        phase: 'abstained',
+        message: (event.message as MessageDto) ?? null,
+        abstainReason: (event.reason as string) ?? null,
+      };
+    case 'error':
+      return {
+        ...state,
+        phase: 'error',
+        error: {
+          code: (event.code as string) ?? 'UNKNOWN',
+          message: (event.message as string) ?? '오류가 발생했습니다.',
+          retryable: Boolean(event.retryable),
+          traceId: (event.traceId as string) ?? '',
+        },
+      };
+    default:
+      // enum 전방 호환 (architecture.md §1): 모르는 이벤트는 무시
+      return state;
+  }
 }

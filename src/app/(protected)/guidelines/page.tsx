@@ -1,8 +1,14 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { GuidelineListPanel } from '@/features/filter-guidelines/ui/guideline-list-panel';
+
 export default function GuidelinesPage(): React.ReactElement {
+  const router = useRouter();
   return (
-    <section>
-      <h1 className="text-2xl font-bold text-gray-900">지침 탐색</h1>
-      <p className="mt-2 text-sm text-gray-500">지침 탐색 화면 — 8단계에서 구현됩니다.</p>
+    <section className="mx-auto max-w-3xl">
+      <h1 className="mb-4 text-2xl font-bold text-gray-900">지침 탐색</h1>
+      <GuidelineListPanel onSelect={(guideline) => router.push(`/guidelines/${guideline.id}`)} />
     </section>
   );
 }
