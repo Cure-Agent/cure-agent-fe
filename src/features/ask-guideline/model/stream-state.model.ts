@@ -7,6 +7,7 @@ import type { StreamEvent } from '@/shared/api/stream-client';
 
 export type EvidenceDetail = components['schemas']['EvidenceDetailResponseDto'];
 export type MessageDto = components['schemas']['MessageResponseDto'];
+export type GuidanceDto = components['schemas']['ClinicalGuidanceResponseDto'];
 
 export type StreamPhase =
   | 'idle'
@@ -36,6 +37,8 @@ export interface StreamState {
   nextSeq: number;
   /** completed/abstained의 최종 메시지 */
   message: MessageDto | null;
+  /** PATIENT_GUIDANCE completed의 임상 참고안 (spec 10 — additive) */
+  guidance: GuidanceDto | null;
   abstainReason: string | null;
   error: StreamError | null;
 }
@@ -49,6 +52,7 @@ export const initialStreamState: StreamState = {
   content: '',
   nextSeq: 0,
   message: null,
+  guidance: null,
   abstainReason: null,
   error: null,
 };
@@ -110,7 +114,12 @@ function applyEvent(state: StreamState, event: StreamEvent): StreamState {
       };
     }
     case 'answer.completed':
-      return { ...state, phase: 'completed', message: (event.message as MessageDto) ?? null };
+      return {
+        ...state,
+        phase: 'completed',
+        message: (event.message as MessageDto) ?? null,
+        guidance: (event.guidance as GuidanceDto | undefined) ?? null,
+      };
     case 'answer.abstained':
       return {
         ...state,
