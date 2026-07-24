@@ -48,6 +48,63 @@ export function useConversations(cursor?: string): UseQueryResult<ConversationPa
   });
 }
 
+/** 히스토리 목록 — 제목 부분일치 검색 지원 (docs/specs/11 기준 6·9) */
+export function useConversationHistory(params: {
+  query?: string;
+}): UseQueryResult<ConversationPage> {
+  return useQuery({
+    queryKey: [...CONVERSATIONS_KEY, 'history', { query: params.query ?? null }],
+    queryFn: async () => {
+      const query: Record<string, string> = {};
+      if (params.query) query.query = params.query;
+      const result = await api.GET('/api/v1/conversations', { params: { query } });
+      const { items, page } = unwrapPage<ConversationSummary>(result);
+      return { items, page };
+    },
+  });
+}
+
+/** 대화명 변경 (docs/specs/11 기준 7) */
+export function useRenameConversation(
+  conversationId: string | null,
+): UseMutationResult<ConversationSummary, Error, { title: string }> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ title }) => {
+      if (!conversationId) throw new Error('대화가 선택되지 않았습니다.');
+      return unwrap<ConversationSummary>(
+        await api.PATCH('/api/v1/conversations/{conversationId}', {
+          params: { path: { conversationId } },
+          body: { title },
+        }),
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
+    },
+  });
+}
+
+/** 대화 보관 (docs/specs/11 기준 8 — 멱등) */
+export function useArchiveConversation(
+  conversationId: string | null,
+): UseMutationResult<null, Error, void> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      if (!conversationId) throw new Error('대화가 선택되지 않았습니다.');
+      return unwrap<null>(
+        await api.POST('/api/v1/conversations/{conversationId}/archive', {
+          params: { path: { conversationId } },
+        }),
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
+    },
+  });
+}
+
 export function useCreateConversation(): UseMutationResult<ConversationSummary, Error, void> {
   const queryClient = useQueryClient();
   return useMutation({
