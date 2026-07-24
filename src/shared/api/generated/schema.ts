@@ -280,12 +280,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 환자 검색·목록 (caseLabel 부분일치, 커서 기반) */
+        get: operations["PatientController_list"];
+        put?: never;
+        /** 환자 프로필 등록 (민감 필드 암호화 저장 §4.5) */
+        post: operations["PatientController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patientId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 환자 상세 */
+        get: operations["PatientController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 환자 수정 (낙관적 잠금 — version 필수) */
+        patch: operations["PatientController_update"];
+        trace?: never;
+    };
+    "/api/v1/patients/{patientId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 환자 보관 */
+        post: operations["PatientController_archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patientId}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 환자 보관 해제 */
+        post: operations["PatientController_unarchive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         PageMetaDto: {
-            /** @description 이번 페이지 항목 수 */
+            /** @description 요청한 페이지 크기 에코 (§10.4 — 항목 수는 data.length) */
             size: number;
             /** @description 다음 페이지 존재 여부 */
             hasNext: boolean;
@@ -493,6 +563,82 @@ export interface components {
             rating: "HELPFUL" | "NOT_HELPFUL";
             reasonCodes?: string[];
             comment?: string;
+        };
+        PatientDetailResponseDto: {
+            id: string;
+            /** @example CASE-001 */
+            caseLabel: string;
+            /** @description birthYear 기준 만 나이 근사 */
+            age?: number;
+            /** @enum {string} */
+            sex?: "MALE" | "FEMALE" | "OTHER" | "UNKNOWN";
+            /** @description 소수 1자리 */
+            bmi?: number;
+            /** @enum {string} */
+            status: "ACTIVE" | "ARCHIVED";
+            /** @description ISO 8601 */
+            updatedAt: string;
+            birthYear?: number;
+            heightCm?: number;
+            weightKg?: number;
+            waistCm?: number;
+            diagnoses: string[];
+            medications: string[];
+            allergies: string[];
+            clinicalNotes?: string;
+            /** @description 낙관적 잠금 버전 (§6) */
+            version: number;
+        };
+        CreatePatientRequestDto: {
+            /**
+             * @description 비식별 케이스 라벨 (§4.5)
+             * @example CASE-001
+             */
+            caseLabel: string;
+            /** @example 1980 */
+            birthYear?: number;
+            /** @enum {string} */
+            sex?: "MALE" | "FEMALE" | "OTHER" | "UNKNOWN";
+            heightCm?: number;
+            weightKg?: number;
+            waistCm?: number;
+            diagnoses: string[];
+            medications: string[];
+            allergies: string[];
+            clinicalNotes?: string;
+        };
+        PatientSummaryResponseDto: {
+            id: string;
+            /** @example CASE-001 */
+            caseLabel: string;
+            /** @description birthYear 기준 만 나이 근사 */
+            age?: number;
+            /** @enum {string} */
+            sex?: "MALE" | "FEMALE" | "OTHER" | "UNKNOWN";
+            /** @description 소수 1자리 */
+            bmi?: number;
+            /** @enum {string} */
+            status: "ACTIVE" | "ARCHIVED";
+            /** @description ISO 8601 */
+            updatedAt: string;
+        };
+        UpdatePatientRequestDto: {
+            /**
+             * @description 비식별 케이스 라벨 (§4.5)
+             * @example CASE-001
+             */
+            caseLabel?: string;
+            /** @example 1980 */
+            birthYear?: number;
+            /** @enum {string} */
+            sex?: "MALE" | "FEMALE" | "OTHER" | "UNKNOWN";
+            heightCm?: number;
+            weightKg?: number;
+            waistCm?: number;
+            diagnoses?: string[];
+            medications?: string[];
+            allergies?: string[];
+            clinicalNotes?: string;
         };
     };
     responses: never;
@@ -901,6 +1047,148 @@ export interface operations {
                 "application/json": components["schemas"]["SubmitFeedbackRequestDto"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientController_list: {
+        parameters: {
+            query?: {
+                /** @description caseLabel 부분일치 검색 */
+                query?: string;
+                status?: "ACTIVE" | "ARCHIVED";
+                /** @description 불투명 커서 (§10.4) */
+                cursor?: string;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["PatientSummaryResponseDto"][];
+                        page?: components["schemas"]["PageMetaDto"];
+                    };
+                };
+            };
+        };
+    };
+    PatientController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePatientRequestDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["PatientDetailResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    PatientController_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["PatientDetailResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    PatientController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePatientRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["PatientDetailResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    PatientController_archive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PatientController_unarchive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
