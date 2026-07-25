@@ -11,8 +11,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 서버 상태 확인 */
+        /** 서버 상태 확인 (liveness) */
         get: operations["HealthController_check"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/health/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 트래픽 수용 준비 확인 (readiness) */
+        get: operations["HealthController_ready"];
         put?: never;
         post?: never;
         delete?: never;
@@ -448,6 +465,23 @@ export interface components {
             /** @example ok */
             status: string;
         };
+        ReadinessDependenciesDto: {
+            /**
+             * @example up
+             * @enum {string}
+             */
+            database: "up" | "down";
+            /**
+             * @example up
+             * @enum {string}
+             */
+            redis: "up" | "down";
+        };
+        ReadinessResponseDto: {
+            /** @example ready */
+            status: string;
+            dependencies: components["schemas"]["ReadinessDependenciesDto"];
+        };
         ClinicSummaryResponseDto: {
             id: string;
             name: string;
@@ -778,6 +812,27 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponseDto"] & {
                         data?: components["schemas"]["HealthResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    HealthController_ready: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["ReadinessResponseDto"];
                     };
                 };
             };
