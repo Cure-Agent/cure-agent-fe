@@ -1,0 +1,21 @@
+description = "워킹 트리 변경을 검증하고 main PR→CI·Vercel 체크→squash 머지→Vercel 프로덕션 배포를 자동화한다 (하네스 중립 워크플로우의 Gemini 어댑터)"
+
+prompt = """
+당신은 Gemini CLI에서 실행 중이다. 이것은 하네스 중립 배포 워크플로우의 Gemini 진입점이다. 절차 원본은 리포의 `automation/ship.md`(+ `automation/pipeline.md`)에 있다.
+
+## 실행 절차
+1. 리포의 `automation/ship.md`를 읽고 Preflight → Phase 1~4를 순서대로 실행한다. Phase 4에서 `automation/pipeline.md`를 읽어 배포한다.
+2. 사용자 인자(타입+설명): {{args}}
+   비어 있으면 `automation/ship.md`의 Phase 1대로 변경사항을 분석해 타입/설명을 정하고 사용자 확인을 받는다.
+
+## Gemini Co-Author 트레일러 (`automation/pipeline.md` Step 1 오버라이드)
+`automation/pipeline.md` Step 1 커밋 메시지 끝에 붙이는 Co-Author 트레일러는 **`Co-Authored-By: Gemini <noreply@google.com>`**로 한다 (다른 하네스의 트레일러가 아니라 이 Gemini 트레일러를 쓴다).
+
+## Gemini 폴링 모드 (`automation/pipeline.md` 「폴링 실행 규칙」 오버라이드)
+- 배경 재호출 프리미티브가 없으므로 CI·Vercel 체크 폴링은 `automation/bin/`의 폴링 스크립트(`merge-gate.sh`·`deploy-wait.sh`)를 **포그라운드 블로킹 호출**로 **한 번의 셸 호출**로 완료까지 실행한다 — 스크립트가 종료 마커를 echo하고 반환할 때까지 그 호출이 블로킹된다.
+- 스크립트 출력은 파일로 리다이렉트(`> "$LOG" 2>&1`)하고, 스크립트 내부 타임아웃을 상한으로 삼는다. **셸 명령 타임아웃은 그보다 넉넉히** 설정한다 (예: 머지 게이트 15분 → 셸 타임아웃 20분+). 없으면 스크립트가 먼저 끊겨 미완료로 오판될 수 있다.
+- 검증(Phase 2)의 `pnpm` 명령은 폴링과 분리된 별도 셸 호출로 돌린다.
+
+## 안전 규칙 (훅 부재 보완 — 필수)
+Gemini에는 Claude Code의 PreToolUse 훅이 없다. `automation/pipeline.md`의 「민감 파일 커밋 금지」 규칙을 직접 준수한다 (Step 1의 `sensitive-gate.sh` 기계 검사와 병행): `git add/commit/push` 전에 대상에 `.env`(및 `.env.*`), `.claude/settings.local.json`, `.mcp.json`, `.vercel/`, `certs/` 하위 키·인증서, `*.pem`, `*.p12`, `*.p8`, `*.key`, `firebase-adminsdk*.json`, `id_rsa*`가 없는지 확인하고, 있으면 커밋하지 말고 사용자에게 보고한다.
+"""

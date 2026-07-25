@@ -19,5 +19,12 @@ coverage/
 *.log
 *.tsbuildinfo
 
+# 로컬 IDE MCP 연결 (개인 환경 전용 — 팀 공유 MCP 서버가 생기면 해제하고 커밋)
+.mcp.json
+
+# Codex — 프로젝트 스코프 스킬은 리포로 공유 (config.toml 등 로컬 머신 설정은 계속 무시)
+.codex/*
+!.codex/skills/
+
 # SDD 하네스 스크래치 (BE implement.md Phase 2)
 .cure-implement/

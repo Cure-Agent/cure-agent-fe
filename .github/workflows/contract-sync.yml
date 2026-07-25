@@ -27,15 +27,20 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: BE 스펙 fetch + 타입 재생성
         run: pnpm api:sync
-      # GITHUB_TOKEN이 만든 PR에는 pull_request CI가 트리거되지 않으므로(재귀 방지),
-      # breaking 판정은 이 run의 typecheck가 담당한다
-      - name: typecheck (breaking 판정)
+      # 동기화 PR은 PAT로 생성되어 pull_request CI가 정상 트리거된다 — 정식 판정은
+      # PR CI + main 브랜치 보호(required checks)가 한다. 이 typecheck는 조기 신호다:
+      # breaking이면 이 run을 빨갛게 만들어 PR 열람 전에 알리고, PR 본문에 판정을 남긴다.
+      - name: typecheck (breaking 조기 신호)
         id: typecheck
         continue-on-error: true
         run: pnpm typecheck
       - name: 동기화 PR 생성/갱신
         uses: peter-evans/create-pull-request@v7
         with:
+          # GITHUB_TOKEN이 만든 PR에는 pull_request CI가 트리거되지 않으므로(재귀 방지) PAT를 쓴다 —
+          # required checks가 보고되어야 머지가 가능하다. 만료 시 같은 권한으로 재발급:
+          # fine-grained, 이 레포 한정, Contents RW + Pull requests RW.
+          token: ${{ secrets.CONTRACT_SYNC_TOKEN }}
           branch: chore/contract-sync
           delete-branch: true
           title: '[CHORE] OpenAPI 계약 동기화'
@@ -48,7 +53,7 @@ jobs:
 
             - 트리거: `${{ github.event_name }}`
             - BE 커밋: `${{ github.event.client_payload.sha || 'n/a' }}`
-            - **typecheck 판정: `${{ steps.typecheck.outcome }}`** (이 PR에는 CI가 자동 트리거되지 않음 — contract-sync run이 판정)
+            - **typecheck 조기 신호: `${{ steps.typecheck.outcome }}`** (정식 판정은 이 PR의 CI — main 보호 규칙의 required checks가 머지를 강제)
             - `failure`면 breaking change → FE 적응 커밋을 이 브랜치에 쌓은 뒤 머지하세요 (architecture.md §1)
       - name: breaking change 신호
         if: steps.typecheck.outcome == 'failure'
