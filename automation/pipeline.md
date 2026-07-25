@@ -1,0 +1,100 @@
+# pipeline — 배포 파이프라인 (하네스 중립 명세)
+
+feature 브랜치의 변경사항을 커밋 → `main` PR → CI·Vercel 체크 → squash 머지 → Vercel 프로덕션 배포까지 자동화한다. `ship`의 Phase 4에서 사용한다.
+
+> **선결 조건: Vercel 프로젝트 연결.** 머지 게이트는 `Vercel` 체크의 존재 자체를 요구한다(vacuous pass 방지) — 이 레포가 Vercel에 연결되기 전에는 게이트가 PASS하지 않고 TIMEOUT으로 끝난다. 연결 후 `main` 브랜치 보호 required checks에 `Vercel` 컨텍스트도 추가한다.
+
+> **이 파일은 하네스 중립 「진실의 원천」이다.** 진입 어댑터(`ship`)를 통해 실행되며, 어댑터가 「폴링 실행 규칙」의 모드와 **커밋 Co-Author 트레일러**(Step 1)를 지정한다:
+>
+> **하네스별 Co-Author 트레일러** (Step 1 커밋 메시지 끝에 붙는 한 줄):
+> - Claude Code → 세션 시스템 규칙이 지정하는 `Co-Authored-By:` 트레일러
+> - Codex → `Co-Authored-By: Codex <noreply@openai.com>`
+> - Gemini → `Co-Authored-By: Gemini <noreply@google.com>`
+
+**실행 주체**: 전 과정(Step 1~3)을 하나의 실행 흐름이 직접 수행한다.
+- **Claude Code**: 메인 세션이 직접 수행하고 서브에이전트에 위임하지 않는다 — 파이프라인은 "액션 → 체크 폴링 → 다음 액션"의 반복인데, 서브에이전트 안에서 백그라운드 폴링을 돌리면 완료 후 재개가 안 돼 대기 지점에서 멈춘다. 메인 세션의 `run_in_background` Bash는 완료 시 세션을 확실히 재호출한다.
+- **Codex / Gemini**: 병렬 위임 프리미티브가 없으므로 단일 호출 흐름에서 순차 수행한다.
+
+## 폴링 실행 규칙
+
+CI·Vercel 체크 대기는 `automation/bin/`의 **폴링 스크립트**(`merge-gate.sh`, `deploy-wait.sh`)로 실행한다 — 루프를 즉석에서 작성하지 않는다. 스크립트의 *실행 모드*는 진입 어댑터가 지정한 **하네스별 폴링 모드**를 따른다:
+
+| 하네스 | 폴링 모드 |
+|--------|-----------|
+| **Claude Code** | 스크립트를 **`run_in_background: true` Bash**로 실행. 포그라운드 `sleep` 차단·Monitor 도구 금지(단일 완료 대기에 부적합). 스크립트 완료 시 세션이 자동 재호출된다. |
+| **Codex / Gemini** | 스크립트를 포그라운드 **블로킹** 호출로 완료까지 대기. 배경 재호출 프리미티브가 없으므로 스크립트가 종료 마커를 출력하고 반환할 때까지 그 호출이 블로킹된다. 출력은 파일로 리다이렉트(`> "$LOG" 2>&1`)하고, **하네스 셸 명령 타임아웃을 스크립트 내부 타임아웃보다 넉넉히** 설정한다. |
+
+- 스크립트는 성공·실패·타임아웃 **모든 종료 상태에서 exit**하고, 종료 직전 결과 마커 1줄(`... result=...`)을 출력한다. 출력의 마커·종료코드로 분기한다. 게이트 정의·간격·타임아웃·마커 규약은 **각 스크립트 상단 주석이 원천**이다.
+- GitHub 조회 실패는 pending으로 삼키지 않는다 — 3회 연속 실패 시 `result=API_ERROR` 마커로 종료된다(스크립트에 구현됨). `API_ERROR`는 체크 실패나 `TIMEOUT`과 구분해 실제 stderr를 요약하고 중단한다. 하네스의 네트워크 권한·DNS·인증 상태를 함께 확인한다.
+- **알림이 애매하거나 오래 소식이 없으면 추측·무한 대기 말고 즉시 `gh pr view/checks`로 실제 상태를 확인**한 뒤 분기한다.
+
+## Step 1: 커밋 & PR & 머지 (main)
+
+1. `git status --short` — 커밋 안 된 변경이 있으면 `git add -A` → **민감 파일 게이트 통과 후** 커밋 (메시지 끝에 **현재 하네스의 Co-Author 트레일러**를 붙인다). 이미 커밋됐으면 스킵. 게이트는 반드시 스테이징 **후**에 돌린다 — add 이전 검사로는 untracked였던 민감 파일이 잡히지 않는다:
+   - 게이트: `automation/bin/sensitive-gate.sh` 실행. `SENSITIVE_GATE result=PASS` → 커밋 진행. `result=BLOCKED`(종료코드 1) → 출력된 파일을 `git reset HEAD <파일>`로 해제하고 보고 후 중단. `result=ERROR` → git 조회 실패(fail-closed) — 통과로 취급하지 않고 보고 후 중단.
+2. `git pull origin main --rebase` — 충돌 시 `git rebase --abort` 후 보고하고 중단. (ship Preflight에서 이미 rebase했으므로 보통 no-op이다 — Phase 2 검증이 도는 동안 main이 움직인 경우의 안전망.)
+3. `git push --force-with-lease -u origin "<브랜치명>"`
+4. PR 확보 — **기존 PR 확인부터** (재시작 시 같은 브랜치에 열린 PR이 이미 있다):
+   - `gh pr list --head "<브랜치명>" --base main --state open --json number --jq '.[0].number // empty'` — 번호가 나오면 **생성을 스킵**하고 그 번호를 `<PR 번호>`로 재사용한다 (3의 push만으로 같은 PR이 업데이트되고 체크가 재실행된다).
+   - 없으면 `.github/PULL_REQUEST_TEMPLATE.md` placeholder를 채워 `gh pr create --base main --head "<브랜치명>" --title "[<TYPE>/#이슈] <설명>"` (이슈 없으면 `[<TYPE>] <설명>`):
+     - 본문의 각 섹션(작업 내용·변경 사항)을 변경 내용으로 채운다. **스크린샷**은 UI 변경이 있으면 표를 남겨 사람이 첨부하도록 두고, 없으면 항목을 제거한다. **검증/체크리스트**는 실제 수행한 항목만 체크한다(Phase 2 로컬 검증 통과 항목 포함).
+     - 연결 이슈가 있으면 「관련 이슈」에 `Closes #N`을, 없으면 그 섹션을 비운다.
+     - **라벨·담당자를 붙이지 않는다** (자동화 없음).
+     - 출력 URL 끝 숫자가 `<PR 번호>`.
+5. 머지 게이트 폴링: **`automation/bin/merge-gate.sh <PR 번호>`** (30초 간격, 최대 15분) → `MERGE_GATE_DONE` 마커. **게이트 = `mergeable` MERGEABLE + `Vercel`(프리뷰 배포) 성공 + 비차단 예외를 제외한 모든 체크가 완료·성공 (실패 0, 대기 0, Vercel 외 체크 1개 이상)** — 정확한 판정 로직·비차단 예외 목록은 `automation/bin/merge-gate.jq`가 원천이다(`smoke-test.sh`가 fixture로 검증). 체크를 이름 허용목록으로 고르지 않으므로 잡이 추가·개명돼도 게이트가 자동으로 따라간다. 이 클라이언트 게이트는 관측·진행 판단용이고, **강제는 `main` 브랜치 보호(required status checks: `codegen-check`·`gitleaks`, Vercel 연결 후 `Vercel` 추가)가 서버에서 한다** — CI 잡 이름을 바꾸면 브랜치 보호 설정도 함께 갱신해야 한다.
+   - `result=PASS` → `gh pr merge <PR 번호> --squash`. **`--auto`를 쓰지 않는 이유**: 머지를 서버에 위임하면 게이트 실패 시 아무 일도 일어나지 않은 채 대기만 남아 "실패 → 즉시 로그 요약·보고"라는 이 파이프라인의 실행 흐름이 끊긴다.
+   - `result=FAIL*` → 마커의 `failed=` 목록에 있는 체크의 로그를 요약해(`gh run view --log-failed` 등) 보고하고 중단. `CONFLICTING`·`TIMEOUT`·`API_ERROR`도 각각 요약해 중단.
+   - `result=ERROR` → jq 부재 또는 판정 출력 이상(fail-closed) — 체크 실패가 아니라 실행 환경 문제다. 통과로 취급하지 않고 환경을 확인해 보고 후 중단.
+6. `MERGE_SHA=$(gh pr view <PR 번호> --json mergeCommit --jq '.mergeCommit.oid')`
+7. `git checkout main && git pull origin main`
+   - `main`이 기본 브랜치이므로 PR 본문의 `Closes #N`은 머지 시 이슈를 **자동으로 닫는다**(연결 이슈가 있는 경우).
+
+## Step 2: Vercel 프로덕션 배포 확인
+
+`main` push(머지)를 Vercel이 감지해 프로덕션 배포를 시작한다. Vercel은 GitHub **Deployment**(`environment=Production`, 생성자 `vercel[bot]`)로 상태를 낸다 — 병합 커밋에는 check-run/commit-status가 붙지 않으므로 Deployments API를 폴링한다.
+
+배포 폴링: **`automation/bin/deploy-wait.sh <머지 SHA>`** (Step 1-6의 `MERGE_SHA` 값, 30초 간격, 최대 10분) → `DEPLOY_RESULT` 마커.
+- `result=success` → 배포 완료. (이후 새 배포가 이 배포를 inactive로 덮어도 스크립트는 상태 이력에서 success를 찾으므로 정상 판정된다.)
+- `result=failure`·`error` → Vercel 대시보드에서 배포 로그를 확인하도록 안내하고 보고한다. Vercel은 이전 배포로 **즉시 롤백**이 가능하다.
+- `result=SUPERSEDED` → 이 배포가 완료 전에 더 새 프로덕션 배포로 대체됨(연속 머지 상황). 최신 배포에 이 커밋이 포함돼 있는지 확인하고 결과를 보고한다.
+- `result=TIMEOUT` → 아직 진행 중일 수 있으니 단정하지 말고 대시보드 확인을 안내한다. `API_ERROR` → 스크립트 stderr를 요약한다.
+
+## Step 3: 정리 & 보고
+
+각 명령이 실패해도 **중단하지 않고 계속 진행**한다(실패 내역만 기록):
+1. `git branch -D "<브랜치명>"`
+2. `git push origin --delete "<브랜치명>"` (이미 삭제됐으면 무시)
+3. 최종 보고: 배포 성공 여부 + 정리 실패 내역(있으면). 배포 성공 + 정리 실패는 파이프라인 실패로 취급하지 않는다.
+
+## 실패 시 재시작 규칙
+
+feature 브랜치와 PR은 재사용한다 — 수정 커밋을 **같은 브랜치에 push**하면 CI·Vercel 체크가 재실행되고 같은 PR이 업데이트된다.
+
+| 실패 시점 | 원인 | 재시작 |
+|-----------|------|--------|
+| Step 1-5 | CI·Vercel 체크 실패 | 코드 수정 → **Step 1** (같은 브랜치에 새 커밋 push, 게이트 폴링 재개) |
+| Step 1-5 | PR 충돌(`CONFLICTING`) | `git pull origin main --rebase`로 해결 → **Step 1** |
+| Step 2 | Vercel 프로덕션 배포 실패 | 코드 수정 → **Step 1** (새 커밋 → 새 머지). 필요 시 Vercel 대시보드에서 이전 배포로 롤백 |
+
+## 민감 파일 커밋 금지
+
+`git add/commit/push` 대상에 아래 민감 파일이 포함되지 않도록 커밋 전 확인한다 (기본 이름 및 `<이름>.*` 확장 변형 포함). 기계적 검사는 Step 1의 **`automation/bin/sensitive-gate.sh`**(스테이징 후 `git diff --cached` 검사)가 수행한다 — **스크립트의 정규식이 패턴의 단일 원천**이고, 아래 목록은 사람용 요약이다(불일치하면 스크립트가 우선). 패턴 변경은 스크립트에서 한다:
+
+- `.env` (및 `.env.local`, `.env.prod` 등 `.env.*`)
+- `.claude/settings.local.json`
+- `.mcp.json` (로컬 IDE MCP 연결 — 개인 환경 전용, .gitignore 대상)
+- `.vercel/` (프로젝트/조직 ID)
+- `certs/` 하위 키·인증서, `*.pem`, `*.p12`, `*.p8`, `*.key`
+- `firebase-adminsdk*.json`
+- `id_rsa*`
+
+발견 시 커밋하지 말고 사용자에게 보고한다 — 스테이징돼 있으면 `git reset HEAD <file>`로 해제한다.
+
+> **하네스별 적용**: 모든 하네스가 Step 1에서 `sensitive-gate.sh`를 실행한다. Claude Code는 PreToolUse 훅(`.claude/hooks/validate-git-sensitive.sh`)이 `git add/commit/push`를 추가로 자동 차단한다(이중 방어). **Codex/Gemini에는 훅이 없으므로 스크립트 실행 + 규칙 직접 준수**로 커버한다. 어느 하네스든 `.gitignore` + GitHub push protection + CI 단 gitleaks(기본 규칙셋)와 병행되는 것을 전제로 한다.
+
+## 규칙
+
+- 모든 `gh`/`git` 실패 시 에러 내용을 사용자에게 보고한다.
+- PR 생성 시 `.github/PULL_REQUEST_TEMPLATE.md` 형식을 준수하고, **라벨·담당자는 부여하지 않는다**.
+- **`main` = 프로덕션이다. CI·Vercel 체크 통과 없이 머지하지 않는다.** 브랜치 보호(required status checks)가 이를 서버에서도 강제한다 — 머지가 거부되면 `--admin`으로 우회하지 말고 게이트 실패로 보고한다.
+- **실패 시 재시작 규칙을 반드시 따른다.**

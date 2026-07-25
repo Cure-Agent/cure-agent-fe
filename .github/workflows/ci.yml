@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# PR은 최신 push만 검증한다 — main push는 배포 대상 커밋의 검증 기록이 남아야 하므로 취소하지 않는다
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   codegen-check:
     runs-on: ubuntu-latest
@@ -22,6 +27,13 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+
+  # automation/bin 게이트 스크립트 회귀 검증 — fail-closed 성질 + merge-gate.jq 판정 fixture
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: automation/bin/smoke-test.sh
 
   gitleaks:
     runs-on: ubuntu-latest
