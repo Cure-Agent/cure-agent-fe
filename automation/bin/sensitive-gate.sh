@@ -12,8 +12,10 @@ set -u
 
 STAGED=$(git diff --cached --name-only) \
   || { echo "SENSITIVE_GATE result=ERROR"; exit 1; }
+# *.example은 플레이스홀더 템플릿이라 커밋 허용 (.env.example — .gitignore의 !.env.example과 정합)
 MATCHES=$(printf '%s\n' "$STAGED" | grep -E \
   '(^|/)\.env(\..+)?$|(^|/)\.claude/settings\.local\.json$|(^|/)\.mcp\.json$|(^|/)\.vercel/|(^|/)certs/|\.(pem|p12|p8|key)$|firebase-adminsdk[^/]*\.json$|(^|/)id_rsa[^/]*$' \
+  | grep -v -E '\.example$' \
   || true)
 
 if [ -n "$MATCHES" ]; then

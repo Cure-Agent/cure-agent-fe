@@ -78,9 +78,9 @@ feature 브랜치와 PR은 재사용한다 — 수정 커밋을 **같은 브랜�
 
 ## 민감 파일 커밋 금지
 
-`git add/commit/push` 대상에 아래 민감 파일이 포함되지 않도록 커밋 전 확인한다 (기본 이름 및 `<이름>.*` 확장 변형 포함). 기계적 검사는 Step 1의 **`automation/bin/sensitive-gate.sh`**(스테이징 후 `git diff --cached` 검사)가 수행한다 — **스크립트의 정규식이 패턴의 단일 원천**이고, 아래 목록은 사람용 요약이다(불일치하면 스크립트가 우선). 패턴 변경은 스크립트에서 한다:
+`git add/commit/push` 대상에 아래 민감 파일이 포함되지 않도록 커밋 전 확인한다 (기본 이름 및 `<이름>.*` 확장 변형 포함). 기계적 검사는 Step 1의 **`automation/bin/sensitive-gate.sh`**(스테이징 후 `git diff --cached` 검사)가 수행한다 — **스크립트의 정규식이 패턴의 단일 원천**이고, 아래 목록과 훅의 배열은 사람용 요약/이중 방어다(불일치하면 스크립트가 우선). 패턴 변경은 스크립트에서 하고 훅을 같이 갱신한다:
 
-- `.env` (및 `.env.local`, `.env.prod` 등 `.env.*`)
+- `.env` (및 `.env.local`, `.env.prod` 등 `.env.*` — `.env.example` 제외)
 - `.claude/settings.local.json`
 - `.mcp.json` (로컬 IDE MCP 연결 — 개인 환경 전용, .gitignore 대상)
 - `.vercel/` (프로젝트/조직 ID)

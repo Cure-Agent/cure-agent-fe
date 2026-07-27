@@ -45,6 +45,11 @@ git add -f .env
 check "sensitive-gate: .env 스테이징 → BLOCKED" \
   1 "SENSITIVE_GATE result=BLOCKED" "$BIN/sensitive-gate.sh"
 git reset -q HEAD .env
+echo 'KEY=' > .env.example
+git add -f .env.example
+check "sensitive-gate: .env.example 스테이징 → PASS (템플릿 예외)" \
+  0 "SENSITIVE_GATE result=PASS" "$BIN/sensitive-gate.sh"
+git reset -q HEAD .env.example
 echo key > AuthKey_test.p8
 git add -f AuthKey_test.p8
 check "sensitive-gate: *.p8 스테이징 → BLOCKED" \
