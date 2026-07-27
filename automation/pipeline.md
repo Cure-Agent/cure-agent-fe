@@ -43,6 +43,7 @@ CI·Vercel 체크 대기는 `automation/bin/`의 **폴링 스크립트**(`merge-
      - 출력 URL 끝 숫자가 `<PR 번호>`.
 5. 머지 게이트 폴링: **`automation/bin/merge-gate.sh <PR 번호>`** (30초 간격, 최대 15분) → `MERGE_GATE_DONE` 마커. **게이트 = `mergeable` MERGEABLE + `Vercel`(프리뷰 배포) 성공 + 비차단 예외를 제외한 모든 체크가 완료·성공 (실패 0, 대기 0, Vercel 외 체크 1개 이상)** — 정확한 판정 로직·비차단 예외 목록은 `automation/bin/merge-gate.jq`가 원천이다(`smoke-test.sh`가 fixture로 검증). 체크를 이름 허용목록으로 고르지 않으므로 잡이 추가·개명돼도 게이트가 자동으로 따라간다. 이 클라이언트 게이트는 관측·진행 판단용이고, **강제는 `main` 브랜치 보호(required status checks: `codegen-check`·`gitleaks`, Vercel 연결 후 `Vercel` 추가)가 서버에서 한다** — CI 잡 이름을 바꾸면 브랜치 보호 설정도 함께 갱신해야 한다.
    - `result=PASS` → `gh pr merge <PR 번호> --squash`. **`--auto`를 쓰지 않는 이유**: 머지를 서버에 위임하면 게이트 실패 시 아무 일도 일어나지 않은 채 대기만 남아 "실패 → 즉시 로그 요약·보고"라는 이 파이프라인의 실행 흐름이 끊긴다.
+     - **`--squash`를 `--merge`로 바꾸지 않는다**: GitHub Actions는 `push` 이벤트 런의 제목으로 **head 커밋 메시지 첫 줄**을 쓴다(`pull_request` 이벤트만 PR 제목을 쓴다). `ci.yml`은 `push: [main]`과 `pull_request` 양쪽에 걸려 있으므로, squash로 머지해야 main push CI 런 제목이 앞선 PR CI 런 제목과 일치한다. merge commit으로 머지하면 런 제목이 `Merge pull request #N from Cure-Agent/<브랜치>`가 되어 **어느 변경의 CI인지 런 목록에서 식별할 수 없고**, main 히스토리에도 브랜치 커밋이 그대로 섞여 「한 줄 = 한 변경」이 깨진다. `run-name`으로는 이 접두사를 걷어낼 수 없어 워크플로우 파일 쪽에 우회책이 없다 — 머지 시점에만 바로잡을 수 있다.
    - `result=FAIL*` → 마커의 `failed=` 목록에 있는 체크의 로그를 요약해(`gh run view --log-failed` 등) 보고하고 중단. `CONFLICTING`·`TIMEOUT`·`API_ERROR`도 각각 요약해 중단.
    - `result=ERROR` → jq 부재 또는 판정 출력 이상(fail-closed) — 체크 실패가 아니라 실행 환경 문제다. 통과로 취급하지 않고 환경을 확인해 보고 후 중단.
 6. `MERGE_SHA=$(gh pr view <PR 번호> --json mergeCommit --jq '.mergeCommit.oid')`
@@ -96,5 +97,6 @@ feature 브랜치와 PR은 재사용한다 — 수정 커밋을 **같은 브랜�
 
 - 모든 `gh`/`git` 실패 시 에러 내용을 사용자에게 보고한다.
 - PR 생성 시 `.github/PULL_REQUEST_TEMPLATE.md` 형식을 준수하고, **라벨·담당자는 부여하지 않는다**.
+- **머지는 항상 `--squash`다** — `--merge`·`--rebase`로 바꾸지 않는다. 이유는 Step 1-5 참조.
 - **`main` = 프로덕션이다. CI·Vercel 체크 통과 없이 머지하지 않는다.** 브랜치 보호(required status checks)가 이를 서버에서도 강제한다 — 머지가 거부되면 `--admin`으로 우회하지 말고 게이트 실패로 보고한다.
 - **실패 시 재시작 규칙을 반드시 따른다.**

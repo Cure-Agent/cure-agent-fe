@@ -19,16 +19,16 @@ describe('SocialLoginButtons (docs/specs/17)', () => {
     mockProviders(['GOOGLE', 'KAKAO']);
     renderWithProviders(<SocialLoginButtons />);
 
-    expect(await screen.findByRole('link', { name: 'Google로 계속하기' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '카카오로 계속하기' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: '네이버로 계속하기' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Google로 로그인' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '카카오 로그인' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '네이버 로그인' })).not.toBeInTheDocument();
   });
 
   it('버튼은 BE OAuth 시작 경로로 가는 링크다 (전체 페이지 이동)', async () => {
     mockProviders(['NAVER']);
     renderWithProviders(<SocialLoginButtons />);
 
-    const link = await screen.findByRole('link', { name: '네이버로 계속하기' });
+    const link = await screen.findByRole('link', { name: '네이버 로그인' });
     expect(link).toHaveAttribute('href', '/api/v1/auth/oauth/naver');
   });
 
