@@ -15,8 +15,10 @@ export default async function LoginPage({
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-        {/* 마크 + 워드마크 가로 조합 — AppShell 사이드바 헤더와 같은 잠금(lockup)이다 */}
-        <div className="mb-6 flex items-center gap-3">
+        {/* 마크 + 워드마크 가로 조합 — AppShell 사이드바 헤더와 같은 잠금(lockup)이다.
+            카드 안의 나머지(묶음 레이블·버튼·안내문)가 전부 가운데라 잠금도 가운데로 맞춘다.
+            justify-center 는 잠금 '묶음'만 옮긴다 — 마크와 워드마크의 좌우 관계는 DS 규정이라 그대로다 */}
+        <div className="mb-6 flex items-center justify-center gap-3">
           <LogoMark className="h-10 w-auto shrink-0 text-emerald-700" />
           <div>
             <h1 className="text-xl font-bold leading-tight text-emerald-800">Cure Agent</h1>
