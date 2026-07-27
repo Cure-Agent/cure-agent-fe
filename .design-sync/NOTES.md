@@ -40,6 +40,26 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 - **`@source "./previews/*.tsx"`** (`tailwind-entry.css`) — `.design-sync` 는 dot 디렉터리라
   Tailwind 자동 소스 탐지가 건너뛴다. **프리뷰를 새로 쓰거나 고치면 Tailwind 를 다시 컴파일해야**
   거기서 처음 쓴 클래스가 CSS 에 들어간다.
+- **`.design-sync/tsconfig.json` + `ds-preview/preview-module.ts`** — 에디터 전용이고 빌드에는
+  관여하지 않는다. 프리뷰는 패키지 이름 `cure-agent-fe` 로 import 하는데 (번들에서 `entry.ts` 와
+  `extraEntries` 의 export 가 한 전역으로 합쳐지므로 옳다) 레포에 `node_modules/cure-agent-fe` 가
+  없어 IDE 가 전부 `TS2307 Cannot find module 'cure-agent-fe'` 로 붉게 칠했다. 루트 tsconfig 의
+  와일드카드는 dot 디렉터리를 건너뛰어 `pnpm typecheck` 는 조용했다 — **에디터에만 보이던 오류**다.
+  이제 이 tsconfig 가 프리뷰·하네스를 명시적으로 포함하고 그 이름을 `preview-module.ts`
+  (= `entry` + `provider` 스타 재export) 로 매핑한다. **`preview-module.ts` 를 `extraEntries` 나
+  `--entry` 에 넣지 말 것** — 스타 export 가 겹쳐 esbuild 가 이름 충돌로 export 를 조용히 떨군다.
+  덤으로 프리뷰가 처음으로 타입 검사를 받게 됐고, 그때 드러난 `process-shim.ts` 의
+  `typeof globalThis &` 교차(= `@types/node` 의 `ProcessEnv` 와 충돌)도 같이 고쳤다.
+  방출 JS 는 동일하므로 재동기화는 필요 없다.
+- **`LogoMark` 는 배럴에만 있고 `componentSrcMap` 에는 없다 — 의도다.** 위쪽 "배럴과
+  componentSrcMap 양쪽에 등록" 규칙은 **카드가 되는 컴포넌트**에만 해당한다. 이 레포에서
+  **카드 목록을 정하는 것은 `componentSrcMap` 키뿐**이다: `lib/source-kit.mjs` 가
+  `exportedNames(PKG_DIR, pkgJson)` 로 목록을 뽑는데, 그게 보는 entry 는
+  `pkgJson.types ?? 'index.d.ts'` → 이 레포 루트에 `index.d.ts` 가 없고 `package.json` 에
+  `types` 필드도 없어 **항상 빈 집합**이고, 그 뒤 `componentSrcMap` 항목만 채워 넣는다.
+  따라서 배럴 단독 추가는 `window.CureAgentFe` 전역에만 실려 프리뷰가 조립에 쓸 수 있게 될 뿐
+  새 카드를 만들지 않는다 (2026-07-28 실측: `LogoMark` 추가 후 bundle export 28 → 29,
+  `components: 14` 불변). 프리뷰 셸이 쓰는 조각은 이 방식으로 넣을 것.
 
 ## 렌더 체크 환경
 
@@ -83,12 +103,29 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 바뀌지 않는 한 마크업 변경은 영원히 `unchanged` 로 분류된다. 프리뷰 재채점이 불필요하다는 뜻이지
 업로드가 생략된다는 뜻이 아니다.
 
+**무엇이 `changed` 를 켜는지** (2026-07-28 두 사례로 확인):
+- `previews/<Name>.tsx` 를 고치면 → **`changed`** 다. 합성 `.prompt.md` 가 프리뷰의 예시를 읽으므로
+  sourceKey 가 움직인다. (로그인 카드 셸을 고쳤을 때 `grade cleared — contract changed` 가 떴다.)
+- **컴포넌트 소스의 마크업만** 고치면 → `unchanged` 다. 방출 3종이 바이트 동일하다.
+  (소셜 버튼을 세로 라벨형 → 원형 아이콘형으로 완전히 갈아엎었는데도 `changed: []` 였다.)
+
+두 번째 경우가 함정이다: **외형이 완전히 바뀌었는데 채점은 이월된다.** 렌더 체크는 돌지만
+`_screenshots/review/` 시트는 재캡처되지 않아, 기록된 채점이 실제 올라간 카드와 어긋난 채 남는다.
+외형을 크게 바꾼 걸 아는 상태라면 강제로 재확인할 것:
+`node .ds-sync/package-capture.mjs --out ./ds-bundle --components <Name> --spot-check-components <Name>`
+
 ## conventions.md 자동 대조 시 오탐 하나
 
 백틱 토큰을 긁어 `_ds_bundle.css` 와 대조하면 **`next-link` 가 "누락 클래스" 로 잡힌다** — 실제로는
 "Next App Router 컨텍스트(`useRouter`/`usePathname`/`next-link`)" 프로즈 안의 모듈 이름이고
 클래스가 아니다. 소문자+하이픈이라 유틸리티 클래스 판별식에 걸릴 뿐이다. 무시할 것.
 (2026-07-27 기준 클래스 41개·HEX 2개·식별자 20개 전량 검증 — 실제 드리프트 0건.)
+
+추출 휴리스틱에 따라 **오탐이 셋 더 나올 수 있다**: `_ds_bundle.css` (파일명인데 `_` 때문에
+식별자로 분류됨), `var(--color-*` (프로즈의 와일드카드 표기라 실제 변수명이 아님),
+`aria-hidden` (HTML 속성명인데 소문자+하이픈이라 `next-link` 와 같은 이유로 클래스로 잡힘).
+넷 다 "이름이 틀린" 게 아니라 "클래스/식별자가 아닌 것을 그렇게 분류한" 것이다.
+(2026-07-28 재검증 — `LogoMark` 절 추가 후 클래스 50개·HEX 2개·식별자 25개, 실제 드리프트 0건.)
 
 ## 재동기화 위험 (다음 실행이 지켜볼 것)
 
@@ -114,6 +151,12 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
   새 빌드 산출물과 대조할 것 (`_ds_bundle.css`, `_ds_bundle.js`, `components/*/` 트리).
 - Tailwind 출력은 소스 스캔 결과다. 컴포넌트에서 클래스를 지우면 CSS 에서도 사라지므로,
   프리뷰만 그 클래스를 쓰고 있었다면 프리뷰가 조용히 스타일을 잃는다.
+- **`previews/SocialLoginButtons.tsx` 의 `LoginCard` 껍데기는 `src/app/(auth)/login/page.tsx` 를
+  손으로 베낀 것이다.** 자동 동기화가 아니다 — 로그인 페이지의 헤더·문구를 고치면 여기도 같이
+  고쳐야 카드가 실제 화면과 어긋나지 않는다. `login/page.tsx` 는 `componentSrcMap` 에 없어
+  드리프트 게이트가 잡아 주지 않으므로 **사람이 기억해야 하는 유일한 짝**이다.
+  (2026-07-28: 마크+워드마크 가로 잠금으로 양쪽을 맞췄다. 현재 잠금은 사이드바 `h-7`/`gap-2.5`,
+  인증 카드 `h-10`/`gap-3` 로 크기만 다르고 구조는 같다.)
 
 ## 재동기화 한 줄 요약
 

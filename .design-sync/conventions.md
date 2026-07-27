@@ -57,6 +57,33 @@ DTO 를 props 로 받는 컴포넌트에는 `window.CureAgentFe` 의 값을 쓴�
 - 어시스턴트는 3단: `grid grid-cols-[16rem_1fr_20rem] gap-4` → `ConversationList` | `ChatPanel` | `EvidenceInspector`.
 - 히스토리는 2단: `grid grid-cols-[20rem_1fr] gap-4`.
 - `EvidenceInspector` 는 `h-full` 이라 높이가 확정된 부모가 필요하다. 카드 안에서는 폭만 주고 높이는 비워 둔다.
+- 브랜드 헤더가 필요하면 아래 `LogoMark` 잠금을 쓴다 — 마크를 직접 그리거나 텍스트 로고로 대체하지 말 것.
+
+#### 브랜드 마크 `LogoMark`
+
+`window.CureAgentFe` export 중 **유일하게 카드가 없는 조각**이라 여기에 적는다 (화면 단위 패널이
+아니라 브랜드 프리미티브라서 `components/` 에 폴더가 없다 — `.prompt.md` 를 찾지 말 것).
+
+색은 `currentColor` 를 상속하므로 `text-emerald-700` 로 제어한다. 마크에 색을 직접 넣거나 비율을
+바꾸지 말 것. 표준 조합(잠금)은 마크가 왼쪽, 오른쪽에 제품명 + 한 줄 설명이다:
+
+```jsx
+const { LogoMark } = window.CureAgentFe;
+
+<div className="flex items-center gap-3">
+  <LogoMark className="h-10 w-auto shrink-0 text-emerald-700" />
+  <div>
+    <p className="text-xl font-bold leading-tight text-emerald-800">Cure Agent</p>
+    <p className="mt-0.5 text-sm text-gray-500">한의 임상 지침 어시스턴트</p>
+  </div>
+</div>
+```
+
+크기는 둘뿐이다: 사이드바 헤더 `h-7` + `gap-2.5` (`AppShell` 이 쓰는 것), 인증 카드 `h-10` + `gap-3`.
+폭이 좁은 곳에서는 감싸는 div 에 `min-w-0`, 설명 줄에 `truncate` 를 준다.
+
+워드마크 없이 마크만 놓을 때는 `title` prop 으로 이름을 노출할 것 (`<LogoMark title="Cure Agent" />`).
+기본값은 `aria-hidden` 이라 스크린리더에 아무것도 읽히지 않는다.
 
 ### 5. 더 정확한 정보
 

@@ -8,9 +8,10 @@
  * 메인 엔트리보다 먼저 re-export 하므로, 이 모듈 본문이 앱 모듈보다 먼저 실행된다.
  * 이 파일은 어떤 것도 import 하지 않는다 (import 가 있으면 그 본문이 먼저 실행된다).
  */
-const g = globalThis as typeof globalThis & {
-  process?: { env: Record<string, string | undefined> };
-};
+// globalThis 를 그대로 교차(&)하면 @types/node 의 `process: NodeJS.Process` 와 겹쳐
+// env 가 NODE_ENV 필수인 ProcessEnv 로 좁혀진다 — 빈 객체를 넣을 수 없게 된다.
+// 여기서 필요한 건 존재 여부와 env 슬롯뿐이라 그 부분만 떼어 본다.
+const g = globalThis as { process?: { env: Record<string, string | undefined> } };
 
 if (typeof g.process === 'undefined') {
   g.process = { env: {} };
