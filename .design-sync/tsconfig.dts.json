@@ -1,0 +1,28 @@
+{
+  "//": "design-sync 전용 선언 방출 설정. 컨버터(ts-morph)는 .tsx 소스가 아니라 .d.ts 트리에서만 <Name>Props 를 찾는다. 출력 위치 dist/types 는 lib/dts.mjs 의 findTypesRoot 가 탐색하는 고정 후보 중 하나다.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "jsx": "react-jsx",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowJs": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "incremental": false,
+    "types": [],
+    "rootDir": "..",
+    "outDir": "../dist/types",
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["../src/**/*.ts", "../src/**/*.tsx"],
+  "exclude": ["../src/**/*.test.ts", "../src/**/*.test.tsx", "../src/shared/test/**"]
+}

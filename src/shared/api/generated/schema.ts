@@ -47,25 +47,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 의료인 가입 + 즉시 로그인 (쿠키 발급) */
-        post: operations["AuthController_signUp"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 이메일 로그인 (쿠키 발급) */
-        post: operations["AuthController_login"];
+        /**
+         * 온보딩 완료 + 즉시 로그인 (쿠키 발급)
+         * @description 소셜 콜백이 발급한 티켓과 한의원명·면허번호를 받아 가입을 마친다 (docs/specs/17). 이메일·소셜 신원은 티켓에서 꺼내므로 바디로 받지 않는다.
+         */
+        post: operations["AuthController_completeSignUp"];
         delete?: never;
         options?: never;
         head?: never;
@@ -123,15 +109,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/auth/email-availability": {
+    "/api/v1/auth/oauth/providers": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** 이메일 중복 확인 (rate limit 적용) */
-        get: operations["AuthController_emailAvailability"];
+        /** 활성 소셜 로그인 제공자 목록 */
+        get: operations["OAuthController_listProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/oauth/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 소셜 로그인 시작 — 제공자 동의 화면으로 302
+         * @description FE는 fetch가 아니라 브라우저 내비게이션(location 이동)으로 호출한다.
+         */
+        get: operations["OAuthController_start"];
         put?: never;
         post?: never;
         delete?: never;
@@ -499,11 +505,13 @@ export interface components {
             /** @description access 토큰 만료 시각 (ISO 8601) */
             expiresAt: string;
         };
-        SignUpRequestDto: {
-            /** @example doctor@clinic.kr */
-            email: string;
-            password: string;
-            /** @example 김의사 */
+        CompleteSignUpRequestDto: {
+            /** @description 소셜 콜백이 발급한 1회용 티켓 */
+            ticket: string;
+            /**
+             * @description 기본값은 소셜 프로필 이름
+             * @example 김의사
+             */
             displayName: string;
             /** @example 서울한의원 */
             clinicName: string;
@@ -512,13 +520,9 @@ export interface components {
             /** @description true 필수 */
             termsAccepted: boolean;
         };
-        LoginRequestDto: {
-            /** @example doctor@clinic.kr */
-            email: string;
-            password: string;
-        };
-        EmailAvailabilityResponseDto: {
-            available: boolean;
+        OAuthProvidersResponseDto: {
+            /** @description client id가 설정되어 실제로 사용 가능한 제공자만 내려온다 */
+            providers: ("GOOGLE" | "KAKAO" | "NAVER")[];
         };
         GuidelineSummaryResponseDto: {
             id: string;
@@ -838,7 +842,7 @@ export interface operations {
             };
         };
     };
-    AuthController_signUp: {
+    AuthController_completeSignUp: {
         parameters: {
             query?: never;
             header?: never;
@@ -847,36 +851,11 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SignUpRequestDto"];
+                "application/json": components["schemas"]["CompleteSignUpRequestDto"];
             };
         };
         responses: {
             201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiResponseDto"] & {
-                        data?: components["schemas"]["AuthSessionResponseDto"];
-                    };
-                };
-            };
-        };
-    };
-    AuthController_login: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LoginRequestDto"];
-            };
-        };
-        responses: {
-            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -947,11 +926,9 @@ export interface operations {
             };
         };
     };
-    AuthController_emailAvailability: {
+    OAuthController_listProviders: {
         parameters: {
-            query: {
-                email: string;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -964,9 +941,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiResponseDto"] & {
-                        data?: components["schemas"]["EmailAvailabilityResponseDto"];
+                        data?: components["schemas"]["OAuthProvidersResponseDto"];
                     };
                 };
+            };
+        };
+    };
+    OAuthController_start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -28,3 +28,15 @@ coverage/
 
 # SDD 하네스 스크래치 (BE implement.md Phase 2)
 .cure-implement/
+
+# Vercel 프로젝트/조직 ID (automation/pipeline.md 민감 파일 목록)
+.vercel
+
+# design-sync (claude.ai/design 동기화) — 스테이징 스크립트·빌드 산출물·머신 상태.
+# .design-sync/ 의 나머지(config.json, NOTES.md, conventions.md, previews/, ds-preview/)는 커밋한다.
+.ds-sync/
+ds-bundle/
+dist/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules

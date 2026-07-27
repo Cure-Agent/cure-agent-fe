@@ -44,6 +44,10 @@ BLOCKED_FILES=()
 matches_sensitive() {
   local file="$1" pattern base
   base=$(basename "$file")
+  # *.example은 플레이스홀더 템플릿이라 커밋 허용 — sensitive-gate.sh의 예외와 정합
+  case "$base" in
+    *.example) return ;;
+  esac
   for pattern in "${SENSITIVE_PATTERNS[@]}"; do
     # 패턴의 glob 매칭(*.pem 등)이 의도이므로 case 패턴을 따옴표로 감싸지 않는다
     # shellcheck disable=SC2254

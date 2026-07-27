@@ -16,8 +16,8 @@ cure-agent-fe/
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/
-│   │   │   ├── login/page.tsx
-│   │   │   └── signup/page.tsx
+│   │   │   ├── login/page.tsx        # 소셜 로그인 진입 (?error= 표시)
+│   │   │   └── signup/page.tsx       # 소셜 인증 후 온보딩 (?ticket= 필수)
 │   │   ├── (protected)/
 │   │   │   ├── layout.tsx
 │   │   │   ├── assistant/
@@ -43,7 +43,7 @@ cure-agent-fe/
 │   │   └── evidence-inspector/       # /assistant, /guidelines 공용
 │   │
 │   ├── features/
-│   │   ├── auth/                     # login + signup + logout 통합
+│   │   ├── auth/                     # 소셜 로그인 + 온보딩 + logout 통합 (BE docs/specs/17)
 │   │   ├── ask-guideline/
 │   │   ├── filter-guidelines/
 │   │   ├── inspect-evidence/
