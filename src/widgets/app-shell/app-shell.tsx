@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { Clinician, useLogout } from '@/features/auth/api/auth.api';
+import { LogoMark } from '@/shared/ui/logo-mark';
 
 const NAV_ITEMS = [
   { href: '/assistant', label: '어시스턴트' },
@@ -34,9 +35,12 @@ export function AppShell({
   return (
     <div className="flex min-h-screen bg-gray-50">
       <aside className="flex w-60 flex-col border-r border-gray-200 bg-white">
-        <div className="border-b border-gray-200 px-5 py-4">
-          <p className="text-lg font-bold text-emerald-800">Cure Agent</p>
-          <p className="text-xs text-gray-500">한의 임상 지침 어시스턴트</p>
+        <div className="flex items-center gap-2.5 border-b border-gray-200 px-5 py-4">
+          <LogoMark className="h-7 w-auto shrink-0 text-emerald-700" />
+          <div className="min-w-0">
+            <p className="text-lg font-bold leading-tight text-emerald-800">Cure Agent</p>
+            <p className="truncate text-xs text-gray-500">한의 임상 지침 어시스턴트</p>
+          </div>
         </div>
         <nav className="flex-1 space-y-1 p-3">
           {NAV_ITEMS.map((item) => {
