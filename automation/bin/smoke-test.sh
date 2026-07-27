@@ -63,6 +63,50 @@ git reset -q HEAD .mcp.json
 check "sensitive-gate: git 실패 → ERROR (fail-closed)" \
   1 "SENSITIVE_GATE result=ERROR" env GIT_DIR=/nonexistent "$BIN/sensitive-gate.sh"
 
+# --- design-drift 판정 테스트 (기준 ref는 origin/main이 없는 스크래치 리포라 HEAD를 쓴다)
+DRIFT="$BIN/design-drift.sh"
+check "design-drift: config 없음 → SKIP" \
+  0 "DESIGN_DRIFT result=SKIP reason=no-config" "$DRIFT" HEAD
+
+mkdir -p .design-sync/.cache src
+echo 'export const Btn = () => null' > src/btn.tsx
+printf '{"componentSrcMap":{"Btn":"src/btn.tsx"}}' > .design-sync/config.json
+git add -f src/btn.tsx .design-sync/config.json
+git -c user.email=smoke@test -c user.name=smoke commit -qm ds
+check "design-drift: 등록 소스 변경 없음 → CLEAN" \
+  0 "DESIGN_DRIFT result=CLEAN" "$DRIFT" HEAD
+
+echo '// touched' >> src/btn.tsx
+check "design-drift: 소스 변경 + 앵커 없음 → DRIFT (판정 불가는 안전측)" \
+  1 "DESIGN_DRIFT result=DRIFT changed=1 reason=anchor-absent" "$DRIFT" HEAD
+
+echo '{}' > .design-sync/.cache/remote-sync.json
+touch -t 203001010000 .design-sync/.cache/remote-sync.json
+touch -t 202001010000 src/btn.tsx
+check "design-drift: 앵커가 소스보다 최신 → CLEAN (동기화 후 재실행이 또 걸리지 않는다)" \
+  0 "DESIGN_DRIFT result=CLEAN" "$DRIFT" HEAD
+
+touch -t 200001010000 .design-sync/.cache/remote-sync.json
+touch src/btn.tsx
+check "design-drift: 소스가 앵커보다 최신 → DRIFT" \
+  1 "DESIGN_DRIFT result=DRIFT changed=1 reason=stale-sources" "$DRIFT" HEAD
+
+touch -t 203001010000 .design-sync/.cache/remote-sync.json
+rm src/btn.tsx
+check "design-drift: 등록 소스 삭제 → DRIFT (앵커가 최신이어도 잡는다)" \
+  1 "DESIGN_DRIFT result=DRIFT changed=1" "$DRIFT" HEAD
+
+git checkout -q -- src/btn.tsx
+printf '{"componentSrcMap":{}}' > .design-sync/config.json
+check "design-drift: componentSrcMap 비어 있음 → SKIP (빈 pathspec으로 전체 매칭 방지)" \
+  0 "DESIGN_DRIFT result=SKIP reason=empty-map" "$DRIFT" HEAD
+
+git checkout -q -- .design-sync/config.json
+check "design-drift: 없는 기준 ref → ERROR (fail-closed)" \
+  1 "DESIGN_DRIFT result=ERROR" "$DRIFT" no-such-ref
+check "design-drift: git 실패 → ERROR (fail-closed)" \
+  1 "DESIGN_DRIFT result=ERROR" env GIT_DIR=/nonexistent "$DRIFT" HEAD
+
 # --- merge-gate.jq 판정 fixture 테스트 (gh 없이 게이트 규칙 자체를 검증)
 GATE_JQ="$BIN/merge-gate.jq"
 CHECKRUN_OK='{"__typename":"CheckRun","name":"codegen-check","status":"COMPLETED","conclusion":"SUCCESS"}'
