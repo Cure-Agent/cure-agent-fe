@@ -62,6 +62,8 @@ export function AppShell({
         </nav>
         <div className="border-t border-gray-200 p-4">
           <p className="truncate text-sm font-medium text-gray-900">{me.displayName}</p>
+          {/* 소셜 계정에서 받은 이메일이 이 계정의 식별자다 — 어느 계정으로 들어와 있는지 확인할 곳이 여기뿐이다 */}
+          <p className="truncate text-xs text-gray-500">{me.email}</p>
           <p className="truncate text-xs text-gray-500">{me.clinic.name}</p>
           <button
             type="button"
