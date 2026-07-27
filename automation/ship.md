@@ -16,6 +16,7 @@
 - **라벨·담당자 자동화는 없다.** ship는 라벨·담당자를 부여하지 않는다 — 컨벤션에 맞는 PR 제목·브랜치명만 만든다.
 - **`main` = 프로덕션**. `main` push를 Vercel이 감지해 프로덕션 배포한다. 별도 CD 워크플로우는 없다.
 - **계약 동기화 PR(`chore/contract-sync`)은 ship 대상이 아니다** — Contract Sync 워크플로우가 자동 생성하고, CI 확인 후 사람이 머지한다 (architecture.md §3).
+- **디자인 시스템 재동기화가 배포보다 먼저다.** `.design-sync/config.json`의 `componentSrcMap`에 등록된 컴포넌트를 고쳤으면 claude.ai/design 재동기화를 마친 뒤 ship한다 — 재동기화가 고치는 `config.json`·`previews/`가 커밋 대상이라(`.gitignore`가 `.cache/`만 제외한다) 같은 배포 커밋에 실려야 한다. Preflight의 드리프트 게이트가 이 순서를 강제한다. **재동기화 자체는 ship이 수행하지 않는다** — Claude Code 전용 `DesignSync` 도구와 사람이 승인하는 업로드가 필요해 하네스 중립이 아니다. 게이트는 판정만 하고 중단한다. 재동기화 절차는 `.design-sync/NOTES.md`의 「재동기화 한 줄 요약」이 원천이다.
 
 ## Preflight
 
@@ -26,12 +27,16 @@
      - 브랜치 prefix에서 타입을 파싱한다.
      - `git log origin/main..HEAD`와 `git status --porcelain`으로 변경사항 확인 — 커밋도 변경도 없으면 **중단** ("배포할 변경사항이 없습니다"). 변경 유무 판정에 `git diff`(무인자)를 쓰지 않는다 — staged 변경이 보이지 않는다.
      - 최신 동기화: `git pull --rebase --autostash origin main` — 충돌 처리는 main 경로와 동일하다(자동 해결하지 않는다). 이 rebase로 Phase 1의 분석 diff에 main 쪽 무관한 변경이 섞이지 않고, Phase 2가 실제 push될 트리를 검증하며, `automation/pipeline.md` Step 1-2의 rebase는 사실상 no-op이 된다. 브랜치가 이미 push돼 있었어도 Step 1-3의 `--force-with-lease` push가 재작성된 커밋을 안전하게 반영한다.
-     - **Phase 3(브랜치 생성)을 스킵**하고 Phase 1로 진행한다 (타입은 브랜치 prefix로 확정).
+     - **Phase 3(브랜치 생성)을 스킵**한다 (타입은 브랜치 prefix로 확정).
    - **`main`**:
      - `git log origin/main..HEAD --oneline` — **push 안 된 로컬 커밋이 있으면 중단**하고 커밋 목록과 함께 보고한다. `main` 직접 커밋은 ship가 배포하지 않는다 — 워킹트리만 보는 아래 판정이 이 커밋들을 놓치므로, 사용자가 브랜치로 옮기는 등 직접 처리해야 한다.
      - `git status --porcelain` — 변경사항이 없으면 **중단** ("배포할 변경사항이 없습니다").
      - 최신 동기화: `git pull --rebase --autostash origin main`. **충돌 시 자동 해결하지 않는다** — rebase 충돌은 `git rebase --abort`로 원상복구 후 보고하고 중단, autostash 재적용 충돌은 변경이 stash에 보존된 상태이므로(`git stash list`로 확인) 그대로 두고 보고하고 중단한다.
-     - Phase 1로 진행한다 (Phase 3에서 feature 브랜치를 생성).
+     - feature 브랜치는 Phase 3에서 생성한다.
+4. **디자인 시스템 드리프트 게이트**: `automation/bin/design-drift.sh` 실행 (기준 ref 인자 생략 시 `origin/main`). 3의 rebase가 끝나 `origin/main` 비교 기준이 확정된 뒤, **Phase 2의 무거운 검증(`pnpm build` 등)에 들어가기 전에** 판정한다 — 빌드를 다 돌린 뒤 "재동기화 먼저" 로 중단하면 그만큼 버린다. 판정 대상·DRIFT 조건은 **스크립트 상단 주석이 원천**이다(`smoke-test.sh`가 회귀 검증).
+   - `result=CLEAN`·`result=SKIP` → Phase 1로 진행한다.
+   - `result=DRIFT` → 출력된 소스 목록과 함께 **재동기화가 필요하다고 보고하고 중단**한다. ship은 재동기화를 대신 수행하지 않는다 (「워크플로우 전제」 참고). 사용자가 이번 배포에서 동기화를 건너뛰겠다고 **명시하면** 그대로 Phase 1로 진행한다.
+   - `result=ERROR` → jq 부재 또는 git 조회 실패(fail-closed). 드리프트 없음으로 취급하지 않고 보고 후 중단한다.
 
 ## Phase 1: 변경사항 분석
 
