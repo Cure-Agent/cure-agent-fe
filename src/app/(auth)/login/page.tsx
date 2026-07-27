@@ -1,4 +1,5 @@
 import { SocialLoginButtons } from '@/features/auth/ui/social-login-buttons';
+import { LogoMark } from '@/shared/ui/logo-mark';
 
 /**
  * 소셜 로그인 진입 (docs/specs/17).
@@ -14,7 +15,8 @@ export default async function LoginPage({
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-bold text-emerald-800">Cure Agent</h1>
+        <LogoMark className="h-10 w-auto text-emerald-700" />
+        <h1 className="mt-4 text-xl font-bold text-emerald-800">Cure Agent</h1>
         <p className="mb-6 mt-1 text-sm text-gray-500">한의 임상 지침 기반 어시스턴트</p>
         <SocialLoginButtons error={error} />
         <p className="mt-6 text-center text-xs leading-relaxed text-gray-400">

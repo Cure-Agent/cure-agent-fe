@@ -67,6 +67,29 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
   드라이버가 렌더 체크를 건너뛴다 (올릴 게 없으므로). 실제로 렌더를 다시 확인하고 싶으면
   드라이버에 `--render-sample 0` 을 붙여 전체 패스를 강제할 것. 새 경고가 아니다.
 
+## 컴포넌트를 고쳤는데 `verification.changed` 가 비어 있을 때 (정상이다)
+
+2026-07-27 `AppShell` 사이드바에 로고 마크를 넣었더니 드라이버 판정이 이렇게 나왔다:
+`unchanged` 14개 전부 / `changed` `added` 비어 있음 / `upload.components` 비어 있음, 그런데
+`upload.bundle` `upload.styling` `upload.aux` 는 true.
+
+**동기화가 안 된 게 아니다.** 컨버터가 내보내는 컴포넌트 파일은 `.jsx`(한 줄 re-export 스텁)·
+`.d.ts`(props 계약)·`.prompt.md` 셋뿐이라, **컴포넌트 내부 마크업만 바꾸면 이 셋이 바이트 동일**하다.
+실제 변경은 `_ds_bundle.js` 와 `_ds_bundle.css` 에 담겨 `upload.bundle`/`styling` 으로 잡힌다.
+카드(`AppShell.html`)는 런타임에 번들에서 컴포넌트를 불러 그리므로 새 마크업이 그대로 보인다 —
+`_screenshots/app-shell__AppShell.png` 로 눈으로 확인했다.
+
+따라서 **판정 기준은 `verification.changed` 가 아니라 `upload.any`** 다. props 계약이나 JSDoc 이
+바뀌지 않는 한 마크업 변경은 영원히 `unchanged` 로 분류된다. 프리뷰 재채점이 불필요하다는 뜻이지
+업로드가 생략된다는 뜻이 아니다.
+
+## conventions.md 자동 대조 시 오탐 하나
+
+백틱 토큰을 긁어 `_ds_bundle.css` 와 대조하면 **`next-link` 가 "누락 클래스" 로 잡힌다** — 실제로는
+"Next App Router 컨텍스트(`useRouter`/`usePathname`/`next-link`)" 프로즈 안의 모듈 이름이고
+클래스가 아니다. 소문자+하이픈이라 유틸리티 클래스 판별식에 걸릴 뿐이다. 무시할 것.
+(2026-07-27 기준 클래스 41개·HEX 2개·식별자 20개 전량 검증 — 실제 드리프트 0건.)
+
 ## 재동기화 위험 (다음 실행이 지켜볼 것)
 
 - **`dtsPropsFor` 는 OpenAPI 스키마를 손으로 베낀 것이다.** `pnpm api:sync` 로
