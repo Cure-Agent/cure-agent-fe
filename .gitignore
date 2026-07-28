@@ -12,6 +12,10 @@ out/
 
 # test
 coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # ide/os
 .DS_Store
