@@ -114,6 +114,14 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 외형을 크게 바꾼 걸 아는 상태라면 강제로 재확인할 것:
 `node .ds-sync/package-capture.mjs --out ./ds-bundle --components <Name> --spot-check-components <Name>`
 
+**세 번째 사례 (2026-07-30) — 강제 재확인이 불필요한 경우도 있다.** `ChatPanel` 에 스트림
+비정상 종료 처리와 오류 상태의 부분 본문 렌더 블록을 추가했는데 판정은 `unchanged` 였다.
+여기서는 그게 옳다 — 새 블록은 `state.phase === 'error'` 에서만 나오고, 위 "정적으로 도달 못 하는
+상태" 목록대로 `ChatPanel` 의 오류/스트리밍 상태는 카드에 담기지 않기 때문에 **카드 외형이
+실제로 안 바뀐다.** 판단 기준: 바뀐 마크업이 카드가 담는 초기 상태에서 보이는가. 보이면 강제
+재확인, 아니면 `unchanged` 이월이 정확하다. (이 실행에서도 `upload.bundle`/`styling` 은 true 라
+코드 변경 자체는 정상적으로 올라갔다.)
+
 ## conventions.md 자동 대조 시 오탐 하나
 
 백틱 토큰을 긁어 `_ds_bundle.css` 와 대조하면 **`next-link` 가 "누락 클래스" 로 잡힌다** — 실제로는
@@ -121,11 +129,25 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 클래스가 아니다. 소문자+하이픈이라 유틸리티 클래스 판별식에 걸릴 뿐이다. 무시할 것.
 (2026-07-27 기준 클래스 41개·HEX 2개·식별자 20개 전량 검증 — 실제 드리프트 0건.)
 
-추출 휴리스틱에 따라 **오탐이 셋 더 나올 수 있다**: `_ds_bundle.css` (파일명인데 `_` 때문에
-식별자로 분류됨), `var(--color-*` (프로즈의 와일드카드 표기라 실제 변수명이 아님),
-`aria-hidden` (HTML 속성명인데 소문자+하이픈이라 `next-link` 와 같은 이유로 클래스로 잡힘).
-넷 다 "이름이 틀린" 게 아니라 "클래스/식별자가 아닌 것을 그렇게 분류한" 것이다.
+추출 휴리스틱에 따라 **오탐이 다섯 더 나올 수 있다**: `_ds_bundle.css`·`styles.css` (파일명인데
+식별자/클래스로 분류됨), `var(--color-*` (프로즈의 와일드카드 표기라 실제 변수명이 아님),
+`aria-hidden` (HTML 속성명인데 소문자+하이픈이라 `next-link` 와 같은 이유로 클래스로 잡힘),
+`pathname` (`DsPreviewProvider` 의 **실제 prop** 인데 소문자 한 단어라 클래스로 잡힘 —
+`ds-preview/provider.tsx:59`, 기본값 `/assistant`).
+여섯 다 "이름이 틀린" 게 아니라 "클래스/식별자가 아닌 것을 그렇게 분류한" 것이다.
 (2026-07-28 재검증 — `LogoMark` 절 추가 후 클래스 50개·HEX 2개·식별자 25개, 실제 드리프트 0건.)
+(2026-07-30 재검증 — 클래스 53개·HEX 2개·식별자 26개, 번들 export 29개 중 픽스처·`LogoMark`·
+`DsPreviewProvider` 13종 전량 확인, 실제 드리프트 0건. `@theme` 부재 주장도 확인 —
+`tailwind-entry.css` 의 `@theme` 히트는 "커스텀 @theme 도 없다"고 적은 **주석**이다.)
+
+## 로컬 앵커 캐시는 믿지 말 것 (2026-07-30 실측)
+
+`.design-sync/.cache/remote-sync.json` 은 gitignore 된 머신 상태라 **직전 업로드가 아니라 그보다
+앞선 실행의 앵커가 남아 있을 수 있다.** 이번 실행에서 실제로 그랬다 — 로컬 캐시의 `styleSha` 는
+`434068…`, 원격 `_ds_sync.json` 은 `45b3f1…` 이었다. 그대로 `--remote` 에 넘겼다면 diff 가
+틀린 기준으로 계산된다. **매 재동기화마다 `DesignSync(get_file, "_ds_sync.json")` 으로 새로
+받아 덮어쓸 것** (한 줄 요약의 "원격 앵커 내려받기" 단계가 이것이다 — 생략 금지).
+`finalize_plan` 직전 한 번 더 받아 동시 동기화 여부도 확인한다.
 
 ## 재동기화 위험 (다음 실행이 지켜볼 것)
 
