@@ -186,4 +186,42 @@ describe('streamReducer', () => {
       },
     });
   });
+
+  describe('streamFailed', () => {
+    it('진행 중 스트림이 끊기면 재시도 가능한 오류로 확정한다', () => {
+      const streaming = applyEvent(
+        applyEvent(initialStreamState, { eventType: 'message.accepted', requestId: 'r1' }),
+        { eventType: 'answer.delta', seq: 0, delta: '침 치료를 ' },
+      );
+
+      const state = streamReducer(streaming, { type: 'streamFailed', message: '연결이 끊겼습니다.' });
+
+      expect(state).toMatchObject({
+        phase: 'error',
+        error: { code: 'STREAM_DISCONNECTED', retryable: true },
+      });
+      // 중단 시점까지 받은 본문은 유지한다
+      expect(state.content).toBe('침 치료를 ');
+    });
+
+    it('정상 종결된 스트림의 사후 실패는 무시한다', () => {
+      const completed = applyEvent(initialStreamState, {
+        eventType: 'answer.completed',
+        message: completedMessage,
+      });
+
+      const state = streamReducer(completed, { type: 'streamFailed', message: '연결이 끊겼습니다.' });
+
+      expect(state).toBe(completed);
+    });
+
+    it('대화 전환 reset 뒤 도착한 옛 스트림의 실패는 무시한다', () => {
+      const state = streamReducer(initialStreamState, {
+        type: 'streamFailed',
+        message: '연결이 끊겼습니다.',
+      });
+
+      expect(state).toBe(initialStreamState);
+    });
+  });
 });

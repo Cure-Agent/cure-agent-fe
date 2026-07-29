@@ -67,8 +67,14 @@ export function streamReducer(state: StreamState, action: StreamAction): StreamS
     case 'reset':
       return initialStreamState;
     case 'streamFailed':
-      // 이미 종결된 스트림의 사후 실패(네트워크 정리 등)는 무시
-      if (state.phase === 'completed' || state.phase === 'abstained' || state.phase === 'error') {
+      // 이미 종결된 스트림의 사후 실패(네트워크 정리 등)는 무시.
+      // idle은 대화 전환 reset 뒤 도착한 옛 스트림의 실패 — 새 대화에 오류를 남기지 않는다.
+      if (
+        state.phase === 'idle' ||
+        state.phase === 'completed' ||
+        state.phase === 'abstained' ||
+        state.phase === 'error'
+      ) {
         return state;
       }
       return {

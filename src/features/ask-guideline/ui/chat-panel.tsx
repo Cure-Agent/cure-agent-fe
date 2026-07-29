@@ -49,9 +49,10 @@ export function ChatPanel({
     onEvidenceChange?.(state.evidence);
   }, [state.evidence, onEvidenceChange]);
 
-  // 종결 시 서버 상태로 동기화 (§8 복구 폴백: GET messages가 최종 진실)
+  // 종결 시 서버 상태로 동기화 (§8 복구 폴백: GET messages가 최종 진실).
+  // error도 포함한다 — 비정상 종료 뒤 서버가 이미 COMPLETED로 확정했을 수 있다.
   useEffect(() => {
-    if (state.phase === 'completed' || state.phase === 'abstained') {
+    if (state.phase === 'completed' || state.phase === 'abstained' || state.phase === 'error') {
       void queryClient.invalidateQueries({ queryKey: messagesKey(conversationId) });
     }
   }, [state.phase, conversationId, queryClient]);
@@ -65,13 +66,18 @@ export function ChatPanel({
         clientRequestId,
         onEvent: (event) => dispatch({ type: 'event', event }),
       });
+      // 종결 이벤트 없이 연결이 닫힌 경우(예: 스트리밍 도중 토큰 만료)도 실패로 확정한다.
+      // 정상 종결·대화 전환 뒤라면 reducer가 무시하므로 무조건 보내도 안전하다.
+      dispatch({
+        type: 'streamFailed',
+        message: '답변이 완료되기 전에 연결이 끊겼습니다.',
+      });
     } catch (error) {
-      // 스트림 비정상 종료 → 오류 상태 + 서버 상태 재확인 (§8)
+      // 스트림 비정상 종료 → 오류 상태 (서버 상태 재확인은 phase 동기화 effect가 담당)
       dispatch({
         type: 'streamFailed',
         message: error instanceof Error ? error.message : '스트림이 중단되었습니다.',
       });
-      void queryClient.invalidateQueries({ queryKey: messagesKey(conversationId) });
     }
   };
 
@@ -128,6 +134,13 @@ export function ChatPanel({
           <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
             검색 조건에 해당하는 지침 근거를 찾지 못해 답변을 보류했습니다.
           </p>
+        )}
+
+        {/* 중단 시점까지 받은 본문은 버리지 않는다 — 사용자가 읽던 답변이다 */}
+        {state.phase === 'error' && state.content && (
+          <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-800">
+            <p className="whitespace-pre-wrap">{state.content}</p>
+          </div>
         )}
 
         {state.phase === 'error' && state.error && (

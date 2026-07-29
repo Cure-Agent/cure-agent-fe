@@ -41,6 +41,8 @@ export async function postStream(
     const refreshed = await ensureRefreshed();
     if (refreshed) {
       response = await doFetch();
+      // 갱신 직후에도 401이면 세션이 죽은 것 — http.ts와 동일하게 전역 정책에 넘긴다
+      if (response.status === 401) notifyUnauthorized();
     } else {
       notifyUnauthorized();
     }

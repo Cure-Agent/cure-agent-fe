@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { setUnauthorizedHandler } from './http';
 import { postStream, StreamEvent } from './stream-client';
 
 /**
@@ -99,5 +100,32 @@ describe('postStream (수용 기준 6~8)', () => {
     expect(events.map((e) => e.eventType)).toEqual(['message.accepted']);
     expect(urls.filter((u) => u.includes('/auth/refresh'))).toHaveLength(1);
     expect(streamAttempt).toBe(2);
+  });
+
+  it('refresh 성공 후 재시도도 401이면 onUnauthorized로 넘긴다 (http.ts와 동일 정책)', async () => {
+    const unauthorized = vi.fn();
+    setUnauthorizedHandler(unauthorized);
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes('/auth/refresh')) {
+          return new Response(JSON.stringify({ success: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        // refresh는 성공했지만 세션은 이미 죽어 재시도도 401
+        return new Response(JSON.stringify({ success: false, code: 'UNAUTHORIZED', traceId: 't1' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }),
+    );
+
+    await expect(postStream('/api/v1/x', {}, { onEvent: () => {} })).rejects.toThrow();
+    expect(unauthorized).toHaveBeenCalledTimes(1);
+
+    setUnauthorizedHandler(null);
   });
 });

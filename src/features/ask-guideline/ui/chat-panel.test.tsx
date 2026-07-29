@@ -137,4 +137,36 @@ describe('ChatPanel', () => {
     });
     expect(secondRequest.clientRequestId).not.toBe(firstRequest.clientRequestId);
   });
+
+  it('종결 이벤트 없이 스트림이 닫히면 무한 로딩 대신 재시도를 노출한다', async () => {
+    // 스트리밍 도중 토큰이 만료돼 서버가 연결을 조용히 닫은 경우 — 에러 없이 resolve된다
+    sendMessageStreamMock.mockImplementation(async (args) => {
+      args.onEvent({
+        eventType: 'message.accepted',
+        requestId: 'request-4',
+        userMessageId: 'user-message-4',
+        assistantMessageId: 'assistant-message-4',
+      });
+      args.onEvent({
+        eventType: 'answer.delta',
+        messageId: 'assistant-message-4',
+        seq: 0,
+        delta: '침 치료를 ',
+      });
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<ChatPanel conversationId="conversation-4" />);
+
+    await user.type(screen.getByLabelText('질문 입력'), '중간에 끊길 질문입니다.');
+    await user.click(screen.getByRole('button', { name: '전송' }));
+
+    expect(await screen.findByRole('button', { name: '다시 시도' })).toBeTruthy();
+    // 중단 시점까지 받은 본문은 화면에 남는다
+    expect(screen.getByText('침 치료를')).toBeTruthy();
+
+    // 입력이 다시 열려야 한다 (inFlight 고착 방지)
+    await user.type(screen.getByLabelText('질문 입력'), '다시 물어봅니다.');
+    expect(screen.getByRole('button', { name: '전송' }).hasAttribute('disabled')).toBe(false);
+  });
 });
