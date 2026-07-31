@@ -214,6 +214,147 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/guidelines/pipeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 문서 1건 수집→파싱→적재 (동기) */
+        post: operations["AdminGuidelineController_runPipeline"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/guidelines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 지침 목록 — 버전 이력 중첩 (커서 기반) */
+        get: operations["AdminGuidelineController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/guideline-versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 버전·섹션·청크 삭제 — 인용이 있으면 409 */
+        delete: operations["AdminGuidelineVersionController_delete"];
+        options?: never;
+        head?: never;
+        /** 버전 폐기·복구 (ACTIVE ↔ SUPERSEDED) */
+        patch: operations["AdminGuidelineVersionController_updateStatus"];
+        trace?: never;
+    };
+    "/api/v1/admin/guideline-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 잡 이력 — 최신순 커서 */
+        get: operations["AdminGuidelineJobController_list"];
+        put?: never;
+        /** 전건 수집→파싱→임베딩→적재 잡 시작 (202, 즉시 반환) */
+        post: operations["AdminGuidelineJobController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/guideline-jobs/{jobId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 잡 1건 + 문서별 실행 전체 중첩 */
+        get: operations["AdminGuidelineJobController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/guideline-jobs/{jobId}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 잡 진행 SSE (§8 — 봉투 미적용)
+         * @description job.snapshot → run.stage(단계마다) → job.completed. 모든 이벤트가 job 카운터를 함께 싣는다. GET이라 EventSource를 그대로 쓴다.
+         */
+        get: operations["AdminGuidelineJobController_stream"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/guideline-jobs/{jobId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 취소 요청 — CANCELLING 표시 후 현재 문서를 마치고 중단 */
+        post: operations["AdminGuidelineJobController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/pipeline-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 단계별 실행 이력 — 최신순 커서, jobId=null 실행 포함 */
+        get: operations["AdminPipelineRunController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/conversations": {
         parameters: {
             query?: never;
@@ -595,6 +736,209 @@ export interface components {
             pageStart?: number;
             pageEnd?: number;
             sourceUrl: string;
+        };
+        AdminIngestStatsDto: {
+            sections: number;
+            chunks: number;
+            /** @description 버전 내 중복 콘텐츠로 건너뛴 청크 수 */
+            skippedChunks: number;
+        };
+        AdminIngestResponseDto: {
+            /**
+             * @description NCKM guide_idx
+             * @example 325
+             */
+            externalId: string;
+            /**
+             * @description 첨부가 없는 문서는 에러가 아니라 SKIPPED_NO_ATTACHMENT로 200 응답이다
+             * @enum {string}
+             */
+            sourceStatus: "FETCHED" | "SKIPPED_NO_ATTACHMENT";
+            /** @description 새 revision을 만들었는가 — 동일 contentHash 재적재면 false */
+            created: boolean;
+            guidelineId: string | null;
+            guidelineVersionId: string | null;
+            /** @example 2024-07 */
+            version: string | null;
+            /** @example 1 */
+            revision: number | null;
+            /** @enum {string|null} */
+            status: "ACTIVE" | "SUPERSEDED" | null;
+            stats: components["schemas"]["AdminIngestStatsDto"] | null;
+        };
+        RunPipelineRequestDto: {
+            /**
+             * @description NCKM 문서 식별자 (guide_idx)
+             * @example 325
+             */
+            guideIdx: string;
+        };
+        AdminGuidelineVersionResponseDto: {
+            id: string;
+            /**
+             * @description 원문 판본
+             * @example 2024-07
+             */
+            version: string;
+            /**
+             * @description 같은 판본을 다시 파싱한 처리 회차
+             * @example 2
+             */
+            revision: number;
+            /** @enum {string} */
+            status: "ACTIVE" | "SUPERSEDED";
+            /** @description 발행일 (ISO 8601) */
+            publishedAt: string;
+            /** @description 인제스트 입력 전문 해시 — 재적재 변경 감지 기준 */
+            contentHash: string;
+            /**
+             * @description 이 버전에 적재된 근거 청크 수
+             * @example 152
+             */
+            chunkCount: number;
+        };
+        AdminGuidelineResponseDto: {
+            id: string;
+            /** @example 요통 한의표준임상진료지침 */
+            title: string;
+            /** @example 한국한의약진흥원 */
+            publisher: string;
+            /** @description 판본 내림차순 → 같은 판본 안에서 revision 내림차순 */
+            versions: components["schemas"]["AdminGuidelineVersionResponseDto"][];
+        };
+        UpdateVersionStatusRequestDto: {
+            /** @enum {string} */
+            status: "ACTIVE" | "SUPERSEDED";
+        };
+        GuidelineJobResponseDto: {
+            id: string;
+            /**
+             * @description POST 응답은 항상 RUNNING이다 — 생성한 행을 그대로 돌려주므로
+             * @enum {string}
+             */
+            status: "RUNNING" | "COMPLETED" | "CANCELLING" | "CANCELLED" | "INTERRUPTED" | "FAILED";
+            /** @description 잡을 시작한 ADMIN. 크론이 만든 잡(triggeredBy=SCHEDULE)은 null이다 */
+            requestedBy: string | null;
+            /**
+             * @description 잡을 시작한 주체 — 크론이 만들었으면 SCHEDULE (docs/specs/26)
+             * @enum {string}
+             */
+            triggeredBy: "MANUAL" | "SCHEDULE";
+            /** @description 러너가 원본 목록을 받은 직후 채운다 — POST 응답 시점엔 0 */
+            total: number;
+            /** @description succeeded + skipped + failed */
+            processed: number;
+            /** @description 재적재로 created=false인 실행도 포함 */
+            succeeded: number;
+            /** @description 첨부가 없어 파이프라인에 들어가지 못한 문서 */
+            skipped: number;
+            failed: number;
+            startedAt: string;
+            finishedAt: string | null;
+            /** @description 러너 자체가 죽어 남은 문서를 시도하지 못한 경우의 사유 (status=FAILED) */
+            error: string | null;
+        };
+        CreateGuidelineJobRequestDto: {
+            /**
+             * @description 생략하면 원본 목록 전건. 실패한 문서만 다시 돌리는 것이 이 필드의 용도다
+             * @example [
+             *       "325",
+             *       "326"
+             *     ]
+             */
+            externalIds?: string[];
+        };
+        PipelineStageAcquireDto: {
+            /** @description 받은 본문 크기 */
+            bytes: number;
+            contentType: string;
+            ms: number;
+        };
+        PipelineStageParseDto: {
+            pages: number;
+            sections: number;
+            /** @description dedupe **전** 파서 출력 그대로 */
+            chunks: number;
+            ms: number;
+        };
+        PipelineStageEmbedDto: {
+            /** @description 임베딩을 실제로 호출한 청크 수 (dedupe 후) */
+            vectors: number;
+            /** @example fake-embedding-v1 */
+            model: string;
+            ms: number;
+        };
+        PipelineStageIngestDto: {
+            sections: number;
+            chunks: number;
+            /** @description 버전 내 중복 콘텐츠로 건너뛴 청크 수 */
+            skippedChunks: number;
+            ms: number;
+        };
+        PipelineRunStagesDto: {
+            acquire?: components["schemas"]["PipelineStageAcquireDto"];
+            parse?: components["schemas"]["PipelineStageParseDto"];
+            embed?: components["schemas"]["PipelineStageEmbedDto"];
+            ingest?: components["schemas"]["PipelineStageIngestDto"];
+        };
+        PipelineRunResponseDto: {
+            id: string;
+            /** @description null이면 잡 밖의 단건 실행 (docs/specs/21 동기 pipeline, docs/specs/05 스크립트) */
+            jobId: string | null;
+            /** @description 잡 안의 처리 순서. 잡 밖 실행은 0 */
+            order: number;
+            /** @example NCKM */
+            sourceSystem: string | null;
+            /** @example 325 */
+            externalId: string | null;
+            /** @enum {string} */
+            status: "RUNNING" | "SUCCEEDED" | "SKIPPED" | "FAILED" | "INTERRUPTED";
+            /**
+             * @description 가장 멀리 도달한 단계
+             * @enum {string}
+             */
+            phase: "ACQUIRE" | "PARSE" | "EMBED" | "INGEST";
+            /** @description 실패한 **단계**로 정한다 — 던져진 예외의 타입이 아니다 */
+            errorCode: string | null;
+            error: string | null;
+            guidelineId: string | null;
+            guidelineVersionId: string | null;
+            revision: number | null;
+            /** @description 새 revision을 만들었는가 — 동일 contentHash 재적재면 false (docs/specs/21) */
+            created: boolean | null;
+            stages: components["schemas"]["PipelineRunStagesDto"];
+            startedAt: string;
+            finishedAt: string | null;
+        };
+        GuidelineJobDetailResponseDto: {
+            id: string;
+            /**
+             * @description POST 응답은 항상 RUNNING이다 — 생성한 행을 그대로 돌려주므로
+             * @enum {string}
+             */
+            status: "RUNNING" | "COMPLETED" | "CANCELLING" | "CANCELLED" | "INTERRUPTED" | "FAILED";
+            /** @description 잡을 시작한 ADMIN. 크론이 만든 잡(triggeredBy=SCHEDULE)은 null이다 */
+            requestedBy: string | null;
+            /**
+             * @description 잡을 시작한 주체 — 크론이 만들었으면 SCHEDULE (docs/specs/26)
+             * @enum {string}
+             */
+            triggeredBy: "MANUAL" | "SCHEDULE";
+            /** @description 러너가 원본 목록을 받은 직후 채운다 — POST 응답 시점엔 0 */
+            total: number;
+            /** @description succeeded + skipped + failed */
+            processed: number;
+            /** @description 재적재로 created=false인 실행도 포함 */
+            succeeded: number;
+            /** @description 첨부가 없어 파이프라인에 들어가지 못한 문서 */
+            skipped: number;
+            failed: number;
+            startedAt: string;
+            finishedAt: string | null;
+            /** @description 러너 자체가 죽어 남은 문서를 시도하지 못한 경우의 사유 (status=FAILED) */
+            error: string | null;
+            /** @description `order` 오름차순 — 뒤이어 오는 run.stage를 그대로 이어붙일 수 있어야 한다 */
+            runs: components["schemas"]["PipelineRunResponseDto"][];
         };
         ConversationSummaryResponseDto: {
             id: string;
@@ -1065,6 +1409,254 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponseDto"] & {
                         data?: components["schemas"]["EvidenceDetailResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    AdminGuidelineController_runPipeline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunPipelineRequestDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["AdminIngestResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    AdminGuidelineController_list: {
+        parameters: {
+            query?: {
+                /** @description 제목 부분일치 검색 */
+                query?: string;
+                publisher?: string;
+                /** @description 불투명 커서 (§10.4) */
+                cursor?: string;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["AdminGuidelineResponseDto"][];
+                        page?: components["schemas"]["PageMetaDto"];
+                    };
+                };
+            };
+        };
+    };
+    AdminGuidelineVersionController_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminGuidelineVersionController_updateStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVersionStatusRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["AdminGuidelineVersionResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    AdminGuidelineJobController_list: {
+        parameters: {
+            query?: {
+                /** @description 불투명 커서 (§10.4) */
+                cursor?: string;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["GuidelineJobResponseDto"][];
+                        page?: components["schemas"]["PageMetaDto"];
+                    };
+                };
+            };
+        };
+    };
+    AdminGuidelineJobController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGuidelineJobRequestDto"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["GuidelineJobResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    AdminGuidelineJobController_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                jobId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["GuidelineJobDetailResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    AdminGuidelineJobController_stream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                jobId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminGuidelineJobController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                jobId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["GuidelineJobResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    AdminPipelineRunController_list: {
+        parameters: {
+            query?: {
+                /** @description 특정 잡의 실행만 */
+                jobId?: string;
+                /** @description 이 문서가 그동안 어떻게 처리돼 왔나 — 잡을 가로지르는 조회 */
+                externalId?: string;
+                status?: "RUNNING" | "SUCCEEDED" | "SKIPPED" | "FAILED" | "INTERRUPTED";
+                phase?: "ACQUIRE" | "PARSE" | "EMBED" | "INGEST";
+                /** @description 불투명 커서 (§10.4) */
+                cursor?: string;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["PipelineRunResponseDto"][];
+                        page?: components["schemas"]["PageMetaDto"];
                     };
                 };
             };
