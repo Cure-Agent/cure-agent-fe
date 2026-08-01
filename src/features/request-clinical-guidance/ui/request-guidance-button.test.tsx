@@ -45,7 +45,7 @@ describe('RequestGuidanceButton', () => {
     );
 
     await user.click(
-      screen.getByRole('button', { name: '임상 참고 대화 시작' }),
+      screen.getByRole('button', { name: '환자 맞춤 대화 시작' }),
     );
 
     await waitFor(() => {
