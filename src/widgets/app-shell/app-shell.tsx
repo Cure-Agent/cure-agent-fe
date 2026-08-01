@@ -6,30 +6,66 @@ import { type ReactNode, useState } from 'react';
 import { Clinician, useLogout } from '@/features/auth/api/auth.api';
 import { LogoMark } from '@/shared/ui/logo-mark';
 
-const NAV_ITEMS = [
-  { href: '/assistant', label: '어시스턴트' },
-  { href: '/guidelines', label: '지침' },
-  { href: '/patients', label: '환자' },
-  { href: '/history', label: '히스토리' },
-] as const;
+type IconProps = { className?: string };
 
-function PanelIcon({ className }: { className?: string }): React.ReactElement {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className={className}
-    >
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <path d="M9 3v18" />
-    </svg>
-  );
+function iconSvg(children: ReactNode) {
+  return function Icon({ className }: IconProps): React.ReactElement {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        className={className}
+      >
+        {children}
+      </svg>
+    );
+  };
 }
+
+const PanelIcon = iconSvg(
+  <>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M9 3v18" />
+  </>,
+);
+
+const AssistantIcon = iconSvg(<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />);
+
+const GuidelineIcon = iconSvg(
+  <>
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </>,
+);
+
+const PatientIcon = iconSvg(
+  <>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </>,
+);
+
+const HistoryIcon = iconSvg(
+  <>
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
+    <path d="M12 7v5l4 2" />
+  </>,
+);
+
+const NAV_ITEMS = [
+  { href: '/assistant', label: '어시스턴트', Icon: AssistantIcon },
+  { href: '/guidelines', label: '지침', Icon: GuidelineIcon },
+  { href: '/patients', label: '환자', Icon: PatientIcon },
+  { href: '/history', label: '히스토리', Icon: HistoryIcon },
+] as const;
 
 export function AppShell({
   me,
@@ -108,15 +144,43 @@ export function AppShell({
           </button>
         </div>
       </aside>
+      {/* 접힘 상태: 떠 있는 버튼 대신 레이아웃 폭을 차지하는 아이콘 레일 —
+          본문(대화 목록 등)과 겹치지 않고, 탭을 열지 않아도 바로 이동할 수 있다 */}
       {!sidebarOpen && (
-        <button
-          type="button"
-          onClick={() => setSidebarOpen(true)}
-          aria-label="사이드바 열기"
-          className="fixed left-3 top-3 z-10 rounded-lg border border-gray-200 bg-white p-1.5 text-gray-500 shadow-sm hover:bg-gray-100 hover:text-gray-700"
-        >
-          <PanelIcon className="h-5 w-5" />
-        </button>
+        <div className="flex w-14 shrink-0 flex-col items-center border-r border-gray-200 bg-white py-2">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="사이드바 열기"
+            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          >
+            <PanelIcon className="h-5 w-5" />
+          </button>
+          <nav
+            aria-label="주요 메뉴"
+            className="mt-2 flex flex-col items-center gap-1 border-t border-gray-200 pt-2"
+          >
+            {NAV_ITEMS.map((item) => {
+              const active = pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-label={item.label}
+                  title={item.label}
+                  aria-current={active ? 'page' : undefined}
+                  className={`rounded-lg p-2 ${
+                    active
+                      ? 'bg-emerald-50 text-emerald-800'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                  }`}
+                >
+                  <item.Icon className="h-5 w-5" />
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
       )}
       <main className="flex-1 overflow-y-auto p-8">{children}</main>
     </div>
