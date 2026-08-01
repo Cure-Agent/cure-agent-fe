@@ -432,7 +432,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 메시지 목록 (시간순, §8 복구 폴백) */
+        /** 메시지 목록 (기본 시간순, order=desc 시 최신부터 역방향 — §8 복구 폴백) */
         get: operations["ConversationController_listMessages"];
         put?: never;
         post?: never;
@@ -1814,6 +1814,8 @@ export interface operations {
             query?: {
                 /** @description 불투명 커서 (§10.4) */
                 cursor?: string;
+                /** @description desc면 최신부터 역방향 조회 — cursor는 이전 페이지 마지막 메시지보다 과거 경계 */
+                order?: "asc" | "desc";
                 size?: number;
             };
             header?: never;
