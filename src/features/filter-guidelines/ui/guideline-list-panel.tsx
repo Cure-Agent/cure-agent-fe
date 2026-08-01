@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
+import { useInfiniteListScroll } from '@/shared/lib/use-infinite-list-scroll';
 import { type GuidelineSummary, useGuidelines } from '../api/guideline.api';
 
 export interface GuidelineListPanelProps {
@@ -11,6 +12,17 @@ export function GuidelineListPanel({ onSelect }: GuidelineListPanelProps): React
   const [input, setInput] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState<string | undefined>(undefined);
   const guidelines = useGuidelines({ query: submittedQuery });
+
+  const items = useMemo(
+    () => (guidelines.data?.pages ?? []).flatMap((page) => page.items),
+    [guidelines.data],
+  );
+  const listScroll = useInfiniteListScroll({
+    hasNext: guidelines.hasNextPage ?? false,
+    isFetching: guidelines.isFetchingNextPage,
+    fetchNext: () => void guidelines.fetchNextPage(),
+    itemCount: items.length,
+  });
 
   const handleSubmit = (event: FormEvent): void => {
     event.preventDefault();
@@ -38,10 +50,13 @@ export function GuidelineListPanel({ onSelect }: GuidelineListPanelProps): React
       {guidelines.isPending && <p className="text-sm text-gray-400">불러오는 중…</p>}
       {guidelines.isError && <p className="text-sm text-red-500">목록을 불러오지 못했습니다</p>}
 
-      <ul className="flex-1 space-y-2 overflow-y-auto">
-        {(guidelines.data?.pages ?? [])
-          .flatMap((page) => page.items)
-          .map((guideline) => (
+      <div
+        ref={listScroll.containerRef}
+        onScroll={listScroll.handleScroll}
+        className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto"
+      >
+        <ul className="space-y-2">
+          {items.map((guideline) => (
             <li key={guideline.id}>
               <button
                 type="button"
@@ -56,18 +71,13 @@ export function GuidelineListPanel({ onSelect }: GuidelineListPanelProps): React
               </button>
             </li>
           ))}
-      </ul>
-
-      {guidelines.hasNextPage && (
-        <button
-          type="button"
-          onClick={() => void guidelines.fetchNextPage()}
-          disabled={guidelines.isFetchingNextPage}
-          className="mt-2 rounded-lg border border-gray-300 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
-        >
-          {guidelines.isFetchingNextPage ? '불러오는 중…' : '더 보기'}
-        </button>
-      )}
+        </ul>
+        {/* 하단 sentinel — 보이면 다음 페이지를 당긴다 (무한 스크롤) */}
+        <div ref={listScroll.bottomSentinelRef} aria-hidden="true" />
+        {guidelines.isFetchingNextPage && (
+          <p className="py-2 text-center text-xs text-gray-400">불러오는 중…</p>
+        )}
+      </div>
     </div>
   );
 }

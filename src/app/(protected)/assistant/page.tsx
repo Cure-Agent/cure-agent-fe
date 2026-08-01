@@ -54,8 +54,9 @@ function AssistantScreen(): React.ReactElement {
   }, []);
 
   return (
-    <div className="grid h-[calc(100vh-4rem)] grid-cols-[16rem_1fr_20rem] gap-4">
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white p-3">
+    // h-full(고정 뷰포트) — 각 pane은 min-h-0로 줄어들 수 있어야 내부 스크롤이 생긴다
+    <div className="grid h-full min-h-0 grid-cols-[16rem_1fr_20rem] gap-4">
+      <div className="min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white p-3">
         <ConversationList selectedId={selectedId} onSelect={handleSelectConversation} />
       </div>
 
