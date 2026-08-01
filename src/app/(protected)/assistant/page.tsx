@@ -11,7 +11,7 @@ import { EvidenceInspector } from '@/widgets/evidence-inspector/evidence-inspect
 // 3단 화면의 조립만 담당한다 (§5.3: 대화 목록 | 질문·스트리밍 답변 | 인용 근거 패널)
 function AssistantScreen(): React.ReactElement {
   const searchParams = useSearchParams();
-  // 환자 상세의 "임상 참고 대화 시작"이 /assistant?conversation={id}로 진입한다 (spec 10 기준 9)
+  // 환자 상세의 "환자 맞춤 대화 시작"이 /assistant?conversation={id}로 진입한다 (spec 10 기준 9)
   const [selectedId, setSelectedId] = useState<string | null>(
     searchParams.get('conversation'),
   );

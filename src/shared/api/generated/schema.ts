@@ -1005,6 +1005,8 @@ export interface components {
             status: "STREAMING" | "COMPLETED" | "ABSTAINED" | "FAILED" | "CANCELLED";
             /** @enum {string} */
             answerKind?: "GUIDELINE_ANSWER" | "CLINICAL_GUIDANCE";
+            /** @description CLINICAL_GUIDANCE 답변의 임상 참고안 id — GET /clinical-guidance/{id}로 조회 */
+            guidanceId?: string;
             citations: components["schemas"]["AnswerCitationResponseDto"][];
             /** @description ISO 8601 */
             createdAt: string;
