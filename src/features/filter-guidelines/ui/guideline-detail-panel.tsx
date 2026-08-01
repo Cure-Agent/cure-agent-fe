@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useInfiniteListScroll } from '@/shared/lib/use-infinite-list-scroll';
 import {
   type EvidenceSummary,
   useGuideline,
@@ -18,6 +19,17 @@ export function GuidelineDetailPanel({
   const guideline = useGuideline(guidelineId);
   const evidence = useGuidelineEvidence(guidelineId);
 
+  const evidenceItems = useMemo(
+    () => (evidence.data?.pages ?? []).flatMap((page) => page.items),
+    [evidence.data],
+  );
+  const listScroll = useInfiniteListScroll<HTMLElement>({
+    hasNext: evidence.hasNextPage ?? false,
+    isFetching: evidence.isFetchingNextPage,
+    fetchNext: () => void evidence.fetchNextPage(),
+    itemCount: evidenceItems.length,
+  });
+
   if (guideline.isPending) return <p className="text-sm text-gray-400">불러오는 중…</p>;
   if (guideline.isError || !guideline.data) {
     return <p className="text-sm text-red-500">지침을 불러오지 못했습니다</p>;
@@ -25,7 +37,12 @@ export function GuidelineDetailPanel({
 
   const detail = guideline.data;
   return (
-    <section>
+    // 헤더·권고문이 한 흐름으로 스크롤된다 — 컨테이너는 패널이 소유해야 sentinel IO가 붙는다
+    <section
+      ref={listScroll.containerRef}
+      onScroll={listScroll.handleScroll}
+      className="scrollbar-hidden h-full min-h-0 overflow-y-auto"
+    >
       <header className="border-b border-gray-200 pb-4">
         <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
           {detail.title}
@@ -52,22 +69,15 @@ export function GuidelineDetailPanel({
       <h2 className="mt-6 text-sm font-semibold text-gray-900">섹션·권고문</h2>
       {evidence.isPending && <p className="mt-2 text-sm text-gray-400">불러오는 중…</p>}
       <ul className="mt-2 space-y-2">
-        {(evidence.data?.pages ?? [])
-          .flatMap((page) => page.items)
-          .map((item) => (
-            <EvidenceListItem key={item.id} item={item} />
-          ))}
+        {evidenceItems.map((item) => (
+          <EvidenceListItem key={item.id} item={item} />
+        ))}
       </ul>
 
-      {evidence.hasNextPage && (
-        <button
-          type="button"
-          onClick={() => void evidence.fetchNextPage()}
-          disabled={evidence.isFetchingNextPage}
-          className="mt-3 w-full rounded-lg border border-gray-300 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
-        >
-          {evidence.isFetchingNextPage ? '불러오는 중…' : '더 보기'}
-        </button>
+      {/* 하단 sentinel — 보이면 다음 페이지를 당긴다 (무한 스크롤) */}
+      <div ref={listScroll.bottomSentinelRef} aria-hidden="true" />
+      {evidence.isFetchingNextPage && (
+        <p className="py-2 text-center text-xs text-gray-400">불러오는 중…</p>
       )}
     </section>
   );

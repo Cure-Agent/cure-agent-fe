@@ -1,1 +1,9 @@
 @import 'tailwindcss';
+
+/* 고정 뷰포트 레이아웃의 내부 스크롤 영역 — 스크롤은 되지만 스크롤바는 그리지 않는다 */
+@utility scrollbar-hidden {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

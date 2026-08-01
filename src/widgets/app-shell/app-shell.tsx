@@ -88,7 +88,8 @@ export function AppShell({
   };
 
   return (
-    <div className="flex min-h-screen overflow-x-hidden bg-gray-50">
+    // h-screen + overflow-hidden: 화면 크기를 고정하고 스크롤은 각 페이지 내부 영역이 맡는다
+    <div className="flex h-screen overflow-hidden bg-gray-50">
       <aside
         inert={!sidebarOpen}
         className={`flex w-60 shrink-0 flex-col border-r border-gray-200 bg-white transition-[margin] duration-200 ease-in-out ${
@@ -184,7 +185,8 @@ export function AppShell({
           </nav>
         </div>
       )}
-      <main className="flex-1 overflow-y-auto p-8">{children}</main>
+      {/* 스크롤 금지 — 각 페이지가 h-full 안에서 자체 스크롤 영역을 만든다 */}
+      <main className="flex-1 overflow-hidden p-8">{children}</main>
     </div>
   );
 }

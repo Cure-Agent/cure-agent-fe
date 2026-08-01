@@ -2,8 +2,11 @@
 
 /** 환자 관리 훅 (docs/specs/09 기준 10~13) */
 import {
+  type InfiniteData,
+  type UseInfiniteQueryResult,
   type UseMutationResult,
   type UseQueryResult,
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -26,22 +29,26 @@ export interface PageInfo {
 export const PATIENTS_KEY = ['patients'] as const;
 export const patientKey = (patientId: string) => ['patients', patientId] as const;
 
+type PatientPage = { items: PatientSummary[]; page: PageInfo };
+
+/** 커서 페이지 누적 — 목록 패널의 더보기 버튼이 fetchNextPage를 호출한다 */
 export function usePatients(params: {
   query?: string;
   status?: 'ACTIVE' | 'ARCHIVED';
-  cursor?: string;
-}): UseQueryResult<{ items: PatientSummary[]; page: PageInfo }> {
-  return useQuery({
-    queryKey: [...PATIENTS_KEY, { ...params }],
-    queryFn: async () => {
+}): UseInfiniteQueryResult<InfiniteData<PatientPage>> {
+  return useInfiniteQuery({
+    queryKey: [...PATIENTS_KEY, { query: params.query ?? null, status: params.status ?? null }],
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam }) => {
       const query: Record<string, string> = {};
       if (params.query) query.query = params.query;
       if (params.status) query.status = params.status;
-      if (params.cursor) query.cursor = params.cursor;
+      if (pageParam) query.cursor = pageParam;
       const result = await api.GET('/api/v1/patients', { params: { query } });
       const { items, page } = unwrapPage<PatientSummary>(result);
       return { items, page };
     },
+    getNextPageParam: (lastPage) => (lastPage.page.hasNext ? lastPage.page.nextCursor : undefined),
   });
 }
 

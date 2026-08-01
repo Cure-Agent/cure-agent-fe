@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
+import { useInfiniteListScroll } from '@/shared/lib/use-infinite-list-scroll';
 import { type PatientSummary, usePatients } from '../api/patient.api';
 
 export interface PatientListPanelProps {
@@ -11,6 +12,17 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
   const [input, setInput] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState<string | undefined>(undefined);
   const patients = usePatients({ query: submittedQuery });
+
+  const items = useMemo(
+    () => (patients.data?.pages ?? []).flatMap((page) => page.items),
+    [patients.data],
+  );
+  const listScroll = useInfiniteListScroll({
+    hasNext: patients.hasNextPage ?? false,
+    isFetching: patients.isFetchingNextPage,
+    fetchNext: () => void patients.fetchNextPage(),
+    itemCount: items.length,
+  });
 
   const handleSubmit = (event: FormEvent): void => {
     event.preventDefault();
@@ -38,32 +50,43 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
       {patients.isPending && <p className="text-sm text-gray-400">불러오는 중…</p>}
       {patients.isError && <p className="text-sm text-red-500">목록을 불러오지 못했습니다</p>}
 
-      <ul className="flex-1 space-y-2 overflow-y-auto">
-        {(patients.data?.items ?? []).map((patient) => (
-          <li key={patient.id}>
-            <button
-              type="button"
-              aria-label={patient.caseLabel}
-              onClick={() => onSelect(patient)}
-              className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-emerald-300"
-            >
-              <div className="flex items-center justify-between">
-                <p className="font-medium text-gray-900">{patient.caseLabel}</p>
-                {patient.status === 'ARCHIVED' && (
-                  <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-                    보관됨
-                  </span>
-                )}
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                {patient.age !== undefined && `${patient.age}세`}
-                {patient.sex && ` · ${patient.sex}`}
-                {patient.bmi !== undefined && ` · BMI ${patient.bmi}`}
-              </p>
-            </button>
-          </li>
-        ))}
-      </ul>
+      <div
+        ref={listScroll.containerRef}
+        onScroll={listScroll.handleScroll}
+        className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto"
+      >
+        <ul className="space-y-2">
+          {items.map((patient) => (
+            <li key={patient.id}>
+              <button
+                type="button"
+                aria-label={patient.caseLabel}
+                onClick={() => onSelect(patient)}
+                className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-emerald-300"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-medium text-gray-900">{patient.caseLabel}</p>
+                  {patient.status === 'ARCHIVED' && (
+                    <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                      보관됨
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  {patient.age !== undefined && `${patient.age}세`}
+                  {patient.sex && ` · ${patient.sex}`}
+                  {patient.bmi !== undefined && ` · BMI ${patient.bmi}`}
+                </p>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {/* 하단 sentinel — 보이면 다음 페이지를 당긴다 (무한 스크롤) */}
+        <div ref={listScroll.bottomSentinelRef} aria-hidden="true" />
+        {patients.isFetchingNextPage && (
+          <p className="py-2 text-center text-xs text-gray-400">불러오는 중…</p>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-// 지침 탐색 개선: 커서 페이징 · SUPERSEDED 배지 · 권고문 전문 보기
-import { screen, waitFor } from '@testing-library/react';
+// 지침 탐색 개선: 커서 페이징(무한 스크롤) · SUPERSEDED 배지 · 권고문 전문 보기
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
@@ -46,7 +46,7 @@ const evidenceItem: EvidenceSummary = {
 };
 
 describe('지침 목록 커서 페이징', () => {
-  it('hasNext면 더 보기 버튼을 노출하고, 클릭 시 cursor로 다음 페이지를 이어 붙인다', async () => {
+  it('hasNext면 하단 스크롤 시 cursor로 다음 페이지를 이어 붙인다', async () => {
     const requestedCursors: Array<string | null> = [];
     server.use(
       http.get('/api/v1/guidelines', ({ request }) => {
@@ -71,16 +71,18 @@ describe('지침 목록 커서 페이징', () => {
       }),
     );
 
-    const user = userEvent.setup();
-    renderWithProviders(<GuidelineListPanel onSelect={vi.fn()} />);
+    const { container } = renderWithProviders(<GuidelineListPanel onSelect={vi.fn()} />);
 
     expect(await screen.findByRole('button', { name: '첫 번째 페이지 지침' })).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: '더 보기' }));
 
-    // 두 페이지가 모두 표시되고, 더 이상 다음 페이지가 없으면 버튼이 사라진다
+    // happy-dom은 레이아웃 값이 0 → 스크롤 이벤트가 하단 도달로 취급된다
+    const scrollArea = container.querySelector('.overflow-y-auto');
+    expect(scrollArea).not.toBeNull();
+    fireEvent.scroll(scrollArea as Element);
+
+    // 두 페이지가 모두 이어 붙는다
     expect(await screen.findByRole('button', { name: '두 번째 페이지 지침' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '첫 번째 페이지 지침' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: '더 보기' })).toBeNull();
     await waitFor(() => expect(requestedCursors).toContain('cursor-2'));
   });
 });
@@ -148,7 +150,7 @@ describe('지침 상세', () => {
     expect(screen.getByText('원문 p.42–43')).toBeTruthy();
   });
 
-  it('evidence 목록도 hasNext면 더 보기로 다음 페이지를 이어 붙인다', async () => {
+  it('evidence 목록도 hasNext면 하단 스크롤로 다음 페이지를 이어 붙인다', async () => {
     const secondPageItem: EvidenceSummary = {
       id: 'evidence-2',
       sectionPath: ['3', '치료', '약침치료'],
@@ -170,14 +172,15 @@ describe('지침 상세', () => {
       }),
     );
 
-    const user = userEvent.setup();
-    renderWithProviders(<GuidelineDetailPanel guidelineId="guideline-1" />);
+    const { container } = renderWithProviders(<GuidelineDetailPanel guidelineId="guideline-1" />);
 
     expect(await screen.findByText(evidenceItem.excerpt)).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: '더 보기' }));
+
+    const scrollArea = container.querySelector('.overflow-y-auto');
+    expect(scrollArea).not.toBeNull();
+    fireEvent.scroll(scrollArea as Element);
 
     expect(await screen.findByText(secondPageItem.excerpt)).toBeTruthy();
     expect(screen.getByText(evidenceItem.excerpt)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: '더 보기' })).toBeNull();
   });
 });

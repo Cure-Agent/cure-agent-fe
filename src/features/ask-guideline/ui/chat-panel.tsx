@@ -1,8 +1,13 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { FormEvent, KeyboardEvent, useEffect, useReducer, useState } from 'react';
-import { messagesKey, useMessages } from '@/features/manage-conversation/api/conversation.api';
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useReducer, useState } from 'react';
+import {
+  flatMessagesChronological,
+  messagesKey,
+  useMessages,
+} from '@/features/manage-conversation/api/conversation.api';
+import { useChatAutoScroll } from '@/shared/lib/use-chat-auto-scroll';
 import { GuidanceCard } from '@/features/review-clinical-guidance/ui/guidance-card';
 import { GuidanceCardLoader } from '@/features/review-clinical-guidance/ui/guidance-card-loader';
 import { sendMessageStream } from '../api/send-message';
@@ -43,6 +48,25 @@ export function ChatPanel({
 
   const inFlight =
     state.phase === 'accepted' || state.phase === 'retrieving' || state.phase === 'streaming';
+
+  const persisted = useMemo(() => flatMessagesChronological(messages.data), [messages.data]);
+  // 스트림 종결 후 invalidate가 반영되기 전까지는 로컬 최종 메시지를 보여준다
+  const localFinal =
+    state.message && !persisted.some((m) => m.id === state.message?.id) ? state.message : null;
+
+  const scroll = useChatAutoScroll({
+    resetKey: conversationId,
+    itemCount: persisted.length,
+    hasOlder: messages.hasNextPage ?? false,
+    isLoadingOlder: messages.isFetchingNextPage,
+    loadOlder: () => void messages.fetchNextPage(),
+  });
+
+  // 스트리밍 delta·카드 렌더처럼 메시지 개수 밖의 성장도 하단 고정을 따라간다
+  const { scrollToBottomIfSticky } = scroll;
+  useEffect(() => {
+    scrollToBottomIfSticky();
+  }, [state.content, state.phase, localFinal, scrollToBottomIfSticky]);
 
   // 대화 전환 시 스트림 상태 초기화
   useEffect(() => {
@@ -91,6 +115,7 @@ export function ChatPanel({
     const content = question.trim();
     if (!content || inFlight) return;
     setQuestion('');
+    scroll.scrollToBottom(); // 위를 보던 중이라도 내 질문·답변은 따라가도록 하단 고정 재개
     void send(content, crypto.randomUUID());
   };
 
@@ -115,14 +140,19 @@ export function ChatPanel({
     onSelectMarker?.(marker);
   };
 
-  const persisted = messages.data?.items ?? [];
-  // 스트림 종결 후 invalidate가 반영되기 전까지는 로컬 최종 메시지를 보여준다
-  const localFinal =
-    state.message && !persisted.some((m) => m.id === state.message?.id) ? state.message : null;
-
   return (
-    <div className="flex h-full flex-col rounded-xl border border-gray-200 bg-white">
-      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div
+        ref={scroll.containerRef}
+        onScroll={scroll.handleScroll}
+        data-testid="chat-messages"
+        className="scrollbar-hidden flex-1 space-y-4 overflow-y-auto p-4"
+      >
+        {/* 상단 sentinel — 보이면 과거 페이지를 당긴다 (위로 무한 스크롤) */}
+        <div ref={scroll.topSentinelRef} aria-hidden="true" />
+        {messages.isFetchingNextPage && (
+          <p className="text-center text-xs text-gray-400">이전 대화를 불러오는 중…</p>
+        )}
         {persisted.map((message) => (
           <div key={message.id} className="space-y-4">
             <MessageBubble message={message} onCite={handleCite} />
