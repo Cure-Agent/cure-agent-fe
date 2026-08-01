@@ -8,14 +8,22 @@ export interface PatientListPanelProps {
   onSelect: (patient: PatientSummary) => void;
 }
 
+type StatusFilter = 'ALL' | 'ACTIVE' | 'ARCHIVED';
+
+const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
+  { value: 'ALL', label: '전체' },
+  { value: 'ACTIVE', label: '활성' },
+  { value: 'ARCHIVED', label: '보관' },
+];
+
 export function PatientListPanel({ onSelect }: PatientListPanelProps): React.ReactElement {
   const [input, setInput] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState<string | undefined>(undefined);
-  const [includeArchived, setIncludeArchived] = useState(false);
-  // 기본은 활성 환자만 — 보관은 종결 케이스이므로 명시적으로 켰을 때만 노출
+  // 기본 전체 — 활성만 보이는 기본값은 보관 환자가 검색에서 조용히 빠지는 실패 모드를 만든다
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const patients = usePatients({
     query: submittedQuery,
-    status: includeArchived ? undefined : 'ACTIVE',
+    status: statusFilter === 'ALL' ? undefined : statusFilter,
   });
 
   const items = useMemo(
@@ -52,15 +60,27 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
         </button>
       </form>
 
-      <label className="mb-4 flex w-fit cursor-pointer items-center gap-2 text-sm text-gray-600">
-        <input
-          type="checkbox"
-          checked={includeArchived}
-          onChange={(e) => setIncludeArchived(e.target.checked)}
-          className="accent-emerald-700"
-        />
-        보관된 환자 포함
-      </label>
+      <div
+        role="group"
+        aria-label="보관 상태 필터"
+        className="mb-4 flex w-fit rounded-lg border border-gray-200 bg-gray-100 p-0.5"
+      >
+        {STATUS_FILTERS.map((filter) => (
+          <button
+            key={filter.value}
+            type="button"
+            aria-pressed={statusFilter === filter.value}
+            onClick={() => setStatusFilter(filter.value)}
+            className={`rounded-md px-3 py-1 text-sm ${
+              statusFilter === filter.value
+                ? 'bg-white font-medium text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
 
       {patients.isPending && <p className="text-sm text-gray-400">불러오는 중…</p>}
       {patients.isError && <p className="text-sm text-red-500">목록을 불러오지 못했습니다</p>}
