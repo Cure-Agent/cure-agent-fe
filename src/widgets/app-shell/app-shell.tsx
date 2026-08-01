@@ -102,12 +102,13 @@ export function AppShell({
             <p className="text-lg font-bold leading-tight text-emerald-800">Cure Agent</p>
             <p className="truncate text-xs text-gray-500">한의 임상 지침 어시스턴트</p>
           </div>
-          {/* 부제가 헤더 폭을 거의 다 쓰므로 플로우 밖(우상단)에 띄운다 — 행에 넣으면 부제가 잘린다 */}
+          {/* 부제가 헤더 폭을 거의 다 쓰므로 플로우 밖에 띄운다 — 행에 넣으면 부제가 잘린다.
+              세로는 접힘 레일의 토글과 같은 중앙 정렬 */}
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
             aria-label="사이드바 닫기"
-            className="absolute right-2 top-2 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
           >
             <PanelIcon className="h-5 w-5" />
           </button>
