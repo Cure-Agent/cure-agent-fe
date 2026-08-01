@@ -35,14 +35,27 @@ export function EvidenceFullText({ evidenceId }: EvidenceFullTextProps): React.R
         <h3 className="text-xs font-semibold text-gray-900">본문 발췌</h3>
         <p className="mt-1 whitespace-pre-line text-sm text-gray-800">{data.excerpt}</p>
       </div>
-      {data.pageStart !== undefined && (
-        <p className="text-xs text-gray-500">
-          원문 p.{data.pageStart}
-          {data.pageEnd !== undefined &&
-            data.pageEnd !== data.pageStart &&
-            `–${data.pageEnd}`}
-        </p>
-      )}
+      <p className="text-xs text-gray-500">
+        {data.pageStart !== undefined && (
+          <>
+            <span>
+              원문 p.{data.pageStart}
+              {data.pageEnd !== undefined &&
+                data.pageEnd !== data.pageStart &&
+                `–${data.pageEnd}`}
+            </span>
+            {' · '}
+          </>
+        )}
+        <a
+          href={data.sourceUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-emerald-700 hover:underline"
+        >
+          원문 보기 (NCKM)
+        </a>
+      </p>
     </div>
   );
 }

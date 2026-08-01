@@ -84,5 +84,8 @@ describe('EvidenceInspector 명시 마커·전문', () => {
     ).toBeTruthy();
     expect(screen.getByText('침 치료는 만성 요통의 통증 감소에 효과적이다.')).toBeTruthy();
     expect(screen.getByText(/원문 p\.42–43/)).toBeTruthy();
+
+    const sourceLink = screen.getByRole('link', { name: '원문 보기 (NCKM)' });
+    expect(sourceLink.getAttribute('href')).toBe('https://example.test/guidelines/g-1');
   });
 });
