@@ -5,12 +5,15 @@
  * "처방 확정"이 아닌 근거 기반 참고안 — DRAFT에서만 검토를 받고 1회로 종결한다 (§5.6).
  */
 import { FormEvent, useState, type ReactElement } from 'react';
+import { EvidenceFullText } from '@/features/filter-guidelines/ui/evidence-full-text';
 import { ApiError } from '@/shared/api/api-error';
 import {
   type ClinicalGuidance,
   type ReviewDecision,
   useReviewClinicalGuidance,
 } from '../api/review-clinical-guidance';
+
+type GuidanceCitation = ClinicalGuidance['considerations'][number]['citations'][number];
 
 export interface GuidanceCardProps {
   guidance: ClinicalGuidance;
@@ -34,6 +37,48 @@ const SEVERITY_STYLES: Record<string, string> = {
   WARNING: 'bg-amber-100 text-amber-800',
   CRITICAL: 'bg-red-100 text-red-800',
 };
+
+/** 인용 근거 칩 [n] — 클릭 시 해당 근거의 전문을 펼친다 (지침 상세와 동일 구성) */
+function CitationList({ citations }: { citations: GuidanceCitation[] }): ReactElement | null {
+  const [openMarker, setOpenMarker] = useState<number | null>(null);
+  if (citations.length === 0) return null;
+
+  const open = citations.find((citation) => citation.marker === openMarker) ?? null;
+  return (
+    <div className="mt-1.5">
+      <div className="flex flex-wrap gap-1">
+        {citations.map((citation) => (
+          <button
+            key={citation.marker}
+            type="button"
+            aria-expanded={openMarker === citation.marker}
+            title={citation.guidelineTitle}
+            onClick={() =>
+              setOpenMarker((prev) => (prev === citation.marker ? null : citation.marker))
+            }
+            className={`rounded border px-1.5 py-0.5 font-mono text-xs ${
+              openMarker === citation.marker
+                ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
+                : 'border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50'
+            }`}
+          >
+            [{citation.marker}]
+          </button>
+        ))}
+      </div>
+      {open && (
+        <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <p className="text-xs text-gray-500">
+            {open.guidelineTitle} · v{open.guidelineVersion} · {open.sectionPath.join(' > ')}
+          </p>
+          <div className="mt-2">
+            <EvidenceFullText evidenceId={open.evidenceId} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
   const review = useReviewClinicalGuidance(guidance.id);
@@ -80,6 +125,7 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
               <li key={index} className="rounded-lg bg-white p-2.5 ring-1 ring-gray-200">
                 <p className="font-medium text-gray-900">{consideration.title}</p>
                 <p className="mt-0.5 text-gray-600">{consideration.rationale}</p>
+                <CitationList citations={consideration.citations} />
               </li>
             ))}
           </ul>
@@ -99,7 +145,10 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
                 >
                   {alert.severity}
                 </span>
-                <span className="text-gray-800">{alert.description}</span>
+                <div className="flex-1">
+                  <span className="text-gray-800">{alert.description}</span>
+                  <CitationList citations={alert.citations} />
+                </div>
               </li>
             ))}
           </ul>

@@ -7,6 +7,7 @@ import { GuidanceCard } from '@/features/review-clinical-guidance/ui/guidance-ca
 import { GuidanceCardLoader } from '@/features/review-clinical-guidance/ui/guidance-card-loader';
 import { sendMessageStream } from '../api/send-message';
 import {
+  type AnswerCitation,
   type EvidenceDetail,
   type MessageDto,
   initialStreamState,
@@ -19,6 +20,8 @@ export interface ChatPanelProps {
   onEvidenceChange?: (evidence: EvidenceDetail[]) => void;
   /** answer.completed의 citation marker 선택 시 */
   onSelectMarker?: (marker: number) => void;
+  /** 인용 마커 클릭 시 해당 메시지의 인용 목록 전달 — 과거 저장분도 근거 패널이 복원한다 */
+  onShowCitations?: (citations: AnswerCitation[], marker: number) => void;
 }
 
 interface LastRequest {
@@ -30,6 +33,7 @@ export function ChatPanel({
   conversationId,
   onEvidenceChange,
   onSelectMarker,
+  onShowCitations,
 }: ChatPanelProps): React.ReactElement {
   const queryClient = useQueryClient();
   const messages = useMessages(conversationId);
@@ -105,6 +109,12 @@ export function ChatPanel({
     void send(lastRequest.content, crypto.randomUUID()); // 새 clientRequestId (§8)
   };
 
+  // 인용 클릭 = 그 메시지의 인용 목록으로 근거 패널 복원 + 마커 선택
+  const handleCite = (citations: AnswerCitation[], marker: number): void => {
+    onShowCitations?.(citations, marker);
+    onSelectMarker?.(marker);
+  };
+
   const persisted = messages.data?.items ?? [];
   // 스트림 종결 후 invalidate가 반영되기 전까지는 로컬 최종 메시지를 보여준다
   const localFinal =
@@ -115,7 +125,7 @@ export function ChatPanel({
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {persisted.map((message) => (
           <div key={message.id} className="space-y-4">
-            <MessageBubble message={message} onSelectMarker={onSelectMarker} />
+            <MessageBubble message={message} onCite={handleCite} />
             {/* 새로고침 복원 경로 — 방금 스트림으로 받은 카드(아래)가 있으면 중복 표시하지 않는다 */}
             {message.guidanceId && message.id !== state.message?.id && (
               <GuidanceCardLoader guidanceId={message.guidanceId} />
@@ -123,9 +133,7 @@ export function ChatPanel({
           </div>
         ))}
 
-        {localFinal && (
-          <MessageBubble message={localFinal} onSelectMarker={onSelectMarker} />
-        )}
+        {localFinal && <MessageBubble message={localFinal} onCite={handleCite} />}
 
         {state.phase === 'completed' && state.guidance && (
           <GuidanceCard key={state.guidance.id} guidance={state.guidance} />
@@ -205,10 +213,10 @@ function AbstainedNotice(): React.ReactElement {
 
 function MessageBubble({
   message,
-  onSelectMarker,
+  onCite,
 }: {
   message: MessageDto;
-  onSelectMarker?: (marker: number) => void;
+  onCite?: (citations: AnswerCitation[], marker: number) => void;
 }): React.ReactElement {
   // 보류 답변은 본문이 비어 있을 수 있다 — 대화를 다시 열어도 스트림 때와 같은 안내를 그린다
   if (message.status === 'ABSTAINED') {
@@ -229,7 +237,7 @@ function MessageBubble({
               <button
                 key={citation.marker}
                 type="button"
-                onClick={() => onSelectMarker?.(citation.marker)}
+                onClick={() => onCite?.(message.citations, citation.marker)}
                 className="rounded border border-emerald-300 bg-white px-1.5 py-0.5 font-mono text-xs text-emerald-700 hover:bg-emerald-50"
                 title={citation.guidelineTitle}
               >

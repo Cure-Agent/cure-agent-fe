@@ -2,11 +2,17 @@
 
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useState } from 'react';
-import type { EvidenceDetail } from '@/features/ask-guideline/model/stream-state.model';
+import type {
+  AnswerCitation,
+  EvidenceDetail,
+} from '@/features/ask-guideline/model/stream-state.model';
 import { ChatPanel } from '@/features/ask-guideline/ui/chat-panel';
 import type { ConversationSummary } from '@/features/manage-conversation/api/conversation.api';
 import { ConversationList } from '@/features/manage-conversation/ui/conversation-list';
-import { EvidenceInspector } from '@/widgets/evidence-inspector/evidence-inspector';
+import {
+  type EvidenceItem,
+  EvidenceInspector,
+} from '@/widgets/evidence-inspector/evidence-inspector';
 
 // 3단 화면의 조립만 담당한다 (§5.3: 대화 목록 | 질문·스트리밍 답변 | 인용 근거 패널)
 function AssistantScreen(): React.ReactElement {
@@ -15,13 +21,31 @@ function AssistantScreen(): React.ReactElement {
   const [selectedId, setSelectedId] = useState<string | null>(
     searchParams.get('conversation'),
   );
-  const [evidence, setEvidence] = useState<EvidenceDetail[]>([]);
+  const [evidence, setEvidence] = useState<EvidenceItem[]>([]);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
 
   const handleEvidenceChange = useCallback((items: EvidenceDetail[]) => {
     setEvidence(items);
     setActiveMarker(null);
   }, []);
+
+  // 과거 저장 메시지의 인용 마커 클릭 — 그 메시지의 인용 목록으로 근거 패널을 복원한다
+  const handleShowCitations = useCallback(
+    (citations: AnswerCitation[], marker: number) => {
+      setEvidence(
+        citations.map((citation) => ({
+          id: citation.evidenceId,
+          marker: citation.marker,
+          guidelineTitle: citation.guidelineTitle,
+          version: citation.guidelineVersion,
+          sectionPath: citation.sectionPath,
+          excerpt: citation.quote,
+        })),
+      );
+      setActiveMarker(marker);
+    },
+    [],
+  );
 
   const handleSelectConversation = useCallback((conversation: ConversationSummary) => {
     setSelectedId(conversation.id);
@@ -40,6 +64,7 @@ function AssistantScreen(): React.ReactElement {
           conversationId={selectedId}
           onEvidenceChange={handleEvidenceChange}
           onSelectMarker={setActiveMarker}
+          onShowCitations={handleShowCitations}
         />
       ) : (
         <div className="flex items-center justify-center rounded-xl border border-dashed border-gray-300 text-sm text-gray-400">

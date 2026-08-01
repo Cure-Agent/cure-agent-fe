@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import {
   type EvidenceSummary,
-  useEvidenceDetail,
   useGuideline,
   useGuidelineEvidence,
 } from '../api/guideline.api';
+import { EvidenceFullText } from './evidence-full-text';
 
 export interface GuidelineDetailPanelProps {
   guidelineId: string;
@@ -76,7 +76,6 @@ export function GuidelineDetailPanel({
 /** 권고문 카드 — 클릭 시 전문(권고문 원문·발췌 전문·페이지)을 펼친다 */
 function EvidenceListItem({ item }: { item: EvidenceSummary }): React.ReactElement {
   const [expanded, setExpanded] = useState(false);
-  const detail = useEvidenceDetail(item.id, { enabled: expanded });
 
   return (
     <li className="rounded-xl border border-gray-200 bg-white">
@@ -101,34 +100,7 @@ function EvidenceListItem({ item }: { item: EvidenceSummary }): React.ReactEleme
 
       {expanded && (
         <div className="border-t border-gray-100 p-4">
-          {detail.isPending && <p className="text-sm text-gray-400">전문 불러오는 중…</p>}
-          {detail.isError && <p className="text-sm text-red-500">전문을 불러오지 못했습니다</p>}
-          {detail.data && (
-            <div className="space-y-3">
-              {detail.data.recommendationText && (
-                <div>
-                  <h3 className="text-xs font-semibold text-gray-900">권고문 원문</h3>
-                  <p className="mt-1 whitespace-pre-line text-sm text-gray-800">
-                    {detail.data.recommendationText}
-                  </p>
-                </div>
-              )}
-              <div>
-                <h3 className="text-xs font-semibold text-gray-900">본문 발췌</h3>
-                <p className="mt-1 whitespace-pre-line text-sm text-gray-800">
-                  {detail.data.excerpt}
-                </p>
-              </div>
-              {detail.data.pageStart !== undefined && (
-                <p className="text-xs text-gray-500">
-                  원문 p.{detail.data.pageStart}
-                  {detail.data.pageEnd !== undefined &&
-                    detail.data.pageEnd !== detail.data.pageStart &&
-                    `–${detail.data.pageEnd}`}
-                </p>
-              )}
-            </div>
-          )}
+          <EvidenceFullText evidenceId={item.id} />
         </div>
       )}
     </li>
