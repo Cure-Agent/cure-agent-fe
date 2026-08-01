@@ -11,7 +11,12 @@ export interface PatientListPanelProps {
 export function PatientListPanel({ onSelect }: PatientListPanelProps): React.ReactElement {
   const [input, setInput] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState<string | undefined>(undefined);
-  const patients = usePatients({ query: submittedQuery });
+  const [includeArchived, setIncludeArchived] = useState(false);
+  // 기본은 활성 환자만 — 보관은 종결 케이스이므로 명시적으로 켰을 때만 노출
+  const patients = usePatients({
+    query: submittedQuery,
+    status: includeArchived ? undefined : 'ACTIVE',
+  });
 
   const items = useMemo(
     () => (patients.data?.pages ?? []).flatMap((page) => page.items),
@@ -31,7 +36,7 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
 
   return (
     <div className="flex h-full flex-col">
-      <form onSubmit={handleSubmit} className="mb-4 flex gap-2">
+      <form onSubmit={handleSubmit} className="mb-2 flex gap-2">
         <input
           aria-label="환자 검색"
           value={input}
@@ -46,6 +51,16 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
           검색
         </button>
       </form>
+
+      <label className="mb-4 flex w-fit cursor-pointer items-center gap-2 text-sm text-gray-600">
+        <input
+          type="checkbox"
+          checked={includeArchived}
+          onChange={(e) => setIncludeArchived(e.target.checked)}
+          className="accent-emerald-700"
+        />
+        보관된 환자 포함
+      </label>
 
       {patients.isPending && <p className="text-sm text-gray-400">불러오는 중…</p>}
       {patients.isError && <p className="text-sm text-red-500">목록을 불러오지 못했습니다</p>}
