@@ -8,6 +8,7 @@ import type { StreamEvent } from '@/shared/api/stream-client';
 export type EvidenceDetail = components['schemas']['EvidenceDetailResponseDto'];
 export type MessageDto = components['schemas']['MessageResponseDto'];
 export type GuidanceDto = components['schemas']['ClinicalGuidanceResponseDto'];
+export type AnswerCitation = components['schemas']['AnswerCitationResponseDto'];
 
 export type StreamPhase =
   | 'idle'
