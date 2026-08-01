@@ -147,11 +147,8 @@ export function ChatPanel({
           </div>
         )}
 
-        {state.phase === 'abstained' && (
-          <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-            검색 조건에 해당하는 지침 근거를 찾지 못해 답변을 보류했습니다.
-          </p>
-        )}
+        {/* message가 실려 있으면 위 localFinal(MessageBubble)이 같은 안내를 그린다 — 없을 때만 폴백 */}
+        {state.phase === 'abstained' && !state.message && <AbstainedNotice />}
 
         {/* 중단 시점까지 받은 본문은 버리지 않는다 — 사용자가 읽던 답변이다 */}
         {state.phase === 'error' && state.content && (
@@ -198,6 +195,14 @@ export function ChatPanel({
   );
 }
 
+function AbstainedNotice(): React.ReactElement {
+  return (
+    <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+      검색 조건에 해당하는 지침 근거를 찾지 못해 답변을 보류했습니다.
+    </p>
+  );
+}
+
 function MessageBubble({
   message,
   onSelectMarker,
@@ -205,6 +210,10 @@ function MessageBubble({
   message: MessageDto;
   onSelectMarker?: (marker: number) => void;
 }): React.ReactElement {
+  // 보류 답변은 본문이 비어 있을 수 있다 — 대화를 다시 열어도 스트림 때와 같은 안내를 그린다
+  if (message.status === 'ABSTAINED') {
+    return <AbstainedNotice />;
+  }
   const isUser = message.role === 'USER';
   return (
     <div className={isUser ? 'flex justify-end' : 'flex justify-start'}>
