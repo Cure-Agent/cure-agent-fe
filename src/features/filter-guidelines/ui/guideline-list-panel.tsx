@@ -39,22 +39,35 @@ export function GuidelineListPanel({ onSelect }: GuidelineListPanelProps): React
       {guidelines.isError && <p className="text-sm text-red-500">목록을 불러오지 못했습니다</p>}
 
       <ul className="flex-1 space-y-2 overflow-y-auto">
-        {(guidelines.data?.items ?? []).map((guideline) => (
-          <li key={guideline.id}>
-            <button
-              type="button"
-              aria-label={guideline.title}
-              onClick={() => onSelect(guideline)}
-              className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-emerald-300"
-            >
-              <p className="font-medium text-gray-900">{guideline.title}</p>
-              <p className="mt-1 text-xs text-gray-500">
-                {guideline.publisher} · v{guideline.currentVersion} · {guideline.status}
-              </p>
-            </button>
-          </li>
-        ))}
+        {(guidelines.data?.pages ?? [])
+          .flatMap((page) => page.items)
+          .map((guideline) => (
+            <li key={guideline.id}>
+              <button
+                type="button"
+                aria-label={guideline.title}
+                onClick={() => onSelect(guideline)}
+                className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-emerald-300"
+              >
+                <p className="font-medium text-gray-900">{guideline.title}</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {guideline.publisher} · v{guideline.currentVersion} · {guideline.status}
+                </p>
+              </button>
+            </li>
+          ))}
       </ul>
+
+      {guidelines.hasNextPage && (
+        <button
+          type="button"
+          onClick={() => void guidelines.fetchNextPage()}
+          disabled={guidelines.isFetchingNextPage}
+          className="mt-2 rounded-lg border border-gray-300 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+        >
+          {guidelines.isFetchingNextPage ? '불러오는 중…' : '더 보기'}
+        </button>
+      )}
     </div>
   );
 }
