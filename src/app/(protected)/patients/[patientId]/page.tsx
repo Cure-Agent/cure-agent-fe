@@ -8,19 +8,18 @@ export default async function PatientDetailPage({
 }): Promise<React.ReactElement> {
   const { patientId } = await params;
   return (
-    <section className="-mt-8">
-      {/* h-18 + 좌측 18px: 사이드바 헤더 아이콘(열림·접힘 레일 공통 기준선)과 위치를 맞춘다 */}
-      <div className="-mx-8 flex h-18 items-center px-2.5">
+    <section className="mx-auto -mt-8 max-w-3xl">
+      {/* 세로는 사이드바 헤더 아이콘 기준선(h-18 중앙), 가로는 콘텐츠 컬럼 왼쪽 정렬.
+          -ml-2가 호버 패딩(p-2)을 상쇄해 텍스트가 컬럼 왼쪽 끝에 맞는다 */}
+      <div className="flex h-18 items-center">
         <Link
           href="/patients"
-          className="inline-flex items-center gap-1 rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+          className="-ml-2 inline-flex items-center gap-1 rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900"
         >
           <span aria-hidden>←</span> 환자 목록
         </Link>
       </div>
-      <div className="mx-auto max-w-3xl">
-        <PatientDetailPanel patientId={patientId} />
-      </div>
+      <PatientDetailPanel patientId={patientId} />
     </section>
   );
 }
