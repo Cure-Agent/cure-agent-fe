@@ -1,7 +1,7 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { FormEvent, useEffect, useReducer, useState } from 'react';
+import { FormEvent, KeyboardEvent, useEffect, useReducer, useState } from 'react';
 import { messagesKey, useMessages } from '@/features/manage-conversation/api/conversation.api';
 import { GuidanceCard } from '@/features/review-clinical-guidance/ui/guidance-card';
 import { GuidanceCardLoader } from '@/features/review-clinical-guidance/ui/guidance-card-loader';
@@ -90,6 +90,16 @@ export function ChatPanel({
     void send(content, crypto.randomUUID());
   };
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
+    // 한글 IME 조합 확정용 Enter는 전송으로 취급하지 않는다
+    if (event.nativeEvent.isComposing) return;
+    if (event.key !== 'Enter' || event.shiftKey) return;
+    // 모바일 가상 키보드의 Enter는 줄바꿈 그대로 둔다
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
+  };
+
   const handleRetry = (): void => {
     if (!lastRequest || inFlight) return;
     void send(lastRequest.content, crypto.randomUUID()); // 새 clientRequestId (§8)
@@ -171,6 +181,7 @@ export function ChatPanel({
           aria-label="질문 입력"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={handleKeyDown}
           rows={2}
           placeholder="지침에 대해 질문하세요 (예: 만성 요통에 침 치료가 효과적인가요?)"
           className="flex-1 resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
