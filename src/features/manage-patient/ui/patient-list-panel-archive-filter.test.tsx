@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-// 보관 필터 — 기본은 status=ACTIVE, "보관된 환자 포함" 토글 시 status 없이 전체 조회
+// 보관 상태 필터 — 기본은 status 없이 전체, 「활성 | 보관」 세그먼트 선택 시 해당 status로 재조회
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -23,8 +23,8 @@ const archivedPatient = {
   updatedAt: '2026-07-02T00:00:00.000Z',
 };
 
-describe('환자 목록 보관 필터', () => {
-  it('기본은 status=ACTIVE로 조회하고, 보관 포함 체크 시 status 없이 재조회한다', async () => {
+describe('환자 목록 보관 상태 필터', () => {
+  it('기본은 status 없이 전체를 조회하고, 세그먼트 선택 시 해당 status로 재조회한다', async () => {
     const requestedStatuses: Array<string | null> = [];
 
     server.use(
@@ -32,7 +32,11 @@ describe('환자 목록 보관 필터', () => {
         const status = new URL(request.url).searchParams.get('status');
         requestedStatuses.push(status);
         const items =
-          status === 'ACTIVE' ? [activePatient] : [activePatient, archivedPatient];
+          status === 'ACTIVE'
+            ? [activePatient]
+            : status === 'ARCHIVED'
+              ? [archivedPatient]
+              : [activePatient, archivedPatient];
 
         return HttpResponse.json(
           envelope(items, { size: items.length, hasNext: false, nextCursor: null }),
@@ -43,17 +47,27 @@ describe('환자 목록 보관 필터', () => {
     const user = userEvent.setup();
     renderWithProviders(<PatientListPanel onSelect={vi.fn()} />);
 
+    // 기본 전체: 활성·보관 환자가 모두 보인다
     expect(
       await screen.findByRole('button', { name: activePatient.caseLabel }),
     ).toBeTruthy();
-    expect(screen.queryByRole('button', { name: archivedPatient.caseLabel })).toBeNull();
-    expect(requestedStatuses).toContain('ACTIVE');
-
-    await user.click(screen.getByLabelText('보관된 환자 포함'));
-
     expect(
       await screen.findByRole('button', { name: archivedPatient.caseLabel }),
     ).toBeTruthy();
-    await waitFor(() => expect(requestedStatuses).toContain(null));
+    expect(requestedStatuses).toContain(null);
+
+    // 보관 선택 → status=ARCHIVED 재조회, 활성 환자가 사라진다
+    await user.click(screen.getByRole('button', { name: '보관' }));
+    await waitFor(() => expect(requestedStatuses).toContain('ARCHIVED'));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: activePatient.caseLabel })).toBeNull(),
+    );
+
+    // 활성 선택 → status=ACTIVE 재조회, 보관 환자가 사라진다
+    await user.click(screen.getByRole('button', { name: '활성' }));
+    await waitFor(() => expect(requestedStatuses).toContain('ACTIVE'));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: archivedPatient.caseLabel })).toBeNull(),
+    );
   });
 });
