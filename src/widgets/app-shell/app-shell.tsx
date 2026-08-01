@@ -95,7 +95,8 @@ export function AppShell({
           sidebarOpen ? 'ml-0' : '-ml-60'
         }`}
       >
-        <div className="relative flex items-center gap-2.5 border-b border-gray-200 px-5 py-4">
+        {/* h-18: 접힘 레일 헤더와 같은 높이 토큰 — 두 상태의 상단 기준선을 맞춘다 */}
+        <div className="relative flex h-18 items-center gap-2.5 border-b border-gray-200 px-5">
           <LogoMark className="h-7 w-auto shrink-0 text-emerald-700" />
           <div className="min-w-0">
             <p className="text-lg font-bold leading-tight text-emerald-800">Cure Agent</p>
@@ -147,19 +148,19 @@ export function AppShell({
       {/* 접힘 상태: 떠 있는 버튼 대신 레이아웃 폭을 차지하는 아이콘 레일 —
           본문(대화 목록 등)과 겹치지 않고, 탭을 열지 않아도 바로 이동할 수 있다 */}
       {!sidebarOpen && (
-        <div className="flex w-14 shrink-0 flex-col items-center border-r border-gray-200 bg-white py-2">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="사이드바 열기"
-            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-          >
-            <PanelIcon className="h-5 w-5" />
-          </button>
-          <nav
-            aria-label="주요 메뉴"
-            className="mt-2 flex flex-col items-center gap-1 border-t border-gray-200 pt-2"
-          >
+        <div className="flex w-14 shrink-0 flex-col items-center border-r border-gray-200 bg-white">
+          {/* 열림 헤더와 같은 h-18 + border-b — 접었을 때도 상단 영역 높이·구분선이 일치한다 */}
+          <div className="flex h-18 w-full items-center justify-center border-b border-gray-200">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="사이드바 열기"
+              className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            >
+              <PanelIcon className="h-5 w-5" />
+            </button>
+          </div>
+          <nav aria-label="주요 메뉴" className="mt-3 flex flex-col items-center gap-1">
             {NAV_ITEMS.map((item) => {
               const active = pathname.startsWith(item.href);
               return (
