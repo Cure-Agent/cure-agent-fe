@@ -15,7 +15,7 @@ export interface PatientDetailPanelProps {
 }
 
 const FIELD =
-  'rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none';
+  'rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none disabled:bg-gray-100 disabled:text-gray-400';
 
 export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): React.ReactElement {
   const patient = usePatient(patientId);
@@ -129,6 +129,7 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
             step="0.1"
             value={weightKg}
             onChange={(e) => setWeightKg(e.target.value)}
+            disabled={isArchived}
             className={FIELD}
           />
         </div>
@@ -141,6 +142,7 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
             rows={3}
             value={clinicalNotes}
             onChange={(e) => setClinicalNotes(e.target.value)}
+            disabled={isArchived}
             className={FIELD}
           />
         </div>
