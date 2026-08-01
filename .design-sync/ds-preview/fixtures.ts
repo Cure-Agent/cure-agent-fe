@@ -313,7 +313,7 @@ export const OAUTH_PROVIDERS = ['GOOGLE', 'KAKAO', 'NAVER'];
 
 // ── fetch 가로채기 ───────────────────────────────────────────────────────
 
-type Route = { method: string; pattern: RegExp; body: () => unknown };
+type Route = { method: string; pattern: RegExp; body: (pathname: string) => unknown };
 
 const ROUTES: Route[] = [
   { method: 'GET', pattern: /^\/api\/v1\/auth\/me$/, body: () => envelope(CLINICIAN) },
@@ -356,6 +356,17 @@ const ROUTES: Route[] = [
     method: 'GET',
     pattern: /^\/api\/v1\/guidelines\/[^/]+$/,
     body: () => envelope(GUIDELINE_DETAIL),
+  },
+  {
+    // 권고문 카드 펼치기(GuidelineDetailPanel)가 조회하는 전문 상세.
+    // GUIDELINE_EVIDENCE[i] 는 EVIDENCE_DETAILS[i] 의 요약본이라 인덱스로 대응한다.
+    method: 'GET',
+    pattern: /^\/api\/v1\/evidence\/[^/]+$/,
+    body: (pathname) => {
+      const id = pathname.split('/').pop();
+      const index = GUIDELINE_EVIDENCE.findIndex((item) => item.id === id);
+      return envelope(EVIDENCE_DETAILS[index] ?? EVIDENCE_DETAILS[0]);
+    },
   },
   { method: 'POST', pattern: /^\/api\/v1\/patients$/, body: () => envelope(PATIENT_DETAIL) },
   {
@@ -417,7 +428,7 @@ export function installFixtureFetch(): void {
     ).toUpperCase();
 
     const hit = ROUTES.find((r) => r.method === method && r.pattern.test(pathname));
-    if (hit) return jsonResponse(hit.body());
+    if (hit) return jsonResponse(hit.body(pathname));
 
     // 매칭되는 데모 라우트가 없으면 실패 봉투 — 컴포넌트의 오류 상태가 정상 동작함을 보여준다.
     return jsonResponse(
