@@ -63,7 +63,6 @@ describe('AppShell 사이드바 토글', () => {
       ['어시스턴트', '/assistant'],
       ['지침', '/guidelines'],
       ['환자', '/patients'],
-      ['히스토리', '/history'],
     ] as const) {
       expect(rail.getByRole('link', { name: label })).toHaveAttribute('href', href);
     }

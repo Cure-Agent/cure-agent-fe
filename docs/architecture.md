@@ -27,13 +27,9 @@ cure-agent-fe/
 │   │   │   │   ├── page.tsx
 │   │   │   │   ├── [guidelineId]/page.tsx
 │   │   │   │   └── _components/
-│   │   │   ├── patients/
-│   │   │   │   ├── page.tsx
-│   │   │   │   ├── [patientId]/page.tsx
-│   │   │   │   └── _components/
-│   │   │   └── history/
+│   │   │   └── patients/
 │   │   │       ├── page.tsx
-│   │   │       ├── [conversationId]/page.tsx
+│   │   │       ├── [patientId]/page.tsx
 │   │   │       └── _components/
 │   │   ├── error.tsx / loading.tsx / not-found.tsx
 │   │   └── providers.tsx

@@ -47,7 +47,6 @@ export {
   ConversationList,
   type ConversationListProps,
 } from '../../src/features/manage-conversation/ui/conversation-list';
-export { HistoryPanel } from '../../src/features/manage-conversation/ui/history-panel';
 
 // features — manage-patient
 export {
