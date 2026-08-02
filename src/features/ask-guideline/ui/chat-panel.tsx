@@ -3,6 +3,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useReducer, useState } from 'react';
 import {
+  CONVERSATIONS_KEY,
   flatMessagesChronological,
   messagesKey,
   useMessages,
@@ -83,6 +84,8 @@ export function ChatPanel({
   useEffect(() => {
     if (state.phase === 'completed' || state.phase === 'abstained' || state.phase === 'error') {
       void queryClient.invalidateQueries({ queryKey: messagesKey(conversationId) });
+      // 대화 목록은 updatedAt 최신순 — 방금 대화한 방이 맨 위로 오도록 재조회한다
+      void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
     }
   }, [state.phase, conversationId, queryClient]);
 
