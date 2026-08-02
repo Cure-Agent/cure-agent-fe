@@ -52,19 +52,10 @@ const PatientIcon = iconSvg(
   </>,
 );
 
-const HistoryIcon = iconSvg(
-  <>
-    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-    <path d="M3 3v5h5" />
-    <path d="M12 7v5l4 2" />
-  </>,
-);
-
 const NAV_ITEMS = [
   { href: '/assistant', label: '어시스턴트', Icon: AssistantIcon },
   { href: '/guidelines', label: '지침', Icon: GuidelineIcon },
   { href: '/patients', label: '환자', Icon: PatientIcon },
-  { href: '/history', label: '히스토리', Icon: HistoryIcon },
 ] as const;
 
 export function AppShell({

@@ -36,32 +36,17 @@ export const CONVERSATIONS_KEY = ['conversations'] as const;
 export const messagesKey = (conversationId: string | null) =>
   ['messages', conversationId] as const;
 
-/** 최신순 + 커서 — 하단 무한 스크롤용 페이지 누적 */
-export function useConversations(): UseInfiniteQueryResult<InfiniteData<ConversationPage>> {
-  return useInfiniteQuery({
-    queryKey: [...CONVERSATIONS_KEY, 'list'],
-    initialPageParam: undefined as string | undefined,
-    queryFn: async ({ pageParam }) => {
-      const result = await api.GET('/api/v1/conversations', {
-        params: { query: pageParam ? { cursor: pageParam } : {} },
-      });
-      const { items, page } = unwrapPage<ConversationSummary>(result);
-      return { items, page };
-    },
-    getNextPageParam: (lastPage) => (lastPage.page.hasNext ? lastPage.page.nextCursor : undefined),
-  });
-}
-
-/** 히스토리 목록 — 제목 부분일치 검색 지원 (docs/specs/11 기준 6·9) */
-export function useConversationHistory(params: {
+/** 최신순 + 커서(하단 무한 스크롤) + 제목 부분일치 검색 (docs/specs/11 기준 6) */
+export function useConversations(params?: {
   query?: string;
 }): UseInfiniteQueryResult<InfiniteData<ConversationPage>> {
+  const search = params?.query;
   return useInfiniteQuery({
-    queryKey: [...CONVERSATIONS_KEY, 'history', { query: params.query ?? null }],
+    queryKey: [...CONVERSATIONS_KEY, 'list', { query: search ?? null }],
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam }) => {
       const query: Record<string, string> = {};
-      if (params.query) query.query = params.query;
+      if (search) query.query = search;
       if (pageParam) query.cursor = pageParam;
       const result = await api.GET('/api/v1/conversations', { params: { query } });
       const { items, page } = unwrapPage<ConversationSummary>(result);

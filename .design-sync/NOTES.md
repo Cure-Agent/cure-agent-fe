@@ -75,11 +75,15 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 이 목록에 없는 경고가 뜨면 새 것이니 확인할 것.
 
 - `[GRID_OVERFLOW] EvidenceInspector` — 최초 1회 발생, `cfg.overrides.EvidenceInspector.cardMode="column"`
-  으로 해소. 넓은 패널은 미리 `column`, 화면 전체(AppShell·HistoryPanel)는 `single` + viewport 로 지정해 뒀다.
+  으로 해소. 넓은 패널은 미리 `column`, 화면 전체(AppShell)는 `single` + viewport 로 지정해 뒀다.
 - `AppShell` 리뷰 시트 하단의 로그아웃 버튼 잘림 — **카드 결함이 아니다.** `?story=` 캡처에만 body
   padding 24px 이 남는데 `min-h-screen` 이 뷰포트와 같아 48px 이 넘친다. 실제 카드 렌더(padding 0)는 온전하다.
-- `HistoryPanel` 우측 상세 / `ConversationList`·목록류의 선택 후 상태 — 클릭 이후에만 나타나므로
+- `ConversationList`·목록류의 선택 후 상태 — 클릭 이후에만 나타나므로
   정적 카드에는 담기지 않는다. 초기 상태가 담긴 것이 정상.
+- **`HistoryPanel` 카드는 2026-08-02 폐지됐다** (specs/11 개정 — `/history` 화면을 `/assistant`
+  대화 목록으로 통합). 배럴·`componentSrcMap`·overrides·`dtsPropsFor`·프리뷰에서 제거했고
+  원격 파일 5종(`components/**/HistoryPanel/*` 4종 + `_preview/HistoryPanel.js`)을 삭제했다.
+  카드 수 14 → 13.
 - `ChatPanel` 의 스트리밍/보류/오류 상태 — 실제 SSE 진행 중에만 나타난다. 정적으로 담지 않았다.
 - `RequestGuidanceButton` 은 외형이 하나뿐이라 스토리도 하나다 (변형 축 없음 — 의도).
 - `fonts/` 없음 / `tokens/` 비어 있음 — 정상이다. 시스템 폰트 스택만 쓰고, 커스텀 CSS 변수 토큰이 없다.
