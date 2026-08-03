@@ -1111,6 +1111,13 @@ export interface components {
             title: string;
             rationale: string;
             citations: components["schemas"]["AnswerCitationResponseDto"][];
+            /**
+             * @description 근거 조건과 환자 프로필이 만나는 지점의 적용 판단 — 구조화 경로에서만 실린다
+             * @enum {string}
+             */
+            applicability?: "APPLICABLE" | "CAUTION" | "NOT_APPLICABLE";
+            /** @description 이 판단이 딛고 선 환자 프로필 필드명 — missingInformation과 같은 어휘의 여집합 */
+            patientFactors?: string[];
         };
         SafetyAlertResponseDto: {
             /** @enum {string} */
