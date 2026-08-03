@@ -38,6 +38,11 @@ export interface StreamState {
   nextSeq: number;
   /** completed/abstained의 최종 메시지 */
   message: MessageDto | null;
+  /**
+   * 전송 즉시 화면에 그리는 내 질문 — 서버는 본문을 되돌려주지 않는다(§8 message.accepted는 id만).
+   * id는 처음엔 clientRequestId, message.accepted에서 서버 userMessageId로 교체된다.
+   */
+  pendingUser: MessageDto | null;
   /** PATIENT_GUIDANCE completed의 임상 참고안 (spec 10 — additive) */
   guidance: GuidanceDto | null;
   abstainReason: string | null;
@@ -53,6 +58,7 @@ export const initialStreamState: StreamState = {
   content: '',
   nextSeq: 0,
   message: null,
+  pendingUser: null,
   guidance: null,
   abstainReason: null,
   error: null,
@@ -60,6 +66,7 @@ export const initialStreamState: StreamState = {
 
 export type StreamAction =
   | { type: 'event'; event: StreamEvent }
+  | { type: 'send'; message: MessageDto }
   | { type: 'streamFailed'; message: string }
   | { type: 'reset' };
 
@@ -67,6 +74,10 @@ export function streamReducer(state: StreamState, action: StreamAction): StreamS
   switch (action.type) {
     case 'reset':
       return initialStreamState;
+    case 'send':
+      // 이전 스트림의 잔여(본문·오류)를 지우고 내 질문부터 띄운다.
+      // 서버 accept 전이지만 phase를 올려 전송 버튼도 이때부터 잠근다(연타 방지).
+      return { ...initialStreamState, phase: 'accepted', pendingUser: action.message };
     case 'streamFailed':
       // 이미 종결된 스트림의 사후 실패(네트워크 정리 등)는 무시.
       // idle은 대화 전환 reset 뒤 도착한 옛 스트림의 실패 — 새 대화에 오류를 남기지 않는다.
@@ -95,14 +106,21 @@ export function streamReducer(state: StreamState, action: StreamAction): StreamS
 
 function applyEvent(state: StreamState, event: StreamEvent): StreamState {
   switch (event.eventType) {
-    case 'message.accepted':
+    case 'message.accepted': {
+      // 재시도 대비 초기화하되, 이미 그려둔 내 질문은 서버 id로 갱신만 한다
+      const userMessageId = (event.userMessageId as string) ?? null;
       return {
         ...initialStreamState,
         phase: 'accepted',
         requestId: (event.requestId as string) ?? null,
-        userMessageId: (event.userMessageId as string) ?? null,
+        userMessageId,
         assistantMessageId: (event.assistantMessageId as string) ?? null,
+        pendingUser:
+          state.pendingUser && userMessageId
+            ? { ...state.pendingUser, id: userMessageId }
+            : state.pendingUser,
       };
+    }
     case 'retrieval.started':
       return { ...state, phase: 'retrieving' };
     case 'retrieval.completed':

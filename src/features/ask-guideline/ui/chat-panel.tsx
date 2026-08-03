@@ -54,6 +54,11 @@ export function ChatPanel({
   // 스트림 종결 후 invalidate가 반영되기 전까지는 로컬 최종 메시지를 보여준다
   const localFinal =
     state.message && !persisted.some((m) => m.id === state.message?.id) ? state.message : null;
+  // 내 질문도 같은 규칙 — 서버 목록에 같은 id가 들어오면 그쪽으로 넘긴다(중복 방지)
+  const localUser =
+    state.pendingUser && !persisted.some((m) => m.id === state.pendingUser?.id)
+      ? state.pendingUser
+      : null;
 
   const scroll = useChatAutoScroll({
     resetKey: conversationId,
@@ -67,7 +72,7 @@ export function ChatPanel({
   const { scrollToBottomIfSticky } = scroll;
   useEffect(() => {
     scrollToBottomIfSticky();
-  }, [state.content, state.phase, localFinal, scrollToBottomIfSticky]);
+  }, [state.content, state.phase, localUser, localFinal, scrollToBottomIfSticky]);
 
   // 대화 전환 시 스트림 상태 초기화
   useEffect(() => {
@@ -91,6 +96,18 @@ export function ChatPanel({
 
   const send = async (content: string, clientRequestId: string): Promise<void> => {
     setLastRequest({ content, clientRequestId });
+    // 내 질문은 서버 왕복을 기다리지 않고 즉시 그린다 — 본문은 이미 여기 있고, 서버는 id만 돌려준다
+    dispatch({
+      type: 'send',
+      message: {
+        id: clientRequestId,
+        role: 'USER',
+        content,
+        status: 'COMPLETED',
+        citations: [],
+        createdAt: new Date().toISOString(),
+      },
+    });
     try {
       await sendMessageStream({
         conversationId,
@@ -165,6 +182,8 @@ export function ChatPanel({
             )}
           </div>
         ))}
+
+        {localUser && <MessageBubble message={localUser} onCite={handleCite} />}
 
         {localFinal && <MessageBubble message={localFinal} onCite={handleCite} />}
 
