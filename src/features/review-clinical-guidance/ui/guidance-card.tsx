@@ -38,6 +38,22 @@ const SEVERITY_STYLES: Record<string, string> = {
   CRITICAL: 'bg-red-100 text-red-800',
 };
 
+/**
+ * 적용 판단 — 근거의 조건·금기가 이 환자의 값과 만나는지 (BE docs/specs/33).
+ * 구조화 경로에서만 실린다. 결정적 폴백으로 조립된 참고안에는 이 필드가 없다.
+ */
+const APPLICABILITY_LABELS: Record<string, string> = {
+  APPLICABLE: '적용',
+  CAUTION: '주의',
+  NOT_APPLICABLE: '해당없음',
+};
+
+const APPLICABILITY_STYLES: Record<string, string> = {
+  APPLICABLE: 'bg-emerald-100 text-emerald-800',
+  CAUTION: 'bg-amber-100 text-amber-800',
+  NOT_APPLICABLE: 'bg-gray-100 text-gray-600',
+};
+
 /** 인용 근거 칩 [n] — 클릭 시 해당 근거의 전문을 펼친다 (지침 상세와 동일 구성) */
 function CitationList({ citations }: { citations: GuidanceCitation[] }): ReactElement | null {
   const [openMarker, setOpenMarker] = useState<number | null>(null);
@@ -123,8 +139,36 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
           <ul className="mt-1 space-y-2">
             {current.considerations.map((consideration, index) => (
               <li key={index} className="rounded-lg bg-white p-2.5 ring-1 ring-gray-200">
-                <p className="font-medium text-gray-900">{consideration.title}</p>
+                <div className="flex items-start gap-2">
+                  {consideration.applicability && (
+                    <span
+                      className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold ${
+                        APPLICABILITY_STYLES[consideration.applicability] ??
+                        'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {APPLICABILITY_LABELS[consideration.applicability] ??
+                        consideration.applicability}
+                    </span>
+                  )}
+                  <p className="font-medium text-gray-900">{consideration.title}</p>
+                </div>
                 <p className="mt-0.5 text-gray-600">{consideration.rationale}</p>
+                {consideration.patientFactors && consideration.patientFactors.length > 0 && (
+                  // 지침 근거([n] 칩)와 나란히 두 다리를 보여준다 — 이 판단이 환자의 어느 값을
+                  // 딛고 섰는지가 카드에서 바로 읽혀야 「적용 판단」이 검증 가능해진다
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                    <span className="text-xs text-gray-500">환자 근거</span>
+                    {consideration.patientFactors.map((factor) => (
+                      <span
+                        key={factor}
+                        className="rounded border border-gray-300 bg-gray-50 px-1.5 py-0.5 text-xs text-gray-700"
+                      >
+                        {factor}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <CitationList citations={consideration.citations} />
               </li>
             ))}
