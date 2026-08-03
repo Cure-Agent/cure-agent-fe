@@ -100,7 +100,7 @@ export function AppShell({
             type="button"
             onClick={() => setSidebarOpen(false)}
             aria-label="사이드바 닫기"
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
           >
             <PanelIcon className="h-5 w-5" />
           </button>
@@ -148,7 +148,7 @@ export function AppShell({
               type="button"
               onClick={() => setSidebarOpen(true)}
               aria-label="사이드바 열기"
-              className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
             >
               <PanelIcon className="h-5 w-5" />
             </button>
