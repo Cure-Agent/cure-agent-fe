@@ -20,7 +20,6 @@ describe('ConversationList', () => {
         title: '요통 진료 상담',
         status: 'ACTIVE',
         lastMessageAt: '2026-07-24T09:00:00.000Z',
-        updatedAt: '2026-07-24T00:00:00.000Z',
       },
       {
         id: 'conversation-2',
@@ -28,7 +27,6 @@ describe('ConversationList', () => {
         title: '불면 진료 상담',
         status: 'ACTIVE',
         lastMessageAt: '2026-07-24T08:00:00.000Z',
-        updatedAt: '2026-07-24T01:00:00.000Z',
       },
     ];
     const createdConversation: ConversationSummary = {
@@ -37,7 +35,6 @@ describe('ConversationList', () => {
       title: '새 대화',
       status: 'ACTIVE',
       lastMessageAt: '2026-07-24T10:00:00.000Z',
-      updatedAt: '2026-07-24T02:00:00.000Z',
     };
     const createRequestBody = vi.fn();
 

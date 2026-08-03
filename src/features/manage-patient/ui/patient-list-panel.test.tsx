@@ -16,13 +16,11 @@ describe('환자 목록', () => {
       id: 'patient-initial',
       caseLabel: '초기 환자',
       status: 'ACTIVE' as const,
-      updatedAt: '2026-07-01T00:00:00.000Z',
     };
     const searchedPatient = {
       id: 'patient-searched',
       caseLabel: '김환자',
       status: 'ACTIVE' as const,
-      updatedAt: '2026-07-02T00:00:00.000Z',
     };
     const requestedQueries: Array<string | null> = [];
 

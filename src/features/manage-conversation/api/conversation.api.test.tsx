@@ -2,7 +2,8 @@
 // docs/specs/08 수용 기준 4 동결 테스트 — 구현 중 수정 금지
 // (무한 스크롤 전환으로 useConversations가 InfiniteData를 반환하도록 계약이 바뀌어
 //  단언 형태만 pages[0] 기준으로 갱신했다 — 검증 본질은 동일)
-// (계약에 lastMessageAt 필수 필드가 추가되어 픽스처만 채웠다 — 검증 본질은 동일)
+// (정렬 키가 lastMessageAt으로 분리되고 updatedAt은 계약에서 빠져 픽스처만 맞췄다
+//  — 검증 본질은 동일)
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
@@ -35,7 +36,6 @@ describe('useConversations', () => {
         title: '요통 진료 상담',
         status: 'ACTIVE',
         lastMessageAt: '2026-07-24T09:00:00.000Z',
-        updatedAt: '2026-07-24T00:00:00.000Z',
       },
       {
         id: 'conversation-2',
@@ -43,7 +43,6 @@ describe('useConversations', () => {
         title: '불면 진료 상담',
         status: 'ACTIVE',
         lastMessageAt: '2026-07-24T08:00:00.000Z',
-        updatedAt: '2026-07-24T01:00:00.000Z',
       },
     ];
     const page = {

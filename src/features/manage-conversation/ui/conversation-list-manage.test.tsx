@@ -29,7 +29,6 @@ function conversation(
     title,
     status,
     lastMessageAt: '2026-07-24T00:00:00.000Z',
-    updatedAt: '2026-07-24T00:00:00.000Z',
   };
 }
 

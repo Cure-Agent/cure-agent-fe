@@ -16,7 +16,6 @@ describe('환자 등록 폼', () => {
       id: 'patient-created',
       caseLabel: '김환자',
       status: 'ACTIVE' as const,
-      updatedAt: '2026-07-24T00:00:00.000Z',
       diagnoses: ['고혈압', '당뇨'],
       medications: ['약A', '약B'],
       allergies: ['꽃가루', '땅콩'],
