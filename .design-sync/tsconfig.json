@@ -1,5 +1,5 @@
 {
-  "//": "에디터 전용 TS 프로젝트. `.design-sync` 는 dot 디렉터리라 루트 tsconfig 의 와일드카드(**/*.tsx)가 건너뛴다 — 즉 `pnpm typecheck` 는 프리뷰를 보지 않고, 에디터만 프로젝트 밖 파일로 취급해 'cure-agent-fe' 를 못 찾는다(TS2307). 여기서 프리뷰·프리뷰 하네스를 명시적으로 포함하고 패키지 이름을 로컬 배럴로 매핑해 그 오류를 없앤다. 빌드에는 관여하지 않는다 (선언 방출은 tsconfig.dts.json).",
+  "//": "에디터 + CI 검사용 TS 프로젝트. `.design-sync` 는 dot 디렉터리라 루트 tsconfig 의 와일드카드(**/*.tsx)가 건너뛴다 — 즉 `pnpm typecheck` 는 프리뷰를 보지 않고, 에디터만 프로젝트 밖 파일로 취급해 'cure-agent-fe' 를 못 찾는다(TS2307). 여기서 프리뷰·프리뷰 하네스를 명시적으로 포함하고 패키지 이름을 로컬 배럴로 매핑해 그 오류를 없앤다. `pnpm typecheck:design-sync` 가 이 프로젝트를 돌리고 CI 의 codegen-check 잡이 그것을 강제한다. 빌드에는 관여하지 않는다 (선언 방출은 tsconfig.dts.json).",
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "noEmit": true,

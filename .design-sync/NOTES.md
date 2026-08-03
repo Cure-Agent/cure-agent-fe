@@ -40,8 +40,8 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 - **`@source "./previews/*.tsx"`** (`tailwind-entry.css`) — `.design-sync` 는 dot 디렉터리라
   Tailwind 자동 소스 탐지가 건너뛴다. **프리뷰를 새로 쓰거나 고치면 Tailwind 를 다시 컴파일해야**
   거기서 처음 쓴 클래스가 CSS 에 들어간다.
-- **`.design-sync/tsconfig.json` + `ds-preview/preview-module.ts`** — 에디터 전용이고 빌드에는
-  관여하지 않는다. 프리뷰는 패키지 이름 `cure-agent-fe` 로 import 하는데 (번들에서 `entry.ts` 와
+- **`.design-sync/tsconfig.json` + `ds-preview/preview-module.ts`** — 에디터와 CI 검사용이고
+  빌드에는 관여하지 않는다. 프리뷰는 패키지 이름 `cure-agent-fe` 로 import 하는데 (번들에서 `entry.ts` 와
   `extraEntries` 의 export 가 한 전역으로 합쳐지므로 옳다) 레포에 `node_modules/cure-agent-fe` 가
   없어 IDE 가 전부 `TS2307 Cannot find module 'cure-agent-fe'` 로 붉게 칠했다. 루트 tsconfig 의
   와일드카드는 dot 디렉터리를 건너뛰어 `pnpm typecheck` 는 조용했다 — **에디터에만 보이던 오류**다.
@@ -51,6 +51,10 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
   덤으로 프리뷰가 처음으로 타입 검사를 받게 됐고, 그때 드러난 `process-shim.ts` 의
   `typeof globalThis &` 교차(= `@types/node` 의 `ProcessEnv` 와 충돌)도 같이 고쳤다.
   방출 JS 는 동일하므로 재동기화는 필요 없다.
+  **2026-08-04부터 이 검사가 CI 에 걸려 있다** (`pnpm typecheck:design-sync` → `codegen-check` 잡).
+  그 전까지는 사람이 에디터에서 봐야만 보였고, 실제로 `RequestGuidanceButton` 프리뷰가
+  `caseLabel` 이 필수가 된 뒤 #55 까지 낡은 채 남아 있었다. 이제 프리뷰가 컴포넌트 props 를
+  못 따라가면 머지 게이트가 막는다.
 - **`LogoMark` 는 배럴에만 있고 `componentSrcMap` 에는 없다 — 의도다.** 위쪽 "배럴과
   componentSrcMap 양쪽에 등록" 규칙은 **카드가 되는 컴포넌트**에만 해당한다. 이 레포에서
   **카드 목록을 정하는 것은 `componentSrcMap` 키뿐**이다: `lib/source-kit.mjs` 가
