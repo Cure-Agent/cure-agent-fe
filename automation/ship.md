@@ -76,8 +76,9 @@ CI(`.github/workflows/ci.yml`)의 머지 게이트 잡(`codegen-check`)과 **동
 1. **계약 재생성**: `pnpm api:generate`
 2. **드리프트 0 확인**: `git diff --exit-code openapi src/shared/api/generated` — diff가 나오면 생성물 수동 편집이거나 생성 누락이다 (architecture.md §3). 자동으로 커밋에 섞지 말고 보고 후 중단한다.
 3. **타입 검사**: `pnpm typecheck` — stale `.next/types`가 옛 라우트를 참조해 헛실패할 수 있다. 라우트가 바뀐 변경이면 `rm -rf .next` 후 실행한다 (CI는 fresh 체크아웃이라 이 문제가 없다).
-4. **유닛 테스트**: `pnpm test`
-5. **빌드**: `pnpm build`
+4. **프리뷰 타입 검사**: `pnpm typecheck:design-sync` — 루트 tsconfig 와일드카드가 dot 디렉터리를 건너뛰어 3이 `.design-sync/`를 보지 않는다. 컴포넌트 props가 바뀌면 프리뷰가 조용히 낡으므로 따로 본다.
+5. **유닛 테스트**: `pnpm test`
+6. **빌드**: `pnpm build`
 
 - 게이트 실패 시 → 실패 내용을 사용자에게 보고하고 **중단**한다 (자동 수정하지 않는다). 원인 확인은 파일 읽기 도구로 최소한만 하고, 심층 진단하지 않는다.
 - `pnpm install --frozen-lockfile`이 필요한 상태(lockfile 변경 등)면 먼저 설치한다.

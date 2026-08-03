@@ -25,6 +25,10 @@ jobs:
       - run: pnpm api:generate
       - run: git diff --exit-code openapi src/shared/api/generated
       - run: pnpm typecheck
+      # 루트 tsconfig 와일드카드는 dot 디렉터리를 건너뛴다 — .design-sync 의 프리뷰·하네스는
+      # pnpm typecheck 가 보지 않아 컴포넌트 props 가 바뀌어도 프리뷰가 조용히 낡는다
+      # (실제로 caseLabel 이 필수가 된 뒤 #55 까지 프리뷰가 안 따라갔다). 전용 프로젝트로 따로 본다.
+      - run: pnpm typecheck:design-sync
       - run: pnpm test
       - run: pnpm build
 
