@@ -58,8 +58,7 @@ const ACTION_BUTTON =
  * 행마다 훅 인스턴스가 필요하다 — useArchivePatient은 patientId를 호출 시점에 묶는데
  * 이 목록엔 대화 목록 같은 '선택된 행' 개념이 없다.
  *
- * 접근성 이름에 caseLabel을 붙이는 이유는 둘이다. 목록에 같은 이름의 버튼이 N개 생기는 걸
- * 막고, 상태 필터의 '보관' 버튼과 이름이 겹치는 것도 함께 피한다.
+ * 접근성 이름에 caseLabel을 붙여야 목록에 같은 이름의 버튼이 N개 생기지 않는다.
  */
 function PatientArchiveAction({
   patient,
@@ -128,10 +127,11 @@ function UndoArchiveBanner({
 
 type StatusFilter = 'ALL' | 'ACTIVE' | 'ARCHIVED';
 
+/** 라벨·크기는 대화 목록(ConversationList)의 세그먼트를 따른다 — 순서만 이 화면의 기본값에 맞춘다 */
 const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
   { value: 'ALL', label: '전체' },
   { value: 'ACTIVE', label: '활성' },
-  { value: 'ARCHIVED', label: '보관' },
+  { value: 'ARCHIVED', label: '보관됨' },
 ];
 
 export function PatientListPanel({ onSelect }: PatientListPanelProps): React.ReactElement {
@@ -189,7 +189,7 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
       <div
         role="group"
         aria-label="보관 상태 필터"
-        className="mb-4 flex w-fit rounded-lg border border-gray-200 bg-gray-100 p-0.5"
+        className="mb-3 flex w-fit shrink-0 rounded-lg border border-gray-200 bg-gray-100 p-0.5"
       >
         {STATUS_FILTERS.map((filter) => (
           <button
@@ -197,7 +197,7 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
             type="button"
             aria-pressed={statusFilter === filter.value}
             onClick={() => handleFilterChange(filter.value)}
-            className={`rounded-md px-3 py-1 text-sm ${
+            className={`rounded-md px-2 py-1 text-xs ${
               statusFilter === filter.value
                 ? 'bg-white font-medium text-gray-900 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
