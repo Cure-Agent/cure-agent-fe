@@ -132,12 +132,16 @@ export const CLINICAL_GUIDANCE = {
       title: '침 치료 우선 적용',
       rationale:
         '만성 비특이적 요통에서 침 치료는 통증·기능 지표 모두에서 근거 수준 높음, 권고 등급 A로 제시됩니다.',
+      applicability: 'CAUTION' as const,
+      patientFactors: ['와파린 2.5mg 복용', 'INR 미확인'],
       citations: [CITATIONS[0]],
     },
     {
       title: '변증 기반 한약 병행 검토',
       rationale:
         '신허요통 변증이 확인되면 독활기생탕 계열을 12주 범위에서 고려할 수 있습니다. 근거 수준은 중등도입니다.',
+      applicability: 'APPLICABLE' as const,
+      patientFactors: ['만성 요통 6개월', '신허요통 변증'],
       citations: [CITATIONS[1]],
     },
   ],
