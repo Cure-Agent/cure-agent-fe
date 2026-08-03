@@ -6,24 +6,30 @@ import { useRequestClinicalGuidance } from '../api/request-clinical-guidance';
 
 export interface RequestGuidanceButtonProps {
   patientId: string;
+  /** 대화 제목이 될 케이스 라벨 (예: CASE-001) */
+  caseLabel: string;
   /** 생성된 대화 id로 이동 콜백 — 미지정 시 /assistant?conversation={id}로 이동 */
   onStarted?: (conversationId: string) => void;
 }
 
 export function RequestGuidanceButton({
   patientId,
+  caseLabel,
   onStarted,
 }: RequestGuidanceButtonProps): ReactElement {
   const requestGuidance = useRequestClinicalGuidance();
 
   const handleClick = (): void => {
     if (requestGuidance.isPending) return;
-    requestGuidance.mutate(patientId, {
-      onSuccess: (conversation) => {
-        if (onStarted) onStarted(conversation.id);
-        else window.location.assign(`/assistant?conversation=${conversation.id}`);
+    requestGuidance.mutate(
+      { patientId, caseLabel },
+      {
+        onSuccess: (conversation) => {
+          if (onStarted) onStarted(conversation.id);
+          else window.location.assign(`/assistant?conversation=${conversation.id}`);
+        },
       },
-    });
+    );
   };
 
   return (
