@@ -41,7 +41,8 @@ test('환자를 등록하면 입력이 계약대로 전송되고 상세 화면�
   await expect(page).toHaveURL(`/patients/${PATIENT.id}`);
   await expect(page.getByRole('heading', { name: PATIENT.caseLabel })).toBeVisible();
   await expect(page.getByText(`${PATIENT.age}세 · ${PATIENT.sex} · BMI ${PATIENT.bmi} · v${PATIENT.version}`)).toBeVisible();
-  await expect(page.getByText('만성 요통, 고혈압')).toBeVisible();
+  // 상세의 진단은 수정 가능한 칸이라 값으로 확인한다 (텍스트 노드가 아니다)
+  await expect(page.getByLabel('진단(쉼표 구분)')).toHaveValue('만성 요통, 고혈압');
 
   // 입력 → 계약 변환: 쉼표 문자열은 배열로, 빈 목록도 배열로, 숫자 칸은 number로.
   // 비워 둔 칸(waistCm)은 키가 아예 없어야 한다 — undefined를 보내면 서버가 초기화로 읽을 수 있다

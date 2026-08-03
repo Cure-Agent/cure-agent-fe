@@ -6,6 +6,7 @@ import {
   type PatientDetail,
   useCreatePatient,
 } from '../api/patient.api';
+import { parseList } from '../lib/clinical-list';
 
 export interface PatientCreateFormProps {
   onCreated: (patient: PatientDetail) => void;
@@ -13,14 +14,6 @@ export interface PatientCreateFormProps {
 
 const FIELD =
   'rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none';
-
-/** 쉼표 구분 문자열 → trim된 배열 (빈 입력은 빈 배열) */
-function parseList(value: string): string[] {
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
-}
 
 export function PatientCreateForm({ onCreated }: PatientCreateFormProps): React.ReactElement {
   const createPatient = useCreatePatient();
