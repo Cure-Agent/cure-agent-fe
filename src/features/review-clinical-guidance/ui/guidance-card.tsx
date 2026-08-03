@@ -141,8 +141,10 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
               <li key={index} className="rounded-lg bg-white p-2.5 ring-1 ring-gray-200">
                 <div className="flex items-start gap-2">
                   {consideration.applicability && (
+                    // 세로 오프셋을 주지 않는다 — 배지(text-xs 16px + py-0.5 4px)와 제목(text-sm
+                    // 20px)의 줄상자가 똑같이 20px라 items-start 만으로 글자 중심까지 맞는다
                     <span
-                      className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold ${
+                      className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold ${
                         APPLICABILITY_STYLES[consideration.applicability] ??
                         'bg-gray-100 text-gray-700'
                       }`}
