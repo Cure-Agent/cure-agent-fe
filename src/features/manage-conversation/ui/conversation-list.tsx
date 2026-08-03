@@ -12,6 +12,7 @@ import {
   useConversations,
   useCreateConversation,
   useRenameConversation,
+  useUnarchiveConversation,
 } from '../api/conversation.api';
 
 type IconProps = { className?: string };
@@ -47,6 +48,27 @@ const ArchiveIcon = iconSvg(
   </>,
 );
 
+const UnarchiveIcon = iconSvg(
+  <>
+    <rect x="2" y="3" width="20" height="5" rx="1" />
+    <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+    <path d="M12 17v-5" />
+    <path d="m9.5 14.5 2.5-2.5 2.5 2.5" />
+  </>,
+);
+
+type StatusFilter = 'ALL' | 'ACTIVE' | 'ARCHIVED';
+
+/**
+ * 라벨 '보관됨' — 보관 액션 버튼(aria-label "보관")과 접근성 이름이 겹치면
+ * 목록에 같은 이름의 버튼이 둘 생긴다.
+ */
+const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
+  { value: 'ACTIVE', label: '활성' },
+  { value: 'ARCHIVED', label: '보관됨' },
+  { value: 'ALL', label: '전체' },
+];
+
 export interface ConversationListProps {
   selectedId: string | null;
   onSelect: (conversation: ConversationSummary) => void;
@@ -60,11 +82,20 @@ export function ConversationList({
   const [submittedQuery, setSubmittedQuery] = useState<string | undefined>(undefined);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [titleInput, setTitleInput] = useState('');
+  // 환자 목록과 달리 기본값이 '활성' — 대화는 찾아야 하는 대상이 아니라 치워야 하는 대상이다.
+  // 대신 검색이 빈손으로 끝나면 보관된 대화까지 넓히는 버튼을 그 자리에 띄운다.
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ACTIVE');
+  // 보관 직후 그 대화는 목록에서 사라진다 — 되돌릴 자리를 잃지 않도록 한 번 잡아둔다
+  const [justArchived, setJustArchived] = useState<{ id: string; title: string } | null>(null);
 
-  const conversations = useConversations({ query: submittedQuery });
+  const conversations = useConversations({
+    query: submittedQuery,
+    status: statusFilter === 'ALL' ? undefined : statusFilter,
+  });
   const createConversation = useCreateConversation();
   const renameConversation = useRenameConversation(renamingId);
   const archiveConversation = useArchiveConversation(selectedId);
+  const unarchiveConversation = useUnarchiveConversation(selectedId);
 
   const items = useMemo(
     () => (conversations.data?.pages ?? []).flatMap((page) => page.items),
@@ -80,17 +111,36 @@ export function ConversationList({
   const handleCreate = async (): Promise<void> => {
     const created = await createConversation.mutateAsync();
     setRenamingId(null);
+    setJustArchived(null);
     onSelect(created);
   };
 
   const handleSearch = (event: FormEvent): void => {
     event.preventDefault();
     setSubmittedQuery(searchInput.trim() || undefined);
+    setJustArchived(null);
+  };
+
+  const handleFilterChange = (next: StatusFilter): void => {
+    setStatusFilter(next);
+    setJustArchived(null);
   };
 
   const handleSelect = (conversation: ConversationSummary): void => {
     setRenamingId(null);
+    setJustArchived(null);
     onSelect(conversation);
+  };
+
+  // 되돌리기 배너는 selectedId에 묶인 훅을 쓴다 — 선택이 바뀌면 배너도 사라져야 짝이 맞는다
+  const handleArchive = (conversation: ConversationSummary): void => {
+    archiveConversation.mutate(undefined, {
+      onSuccess: () => setJustArchived({ id: conversation.id, title: conversation.title }),
+    });
+  };
+
+  const handleUndoArchive = (): void => {
+    unarchiveConversation.mutate(undefined, { onSuccess: () => setJustArchived(null) });
   };
 
   const startRename = (conversation: ConversationSummary): void => {
@@ -134,6 +184,44 @@ export function ConversationList({
           검색
         </button>
       </form>
+
+      <div
+        role="group"
+        aria-label="보관 상태 필터"
+        className="mb-3 flex shrink-0 rounded-lg border border-gray-200 bg-gray-100 p-0.5"
+      >
+        {STATUS_FILTERS.map((filter) => (
+          <button
+            key={filter.value}
+            type="button"
+            aria-pressed={statusFilter === filter.value}
+            onClick={() => handleFilterChange(filter.value)}
+            className={`flex-1 rounded-md px-2 py-1 text-xs ${
+              statusFilter === filter.value
+                ? 'bg-white font-medium text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+
+      {justArchived?.id === selectedId && (
+        <div className="mb-3 flex shrink-0 items-center gap-2 rounded-lg bg-gray-100 px-2.5 py-2">
+          <p className="min-w-0 flex-1 truncate text-xs text-gray-600">
+            <span className="font-medium text-gray-800">{justArchived.title}</span> 보관됨
+          </p>
+          <button
+            type="button"
+            onClick={handleUndoArchive}
+            disabled={unarchiveConversation.isPending}
+            className="shrink-0 text-xs font-medium text-emerald-700 hover:underline disabled:opacity-50"
+          >
+            되돌리기
+          </button>
+        </div>
+      )}
 
       {conversations.isPending && <p className="text-sm text-gray-400">불러오는 중…</p>}
       {conversations.isError && <p className="text-sm text-red-500">목록을 불러오지 못했습니다</p>}
@@ -211,10 +299,21 @@ export function ConversationList({
                         >
                           <PencilIcon className="h-3.5 w-3.5" />
                         </button>
-                        {conversation.status !== 'ARCHIVED' && (
+                        {conversation.status === 'ARCHIVED' ? (
                           <button
                             type="button"
-                            onClick={() => archiveConversation.mutate()}
+                            onClick={handleUndoArchive}
+                            disabled={unarchiveConversation.isPending}
+                            aria-label="보관 해제"
+                            title="보관 해제"
+                            className="rounded-md p-1.5 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                          >
+                            <UnarchiveIcon className="h-3.5 w-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleArchive(conversation)}
                             disabled={archiveConversation.isPending}
                             aria-label="보관"
                             title="보관"
@@ -231,6 +330,23 @@ export function ConversationList({
             );
           })}
         </ul>
+        {/* 활성만 보는 기본값이 보관된 대화를 조용히 숨기는 자리 — 넓히는 길을 그 자리에 둔다 */}
+        {conversations.isSuccess && items.length === 0 && (
+          <div className="px-1 py-6 text-center">
+            <p className="text-sm text-gray-400">
+              {submittedQuery ? '검색 결과가 없습니다' : '대화가 없습니다'}
+            </p>
+            {statusFilter === 'ACTIVE' && (
+              <button
+                type="button"
+                onClick={() => handleFilterChange('ALL')}
+                className="mt-1.5 text-xs font-medium text-emerald-700 hover:underline"
+              >
+                보관된 대화까지 보기
+              </button>
+            )}
+          </div>
+        )}
         {/* 하단 sentinel — 보이면 다음 페이지를 당긴다 (무한 스크롤) */}
         <div ref={listScroll.bottomSentinelRef} aria-hidden="true" />
         {conversations.isFetchingNextPage && (
