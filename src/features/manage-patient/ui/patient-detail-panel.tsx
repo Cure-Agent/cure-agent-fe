@@ -4,18 +4,30 @@ import { FormEvent, useEffect, useState } from 'react';
 import { RequestGuidanceButton } from '@/features/request-clinical-guidance/ui/request-guidance-button';
 import { ApiError } from '@/shared/api/api-error';
 import {
+  type UpdatePatientInput,
   useArchivePatient,
   usePatient,
   useUnarchivePatient,
   useUpdatePatient,
 } from '../api/patient.api';
+import { formatList, parseList } from '../lib/clinical-list';
 
 export interface PatientDetailPanelProps {
   patientId: string;
 }
 
+// 보관 상태에서는 이 칸들이 유일한 열람 경로라, 비활성 글자색을 읽을 수 있는 명도로 둔다
 const FIELD =
-  'rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none disabled:bg-gray-100 disabled:text-gray-400';
+  'rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600';
+
+const EMPTY_FORM = {
+  heightCm: '',
+  weightKg: '',
+  diagnoses: '',
+  medications: '',
+  allergies: '',
+  clinicalNotes: '',
+};
 
 export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): React.ReactElement {
   const patient = usePatient(patientId);
@@ -23,15 +35,23 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
   const archivePatient = useArchivePatient(patientId);
   const unarchivePatient = useUnarchivePatient(patientId);
 
-  const [weightKg, setWeightKg] = useState('');
-  const [clinicalNotes, setClinicalNotes] = useState('');
+  const [form, setForm] = useState(EMPTY_FORM);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const set = (key: keyof typeof form, value: string): void =>
+    setForm((prev) => ({ ...prev, [key]: value }));
 
   // 로드된 상세로 폼 초기화 (version은 detail에서 직접 사용 — §6 낙관적 잠금)
   useEffect(() => {
     if (patient.data) {
-      setWeightKg(patient.data.weightKg !== undefined ? String(patient.data.weightKg) : '');
-      setClinicalNotes(patient.data.clinicalNotes ?? '');
+      setForm({
+        heightCm: patient.data.heightCm !== undefined ? String(patient.data.heightCm) : '',
+        weightKg: patient.data.weightKg !== undefined ? String(patient.data.weightKg) : '',
+        diagnoses: formatList(patient.data.diagnoses),
+        medications: formatList(patient.data.medications),
+        allergies: formatList(patient.data.allergies),
+        clinicalNotes: patient.data.clinicalNotes ?? '',
+      });
     }
   }, [patient.data]);
 
@@ -46,12 +66,18 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
   const handleSave = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
     setErrorMessage(null);
+    const body: UpdatePatientInput = {
+      version: detail.version,
+      ...(form.heightCm ? { heightCm: Number(form.heightCm) } : {}),
+      ...(form.weightKg ? { weightKg: Number(form.weightKg) } : {}),
+      diagnoses: parseList(form.diagnoses),
+      medications: parseList(form.medications),
+      allergies: parseList(form.allergies),
+      clinicalNotes: form.clinicalNotes,
+    };
+
     try {
-      await updatePatient.mutateAsync({
-        version: detail.version,
-        ...(weightKg ? { weightKg: Number(weightKg) } : {}),
-        clinicalNotes,
-      });
+      await updatePatient.mutateAsync(body);
     } catch (error) {
       if (error instanceof ApiError && error.code === 'PATIENT_VERSION_CONFLICT') {
         setErrorMessage(error.message); // 서버 message 그대로 (§10.1)
@@ -98,27 +124,23 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
         </div>
       </header>
 
-      <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-        <div>
-          <dt className="text-gray-500">진단</dt>
-          <dd className="text-gray-900">{detail.diagnoses.join(', ') || '—'}</dd>
+      {/* 프로필 값은 이 폼이 유일한 표시 경로다 — 보관 상태에서는 비활성 칸으로 열람만 된다 */}
+      <form onSubmit={handleSave} className="mt-6 grid grid-cols-2 gap-3">
+        <h2 className="col-span-2 text-sm font-semibold text-gray-900">프로필 수정</h2>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="pd-height" className="text-sm font-medium text-gray-700">
+            신장(cm)
+          </label>
+          <input
+            id="pd-height"
+            type="number"
+            step="0.1"
+            value={form.heightCm}
+            onChange={(e) => set('heightCm', e.target.value)}
+            disabled={isArchived}
+            className={FIELD}
+          />
         </div>
-        <div>
-          <dt className="text-gray-500">복용약</dt>
-          <dd className="text-gray-900">{detail.medications.join(', ') || '—'}</dd>
-        </div>
-        <div>
-          <dt className="text-gray-500">알레르기</dt>
-          <dd className="text-gray-900">{detail.allergies.join(', ') || '—'}</dd>
-        </div>
-        <div>
-          <dt className="text-gray-500">신장</dt>
-          <dd className="text-gray-900">{detail.heightCm ? `${detail.heightCm}cm` : '—'}</dd>
-        </div>
-      </dl>
-
-      <form onSubmit={handleSave} className="mt-6 flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-gray-900">프로필 수정</h2>
         <div className="flex flex-col gap-1">
           <label htmlFor="pd-weight" className="text-sm font-medium text-gray-700">
             체중(kg)
@@ -127,27 +149,64 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
             id="pd-weight"
             type="number"
             step="0.1"
-            value={weightKg}
-            onChange={(e) => setWeightKg(e.target.value)}
+            value={form.weightKg}
+            onChange={(e) => set('weightKg', e.target.value)}
             disabled={isArchived}
             className={FIELD}
           />
         </div>
-        <div className="flex flex-col gap-1">
+        <div className="col-span-2 flex flex-col gap-1">
+          <label htmlFor="pd-diagnoses" className="text-sm font-medium text-gray-700">
+            진단(쉼표 구분)
+          </label>
+          <input
+            id="pd-diagnoses"
+            value={form.diagnoses}
+            onChange={(e) => set('diagnoses', e.target.value)}
+            placeholder="만성 요통, 고혈압"
+            disabled={isArchived}
+            className={FIELD}
+          />
+        </div>
+        <div className="col-span-2 flex flex-col gap-1">
+          <label htmlFor="pd-medications" className="text-sm font-medium text-gray-700">
+            복용약(쉼표 구분)
+          </label>
+          <input
+            id="pd-medications"
+            value={form.medications}
+            onChange={(e) => set('medications', e.target.value)}
+            disabled={isArchived}
+            className={FIELD}
+          />
+        </div>
+        <div className="col-span-2 flex flex-col gap-1">
+          <label htmlFor="pd-allergies" className="text-sm font-medium text-gray-700">
+            알레르기(쉼표 구분)
+          </label>
+          <input
+            id="pd-allergies"
+            value={form.allergies}
+            onChange={(e) => set('allergies', e.target.value)}
+            disabled={isArchived}
+            className={FIELD}
+          />
+        </div>
+        <div className="col-span-2 flex flex-col gap-1">
           <label htmlFor="pd-notes" className="text-sm font-medium text-gray-700">
             임상 메모
           </label>
           <textarea
             id="pd-notes"
             rows={3}
-            value={clinicalNotes}
-            onChange={(e) => setClinicalNotes(e.target.value)}
+            value={form.clinicalNotes}
+            onChange={(e) => set('clinicalNotes', e.target.value)}
             disabled={isArchived}
             className={FIELD}
           />
         </div>
         {errorMessage && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="col-span-2 text-sm text-red-600">
             {errorMessage}
           </p>
         )}
@@ -160,7 +219,7 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
             void handleSave(event);
           }}
           disabled={updatePatient.isPending || isArchived}
-          className="rounded-lg bg-emerald-700 py-2.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+          className="col-span-2 rounded-lg bg-emerald-700 py-2.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
         >
           저장
         </button>
