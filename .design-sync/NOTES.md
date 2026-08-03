@@ -84,6 +84,11 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
   padding 24px 이 남는데 `min-h-screen` 이 뷰포트와 같아 48px 이 넘친다. 실제 카드 렌더(padding 0)는 온전하다.
 - `ConversationList`·목록류의 선택 후 상태 — 클릭 이후에만 나타나므로
   정적 카드에는 담기지 않는다. 초기 상태가 담긴 것이 정상.
+- **`GuidanceCard` 리뷰 시트 셀 하단의 누락 정보·검토 폼 잘림 — 카드 결함이 아니다** (2026-08-04).
+  고려사항이 3건이 되면서 카드가 921px 로 자라 리뷰 시트의 고정 높이 셀을 넘친다.
+  `_screenshots/review/` 시트에서만 잘리고 `_screenshots/<group>__<Name>.png` 의 실제 카드 렌더는
+  온전하다. `.render-check.json` 에서 `bad: false`·`gridOverflow: null` 로 확인할 것 —
+  위 `AppShell` 로그아웃 버튼 잘림과 같은 부류다.
 - **`HistoryPanel` 카드는 2026-08-02 폐지됐다** (specs/11 개정 — `/history` 화면을 `/assistant`
   대화 목록으로 통합). 배럴·`componentSrcMap`·overrides·`dtsPropsFor`·프리뷰에서 제거했고
   원격 파일 5종(`components/**/HistoryPanel/*` 4종 + `_preview/HistoryPanel.js`)을 삭제했다.

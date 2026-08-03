@@ -119,6 +119,15 @@ const CITATIONS = [
     quote: '변증에 따른 한약 치료를 고려할 수 있다.',
     sourceUrl: 'https://nikom.or.kr/nckm/guideline/low-back-pain',
   },
+  {
+    marker: 3,
+    evidenceId: 'evd_01HQ8ZM1A3',
+    guidelineTitle: '요통 한의표준임상진료지침',
+    guidelineVersion: '2.0',
+    sectionPath: ['2', '치료', '추나요법'],
+    quote: '급성기 요통 환자에게 추나요법을 단기간 적용할 수 있다.',
+    sourceUrl: 'https://nikom.or.kr/nckm/guideline/low-back-pain',
+  },
 ];
 
 export const CLINICAL_GUIDANCE = {
@@ -143,6 +152,16 @@ export const CLINICAL_GUIDANCE = {
       applicability: 'APPLICABLE' as const,
       patientFactors: ['만성 요통 6개월', '신허요통 변증'],
       citations: [CITATIONS[1]],
+    },
+    // 지침의 조건(급성기)이 이 환자(만성 6개월)와 만나지 않는 경우 — 카드가 세 판단값을
+    // 모두 보여주도록 두었다. 근거가 있어도 적용되지 않는다는 판단 자체가 표시 대상이다.
+    {
+      title: '급성기 추나요법 적용',
+      rationale:
+        '발병 6주 이내 급성 요통에 한해 단기 추나요법을 권고합니다. 만성 경과로는 근거가 확장되지 않습니다.',
+      applicability: 'NOT_APPLICABLE' as const,
+      patientFactors: ['증상 지속 6개월', '급성기 아님'],
+      citations: [CITATIONS[2]],
     },
   ],
   safetyAlerts: [
