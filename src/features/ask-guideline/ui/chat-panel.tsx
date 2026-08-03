@@ -89,10 +89,25 @@ export function ChatPanel({
   useEffect(() => {
     if (state.phase === 'completed' || state.phase === 'abstained' || state.phase === 'error') {
       void queryClient.invalidateQueries({ queryKey: messagesKey(conversationId) });
-      // 대화 목록은 lastMessageAt 최신순 — 방금 대화한 방이 맨 위로 오도록 재조회한다
-      void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
     }
   }, [state.phase, conversationId, queryClient]);
+
+  /**
+   * 대화 목록은 답변 종결이 아니라 질문 수락 시점에 갱신한다 — 목록이 보여주는 두 가지가
+   * 서버에서 이미 그때 확정되기 때문이다. 수락 tx가 lastMessageAt을 올려 정렬을 정하고,
+   * 기본 제목인 대화라면 첫 질문으로 제목까지 같은 tx에서 확정한다. 답변을 기다릴 이유가 없다.
+   * (목록은 lastMessagePreview를 그리지 않는다 — 그리게 되면 종결 시점 재조회가 다시 필요하다.)
+   *
+   * phase로 판정하지 않는 이유: 'send' 액션이 전송 버튼을 잠그려고 서버 응답 전에 이미
+   * phase를 'accepted'로 올린다(stream-state.model). 그 시점에 재조회하면 커밋 전 목록을
+   * 받아 제목도 순서도 그대로다. userMessageId는 서버 message.accepted만 채우므로
+   * 「서버가 실제로 수락했다」의 유일한 신호다.
+   */
+  useEffect(() => {
+    if (state.userMessageId) {
+      void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
+    }
+  }, [state.userMessageId, queryClient]);
 
   const send = async (content: string, clientRequestId: string): Promise<void> => {
     setLastRequest({ content, clientRequestId });
