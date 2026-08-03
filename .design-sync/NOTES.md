@@ -112,6 +112,9 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
   sourceKey 가 움직인다. (로그인 카드 셸을 고쳤을 때 `grade cleared — contract changed` 가 떴다.)
 - **컴포넌트 소스의 마크업만** 고치면 → `unchanged` 다. 방출 3종이 바이트 동일하다.
   (소셜 버튼을 세로 라벨형 → 원형 아이콘형으로 완전히 갈아엎었는데도 `changed: []` 였다.)
+- **`ds-preview/fixtures.ts` 만** 고치면 → `unchanged` 다 (2026-08-04 확인). 픽스처는 sourceKey
+  레시피에 없다. 그런데 프리뷰가 이 픽스처를 props 로 넘기므로 **카드 외형은 실제로 바뀐다** —
+  위 두 번째와 같은 함정이고, 강제 재확인 대상이다.
 
 두 번째 경우가 함정이다: **외형이 완전히 바뀌었는데 채점은 이월된다.** 렌더 체크는 돌지만
 `_screenshots/review/` 시트는 재캡처되지 않아, 기록된 채점이 실제 올라간 카드와 어긋난 채 남는다.
@@ -125,6 +128,16 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 실제로 안 바뀐다.** 판단 기준: 바뀐 마크업이 카드가 담는 초기 상태에서 보이는가. 보이면 강제
 재확인, 아니면 `unchanged` 이월이 정확하다. (이 실행에서도 `upload.bundle`/`styling` 은 true 라
 코드 변경 자체는 정상적으로 올라갔다.)
+
+**네 번째 사례 (2026-08-04) — `renderHash` 로는 외형 변화를 못 잡는다.** 픽스처에
+`applicability`·`patientFactors` 를 채워 카드에 배지와 칩이 새로 그려지게 했는데, 드라이버에
+`--render-sample 0` 을 붙여 렌더 체크를 전량 강제했는데도 `GuidanceCard` 의 `renderHash` 는
+`63552e35…` 그대로였다. **이 해시는 콘텐츠 지문이 아니다** — 레이아웃/렌더 건전성 신호라
+셀 안의 내용이 바뀌어도 움직이지 않는다. `--render-sample 0` 을 "외형이 바뀌었는지 확인하는
+수단" 으로 쓰지 말 것. 확인 수단은 하나뿐이다: `package-capture.mjs` 로 강제 재캡처해
+`_screenshots/review/<group>__<Name>.png` 를 **눈으로 보는 것**. (이번에도 그렇게 4개 스토리
+전부에서 배지·칩 렌더를 확인하고 `.grade.json` 노트를 현행화했다. `upload.bundle`/`styling` 은
+정상적으로 true 였다.)
 
 ## conventions.md 자동 대조 시 오탐 하나
 
@@ -152,6 +165,13 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 틀린 기준으로 계산된다. **매 재동기화마다 `DesignSync(get_file, "_ds_sync.json")` 으로 새로
 받아 덮어쓸 것** (한 줄 요약의 "원격 앵커 내려받기" 단계가 이것이다 — 생략 금지).
 `finalize_plan` 직전 한 번 더 받아 동시 동기화 여부도 확인한다.
+
+**업로드를 마치면 이 캐시를 방금 올린 앵커로 갱신할 것** (2026-08-04 실측):
+`cp ds-bundle/_ds_sync.json .design-sync/.cache/remote-sync.json`.
+`automation/bin/design-drift.sh` 가 소스의 **mtime 을 이 파일의 mtime 과 비교**하기 때문이다
+(`[ "$f" -nt "$ANCHOR" ]`, design-drift.sh:77). 갱신하지 않으면 재동기화·업로드를 다 끝내고도
+게이트가 계속 `result=DRIFT` 를 내고, ship 이 같은 자리에서 다시 멈춘다. 내용이 아니라
+**mtime 이 판정 기준**이므로 파일이 이미 같은 내용이어도 복사는 해야 한다.
 
 ## 재동기화 위험 (다음 실행이 지켜볼 것)
 
@@ -198,4 +218,10 @@ DS_CHROMIUM_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" 
 node .ds-sync/resync.mjs --config .design-sync/config.json --node-modules ./node_modules \
   --entry ./.design-sync/ds-preview/entry.ts --out ./ds-bundle \
   --remote .design-sync/.cache/remote-sync.json
+# 판정은 verification.changed 가 아니라 upload.any 로 한다 (위 절 참고)
+# 카드 외형을 바꾼 걸 아는 상태라면 (컴포넌트 마크업·픽스처) 강제 재캡처 후 시트를 눈으로 볼 것:
+#   node .ds-sync/package-capture.mjs --out ./ds-bundle \
+#     --components <Name> --spot-check-components <Name>
+# DesignSync(finalize_plan → write_files) 로 업로드 (_ds_sync.json 을 마지막에)
+cp ds-bundle/_ds_sync.json .design-sync/.cache/remote-sync.json   # 앵커 갱신 — 생략하면 게이트가 DRIFT
 ```
