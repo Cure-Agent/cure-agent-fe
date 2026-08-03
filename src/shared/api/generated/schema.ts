@@ -362,7 +362,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 내 대화 목록 (커서 기반) */
+        /**
+         * 내 대화 목록 (커서 기반)
+         * @description 최근 대화순(lastMessageAt 내림차순) — 메시지를 주고받아야 대화가 맨 앞으로 온다. 제목 변경·보관은 순서를 바꾸지 않는다(updatedAt은 정렬과 무관). 커서는 이 정렬 키를 담으므로 정렬을 바꾸면 이전에 발급된 커서는 무효(400 BAD_REQUEST)다.
+         */
         get: operations["ConversationController_list"];
         put?: never;
         /** 대화 생성 (GUIDELINE_QA) */
@@ -952,7 +955,9 @@ export interface components {
             status: "ACTIVE" | "ARCHIVED";
             /** @description 마지막 메시지 미리보기 (80자) */
             lastMessagePreview?: string;
-            /** @description ISO 8601 */
+            /** @description 마지막 메시지 시각 (메시지가 없으면 대화 생성 시각) — 목록 정렬 키다. ISO 8601 */
+            lastMessageAt: string;
+            /** @description 행 수정 시각(제목 변경·보관 포함) — 정렬과 무관하다. ISO 8601 */
             updatedAt: string;
         };
         CreateConversationRequestDto: {
@@ -976,7 +981,9 @@ export interface components {
             status: "ACTIVE" | "ARCHIVED";
             /** @description 마지막 메시지 미리보기 (80자) */
             lastMessagePreview?: string;
-            /** @description ISO 8601 */
+            /** @description 마지막 메시지 시각 (메시지가 없으면 대화 생성 시각) — 목록 정렬 키다. ISO 8601 */
+            lastMessageAt: string;
+            /** @description 행 수정 시각(제목 변경·보관 포함) — 정렬과 무관하다. ISO 8601 */
             updatedAt: string;
             /** @description ISO 8601 */
             createdAt: string;
