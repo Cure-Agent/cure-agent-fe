@@ -24,7 +24,6 @@ export const CONVERSATION: ConversationSummary = {
   title: '만성 요통 침 치료',
   status: 'ACTIVE',
   lastMessageAt: '2026-01-01T00:00:00.000Z',
-  updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
 export const EVIDENCE: EvidenceDetail = {
@@ -107,7 +106,6 @@ export const PATIENT: PatientDetail = {
   sex: 'FEMALE',
   bmi: 22.9,
   status: 'ACTIVE',
-  updatedAt: '2026-01-01T00:00:00.000Z',
   birthYear: 1980,
   heightCm: 162,
   weightKg: 60,

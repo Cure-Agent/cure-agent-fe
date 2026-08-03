@@ -19,7 +19,6 @@ const activePatient = {
   id: 'patient-1',
   caseLabel: '김환자',
   status: 'ACTIVE' as const,
-  updatedAt: '2026-07-24T00:00:00.000Z',
   weightKg: 65,
   diagnoses: ['고혈압'],
   medications: ['약A'],

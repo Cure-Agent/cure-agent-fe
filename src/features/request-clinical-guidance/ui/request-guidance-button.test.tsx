@@ -33,7 +33,6 @@ describe('RequestGuidanceButton', () => {
             patientId: 'p-1',
             title: '새 대화',
             lastMessagePreview: null,
-            updatedAt: '2026-07-24T10:00:00.000Z',
           }),
           { status: 201 },
         );

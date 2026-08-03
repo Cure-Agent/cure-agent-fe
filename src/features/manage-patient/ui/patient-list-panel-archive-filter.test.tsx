@@ -14,13 +14,11 @@ const activePatient = {
   id: 'patient-active',
   caseLabel: '활성 환자',
   status: 'ACTIVE' as const,
-  updatedAt: '2026-07-01T00:00:00.000Z',
 };
 const archivedPatient = {
   id: 'patient-archived',
   caseLabel: '보관 환자',
   status: 'ARCHIVED' as const,
-  updatedAt: '2026-07-02T00:00:00.000Z',
 };
 
 describe('환자 목록 보관 상태 필터', () => {
