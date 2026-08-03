@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-// 보관 상태 필터 — 기본은 status 없이 전체, 「활성 | 보관」 세그먼트 선택 시 해당 status로 재조회
+// 보관 상태 필터 — 기본은 status 없이 전체, 「활성 | 보관됨」 세그먼트 선택 시 해당 status로 재조회
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -55,7 +55,7 @@ describe('환자 목록 보관 상태 필터', () => {
     expect(requestedStatuses).toContain(null);
 
     // 보관 선택 → status=ARCHIVED 재조회, 활성 환자가 사라진다
-    await user.click(screen.getByRole('button', { name: '보관' }));
+    await user.click(screen.getByRole('button', { name: '보관됨' }));
     await waitFor(() => expect(requestedStatuses).toContain('ARCHIVED'));
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: activePatient.caseLabel })).toBeNull(),
