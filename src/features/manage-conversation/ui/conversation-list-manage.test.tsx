@@ -23,7 +23,14 @@ function conversation(
   title: string,
   status: 'ACTIVE' | 'ARCHIVED' = 'ACTIVE',
 ): ConversationSummary {
-  return { id, type: 'GUIDELINE_QA', title, status, updatedAt: '2026-07-24T00:00:00.000Z' };
+  return {
+    id,
+    type: 'GUIDELINE_QA',
+    title,
+    status,
+    lastMessageAt: '2026-07-24T00:00:00.000Z',
+    updatedAt: '2026-07-24T00:00:00.000Z',
+  };
 }
 
 // 어시스턴트 화면처럼 선택 상태를 부모가 들고 있는 사용 형태를 재현한다

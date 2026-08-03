@@ -11,7 +11,14 @@ import { ConversationList } from './conversation-list';
 useMswServer();
 
 function conversation(id: string, title: string): ConversationSummary {
-  return { id, type: 'GUIDELINE_QA', title, status: 'ACTIVE', updatedAt: '2026-07-24T00:00:00.000Z' };
+  return {
+    id,
+    type: 'GUIDELINE_QA',
+    title,
+    status: 'ACTIVE',
+    lastMessageAt: '2026-07-24T00:00:00.000Z',
+    updatedAt: '2026-07-24T00:00:00.000Z',
+  };
 }
 
 describe('ConversationList 무한 스크롤', () => {

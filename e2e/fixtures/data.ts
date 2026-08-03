@@ -23,6 +23,7 @@ export const CONVERSATION: ConversationSummary = {
   type: 'GUIDELINE_QA',
   title: '만성 요통 침 치료',
   status: 'ACTIVE',
+  lastMessageAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 

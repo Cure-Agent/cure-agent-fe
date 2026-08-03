@@ -19,6 +19,7 @@ describe('ConversationList', () => {
         type: 'GUIDELINE_QA',
         title: '요통 진료 상담',
         status: 'ACTIVE',
+        lastMessageAt: '2026-07-24T09:00:00.000Z',
         updatedAt: '2026-07-24T00:00:00.000Z',
       },
       {
@@ -26,6 +27,7 @@ describe('ConversationList', () => {
         type: 'GUIDELINE_QA',
         title: '불면 진료 상담',
         status: 'ACTIVE',
+        lastMessageAt: '2026-07-24T08:00:00.000Z',
         updatedAt: '2026-07-24T01:00:00.000Z',
       },
     ];
@@ -34,6 +36,7 @@ describe('ConversationList', () => {
       type: 'GUIDELINE_QA',
       title: '새 대화',
       status: 'ACTIVE',
+      lastMessageAt: '2026-07-24T10:00:00.000Z',
       updatedAt: '2026-07-24T02:00:00.000Z',
     };
     const createRequestBody = vi.fn();
