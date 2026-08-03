@@ -31,7 +31,7 @@ describe('RequestGuidanceButton', () => {
             id: 'conv-guid-1',
             type: 'PATIENT_GUIDANCE',
             patientId: 'p-1',
-            title: '새 대화',
+            title: 'CASE-001 임상 참고 (8/4 14:30)',
             lastMessagePreview: null,
           }),
           { status: 201 },
@@ -40,17 +40,21 @@ describe('RequestGuidanceButton', () => {
     );
 
     renderWithProviders(
-      <RequestGuidanceButton patientId="p-1" onStarted={onStarted} />,
+      <RequestGuidanceButton patientId="p-1" caseLabel="CASE-001" onStarted={onStarted} />,
     );
 
     await user.click(
       screen.getByRole('button', { name: '환자 맞춤 대화 시작' }),
     );
 
+    // 제목까지 생성 요청이 싣는다 — 첫 질의가 없어 서버 자동 제목이 걸리지 않기 때문이다.
+    // 실제 시각으로 단언하면 분 경계에서 깨지므로 여기서는 형태만 본다.
+    // 값 자체는 guidance-title 테스트가 고정 날짜로 검증한다.
     await waitFor(() => {
       expect(requestBody).toEqual({
         type: 'PATIENT_GUIDANCE',
         patientId: 'p-1',
+        title: expect.stringMatching(/^CASE-001 임상 참고 \(\d+\/\d+ \d+:\d{2}\)$/),
       });
     });
     await waitFor(() => {

@@ -112,7 +112,9 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
           </p>
         </div>
         <div className="flex items-start gap-2">
-          {!isArchived && <RequestGuidanceButton patientId={patientId} />}
+          {!isArchived && (
+            <RequestGuidanceButton patientId={patientId} caseLabel={detail.caseLabel} />
+          )}
           <button
             type="button"
             onClick={handleToggleArchive}
