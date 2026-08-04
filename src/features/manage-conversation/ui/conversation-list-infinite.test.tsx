@@ -47,7 +47,7 @@ describe('ConversationList 무한 스크롤', () => {
     );
 
     const { container } = renderWithProviders(
-      <ConversationList selectedId={null} onSelect={vi.fn()} />,
+      <ConversationList selectedId={null} onSelect={vi.fn()} onDeleted={vi.fn()} />,
     );
 
     await screen.findByRole('button', { name: '최근 대화' });

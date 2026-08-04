@@ -5,8 +5,13 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { envelope, server, useMswServer } from '@/shared/test/msw';
 import { renderWithProviders } from '@/shared/test/render';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PatientDetailPanel } from './patient-detail-panel';
+
+// 패널이 삭제 후 목록으로 replace한다 — 테스트 렌더에는 App Router가 없다
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}));
 
 useMswServer();
 

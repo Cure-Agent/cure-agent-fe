@@ -5,6 +5,7 @@ import { useInfiniteListScroll } from '@/shared/lib/use-infinite-list-scroll';
 import {
   type PatientSummary,
   useArchivePatient,
+  useDeletePatient,
   usePatients,
   useUnarchivePatient,
 } from '../api/patient.api';
@@ -51,8 +52,21 @@ const UnarchiveIcon = iconSvg(
   </>,
 );
 
+const TrashIcon = iconSvg(
+  <>
+    <path d="M3 6h18" />
+    <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+    <path d="M10 11v6" />
+    <path d="M14 11v6" />
+  </>,
+);
+
 const ACTION_BUTTON =
   'rounded-md p-1.5 text-gray-400 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-50';
+
+/** 파괴적 액션이라 호버 색을 보관 액션과 달리 둔다 */
+const DANGER_ACTION_BUTTON = 'rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600';
 
 /**
  * 행마다 훅 인스턴스가 필요하다 — useArchivePatient은 patientId를 호출 시점에 묶는데
@@ -99,6 +113,52 @@ function PatientArchiveAction({
   );
 }
 
+/**
+ * 삭제 확인은 카드 자리를 그대로 차지한다 — 어느 환자를 지우는지 시선을 옮기지 않고 읽힌다.
+ * 환자 삭제는 그 환자의 대화까지 서버가 함께 끄므로(spec 34) 그 범위를 문구로 밝힌다.
+ */
+function PatientDeleteConfirm({
+  patient,
+  onCancel,
+  onDeleted,
+}: {
+  patient: PatientSummary;
+  onCancel: () => void;
+  onDeleted: () => void;
+}): React.ReactElement {
+  const deletePatient = useDeletePatient(patient.id);
+  return (
+    <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
+      <p className="font-medium text-gray-900">{patient.caseLabel} 삭제</p>
+      <p className="mt-1 text-sm text-red-700">
+        이 환자의 대화까지 영구 삭제됩니다. 되돌릴 수 없습니다.
+      </p>
+      {deletePatient.isError && (
+        <p role="alert" className="mt-1 text-sm text-red-600">
+          삭제하지 못했습니다. 다시 시도해 주세요.
+        </p>
+      )}
+      <div className="mt-3 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+        >
+          취소
+        </button>
+        <button
+          type="button"
+          onClick={() => deletePatient.mutate(undefined, { onSuccess: onDeleted })}
+          disabled={deletePatient.isPending}
+          className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+        >
+          삭제
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** 활성 필터에서 보관하면 그 행은 즉시 사라진다 — 되돌릴 자리를 잃지 않도록 남겨둔다 */
 function UndoArchiveBanner({
   patient,
@@ -140,6 +200,8 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
   // 기본 전체 — 활성만 보이는 기본값은 보관 환자가 검색에서 조용히 빠지는 실패 모드를 만든다
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [justArchived, setJustArchived] = useState<{ id: string; caseLabel: string } | null>(null);
+  // 삭제는 서버에 복구 경로가 없다(spec 34) — 되돌리기 배너가 아니라 사전 확인으로 막는다
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const patients = usePatients({
     query: submittedQuery,
     status: statusFilter === 'ALL' ? undefined : statusFilter,
@@ -161,11 +223,13 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
     event.preventDefault();
     setSubmittedQuery(input.trim() || undefined);
     setJustArchived(null);
+    setPendingDeleteId(null);
   };
 
   const handleFilterChange = (next: StatusFilter): void => {
     setStatusFilter(next);
     setJustArchived(null);
+    setPendingDeleteId(null);
   };
 
   return (
@@ -223,32 +287,53 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
         <ul className="space-y-2">
           {items.map((patient) => (
             <li key={patient.id}>
-              {/* 카드 버튼 안에 액션 버튼을 넣을 수 없다(중첩 인터랙티브) — 형제로 나란히 둔다 */}
-              <div className="flex items-center rounded-xl border border-gray-200 bg-white hover:border-emerald-300">
-                <button
-                  type="button"
-                  aria-label={patient.caseLabel}
-                  onClick={() => onSelect(patient)}
-                  className="min-w-0 flex-1 p-4 text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <p className="truncate font-medium text-gray-900">{patient.caseLabel}</p>
-                    {patient.status === 'ARCHIVED' && (
-                      <span className="shrink-0 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-                        보관됨
-                      </span>
-                    )}
+              {pendingDeleteId === patient.id ? (
+                <PatientDeleteConfirm
+                  patient={patient}
+                  onCancel={() => setPendingDeleteId(null)}
+                  onDeleted={() => {
+                    setPendingDeleteId(null);
+                    // 방금 보관한 환자를 이어서 지우면 되돌리기 배너가 유령을 가리킨다
+                    setJustArchived((prev) => (prev?.id === patient.id ? null : prev));
+                  }}
+                />
+              ) : (
+                /* 카드 버튼 안에 액션 버튼을 넣을 수 없다(중첩 인터랙티브) — 형제로 나란히 둔다 */
+                <div className="flex items-center rounded-xl border border-gray-200 bg-white hover:border-emerald-300">
+                  <button
+                    type="button"
+                    aria-label={patient.caseLabel}
+                    onClick={() => onSelect(patient)}
+                    className="min-w-0 flex-1 p-4 text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <p className="truncate font-medium text-gray-900">{patient.caseLabel}</p>
+                      {patient.status === 'ARCHIVED' && (
+                        <span className="shrink-0 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                          보관됨
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {patient.age !== undefined && `${patient.age}세`}
+                      {patient.sex && ` · ${patient.sex}`}
+                      {patient.bmi !== undefined && ` · BMI ${patient.bmi}`}
+                    </p>
+                  </button>
+                  <div className="flex shrink-0 items-center gap-0.5 pr-3">
+                    <PatientArchiveAction patient={patient} onArchived={setJustArchived} />
+                    <button
+                      type="button"
+                      onClick={() => setPendingDeleteId(patient.id)}
+                      aria-label={`${patient.caseLabel} 삭제`}
+                      title="삭제"
+                      className={DANGER_ACTION_BUTTON}
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {patient.age !== undefined && `${patient.age}세`}
-                    {patient.sex && ` · ${patient.sex}`}
-                    {patient.bmi !== undefined && ` · BMI ${patient.bmi}`}
-                  </p>
-                </button>
-                <div className="shrink-0 pr-3">
-                  <PatientArchiveAction patient={patient} onArchived={setJustArchived} />
                 </div>
-              </div>
+              )}
             </li>
           ))}
         </ul>

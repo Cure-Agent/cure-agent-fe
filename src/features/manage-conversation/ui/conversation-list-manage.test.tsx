@@ -39,6 +39,7 @@ function Harness(): React.ReactElement {
     <ConversationList
       selectedId={selectedId}
       onSelect={(selected) => setSelectedId(selected.id)}
+      onDeleted={() => setSelectedId(null)}
     />
   );
 }

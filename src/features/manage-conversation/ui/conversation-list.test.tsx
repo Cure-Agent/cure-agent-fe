@@ -56,7 +56,9 @@ describe('ConversationList', () => {
 
     const onSelect = vi.fn();
     const user = userEvent.setup();
-    renderWithProviders(<ConversationList selectedId={null} onSelect={onSelect} />);
+    renderWithProviders(
+      <ConversationList selectedId={null} onSelect={onSelect} onDeleted={vi.fn()} />,
+    );
 
     expect(
       await screen.findByRole('button', { name: conversations[0].title }),

@@ -148,6 +148,17 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 전부에서 배지·칩 렌더를 확인하고 `.grade.json` 노트를 현행화했다. `upload.bundle`/`styling` 은
 정상적으로 true 였다.)
 
+**번들에 변경이 실렸는지 grep 으로 확인할 때 (2026-08-04):** `_ds_bundle.js` 는 한글을
+**`\uXXXX` 대문자 이스케이프**로 저장한다. 한글 리터럴로 grep 하면 0건이 나와 **반영 누락으로
+오인한다** — `AppShell` 의 새 `aria-label`(`내 프로필`)과 `ProfilePanel` 의 라벨 전부가 이렇게
+안 잡혔고, 실제로는 정상 반영돼 있었다. ASCII 토큰(`"/profile"` 같은 경로·클래스명)으로 찾거나
+파이썬으로 이스케이프해 세는 편이 확실하다:
+`''.join('\\u%04X'%ord(c) if ord(c)>127 else c for c in label)`.
+같은 이유로 **per-component `.jsx` 를 grep 해도 안 나온다** — 그 파일들은 2줄 re-export stub 이고
+(`Object.assign(window, { AppShell: window.CureAgentFe.AppShell })`) 구현은 전부 `_ds_bundle.js`
+에 있다. 그래서 마크업만 고친 변경은 `sourceHashes` 의 `.jsx` 항목이 안 움직이는 것이 **정상**이고,
+`bundleSha12` 가 움직이는 것으로 확인한다.
+
 ## conventions.md 자동 대조 시 오탐 하나
 
 백틱 토큰을 긁어 `_ds_bundle.css` 와 대조하면 **`next-link` 가 "누락 클래스" 로 잡힌다** — 실제로는

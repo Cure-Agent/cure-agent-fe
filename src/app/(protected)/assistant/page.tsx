@@ -53,11 +53,22 @@ function AssistantScreen(): React.ReactElement {
     setActiveMarker(null);
   }, []);
 
+  // 열려 있던 대화가 지워지면 채팅·근거 패널이 없는 대화를 붙들고 있게 된다
+  const handleDeleteConversation = useCallback(() => {
+    setSelectedId(null);
+    setEvidence([]);
+    setActiveMarker(null);
+  }, []);
+
   return (
     // h-full(고정 뷰포트) — 각 pane은 min-h-0로 줄어들 수 있어야 내부 스크롤이 생긴다
     <div className="grid h-full min-h-0 grid-cols-[16rem_1fr_20rem] gap-4">
       <div className="min-h-0 overflow-hidden rounded-xl border border-gray-200 bg-white p-3">
-        <ConversationList selectedId={selectedId} onSelect={handleSelectConversation} />
+        <ConversationList
+          selectedId={selectedId}
+          onSelect={handleSelectConversation}
+          onDeleted={handleDeleteConversation}
+        />
       </div>
 
       {selectedId ? (
