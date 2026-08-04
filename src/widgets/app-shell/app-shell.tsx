@@ -52,11 +52,27 @@ const PatientIcon = iconSvg(
   </>,
 );
 
+// 환자 아이콘(여러 사람)과 헷갈리지 않게 테두리 원을 두른 1인 형태로 구분한다
+const ProfileIcon = iconSvg(
+  <>
+    <path d="M18 20a6 6 0 0 0-12 0" />
+    <circle cx="12" cy="10" r="4" />
+    <circle cx="12" cy="12" r="10" />
+  </>,
+);
+
 const NAV_ITEMS = [
   { href: '/assistant', label: '어시스턴트', Icon: AssistantIcon },
   { href: '/guidelines', label: '지침', Icon: GuidelineIcon },
   { href: '/patients', label: '환자', Icon: PatientIcon },
 ] as const;
+
+// 레일 아이콘의 형태·색을 한곳에 묶는다 — 메뉴와 프로필이 따로 흘러가지 않게 한다
+function railIconClass(active: boolean): string {
+  return `rounded-lg p-2 ${
+    active ? 'bg-emerald-50 text-emerald-800' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+  }`;
+}
 
 export function AppShell({
   me,
@@ -172,17 +188,26 @@ export function AppShell({
                   aria-label={item.label}
                   title={item.label}
                   aria-current={active ? 'page' : undefined}
-                  className={`rounded-lg p-2 ${
-                    active
-                      ? 'bg-emerald-50 text-emerald-800'
-                      : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
-                  }`}
+                  className={railIconClass(active)}
                 >
                   <item.Icon className="h-5 w-5" />
                 </Link>
               );
             })}
           </nav>
+          {/* 열림 상태에서 계정 블록이 하단 구분선 아래 있는 것과 같은 자리 — 접어도 프로필로 갈 수 있다.
+              프로필은 주요 메뉴가 아니라 계정 진입점이므로 위 nav 밖에 둔다 */}
+          <div className="mt-auto flex w-full justify-center border-t border-gray-200 py-3">
+            <Link
+              href="/profile"
+              aria-label="내 프로필"
+              title="내 프로필"
+              aria-current={pathname.startsWith('/profile') ? 'page' : undefined}
+              className={railIconClass(pathname.startsWith('/profile'))}
+            >
+              <ProfileIcon className="h-5 w-5" />
+            </Link>
+          </div>
         </div>
       )}
       {/* 스크롤 금지 — 각 페이지가 h-full 안에서 자체 스크롤 영역을 만든다 */}
