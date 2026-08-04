@@ -67,6 +67,223 @@
         ]
       }
     },
+    "/api/v1/clinic/invitations": {
+      "post": {
+        "operationId": "ClinicInvitationController_issue",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseDto"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ClinicInvitationIssuedResponseDto"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "초대 발급 (개설자 전용) — 토큰은 이 응답에서만 노출된다",
+        "tags": [
+          "ClinicInvitation"
+        ]
+      },
+      "get": {
+        "operationId": "ClinicInvitationController_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "불투명 커서 (§10.4)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseDto"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ClinicInvitationResponseDto"
+                          }
+                        },
+                        "page": {
+                          "$ref": "#/components/schemas/PageMetaDto"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "초대 목록 (개설자 전용) — 토큰은 실리지 않는다",
+        "tags": [
+          "ClinicInvitation"
+        ]
+      }
+    },
+    "/api/v1/clinic/invitations/{invitationId}": {
+      "delete": {
+        "operationId": "ClinicInvitationController_revoke",
+        "parameters": [
+          {
+            "name": "invitationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "초대 취소 (개설자 전용)",
+        "tags": [
+          "ClinicInvitation"
+        ]
+      }
+    },
+    "/api/v1/invitations/{token}": {
+      "get": {
+        "operationId": "InvitationPreviewController_preview",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseDto"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ClinicInvitationPreviewResponseDto"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "초대 프리뷰 (비인증) — 한의원명만 반환한다",
+        "tags": [
+          "ClinicInvitation"
+        ]
+      }
+    },
+    "/api/v1/clinic/members": {
+      "get": {
+        "operationId": "ClinicMemberController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseDto"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ClinicMemberResponseDto"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "클리닉 구성원 목록 (전원 조회 — 탈퇴자 제외)",
+        "tags": [
+          "ClinicMember"
+        ]
+      }
+    },
+    "/api/v1/clinic/owner/transfer": {
+      "post": {
+        "operationId": "ClinicMemberController_transferOwner",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferClinicOwnerRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "개설자 권한 이양 (개설자 전용)",
+        "tags": [
+          "ClinicMember"
+        ]
+      }
+    },
     "/api/v1/auth/signup": {
       "post": {
         "description": "소셜 콜백이 발급한 티켓과 한의원명·면허번호를 받아 가입을 마친다 (docs/specs/17). 이메일·소셜 신원은 티켓에서 꺼내므로 바디로 받지 않는다.",
@@ -187,6 +404,19 @@
           }
         },
         "summary": "현재 사용자 복구",
+        "tags": [
+          "Auth"
+        ]
+      },
+      "delete": {
+        "operationId": "AuthController_withdraw",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "회원탈퇴 — 개인정보 즉시 익명화 + 전 세션 폐기 (docs/specs/36)",
         "tags": [
           "Auth"
         ]
@@ -1968,6 +2198,138 @@
           "dependencies"
         ]
       },
+      "ClinicInvitationIssuedResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACCEPTED",
+              "REVOKED",
+              "EXPIRED"
+            ],
+            "description": "acceptedAt·revokedAt·expiresAt에서 파생한다 — 상태 컬럼은 없다"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "acceptedAt": {
+            "type": "object",
+            "nullable": true
+          },
+          "acceptedByDisplayName": {
+            "type": "object",
+            "nullable": true,
+            "description": "합류한 구성원의 표시 이름"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string",
+            "description": "초대 링크 토큰 `{invitationId}.{secret}` — 이 응답에서만 노출된다"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "expiresAt",
+          "createdAt",
+          "token"
+        ]
+      },
+      "ClinicInvitationResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACCEPTED",
+              "REVOKED",
+              "EXPIRED"
+            ],
+            "description": "acceptedAt·revokedAt·expiresAt에서 파생한다 — 상태 컬럼은 없다"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "acceptedAt": {
+            "type": "object",
+            "nullable": true
+          },
+          "acceptedByDisplayName": {
+            "type": "object",
+            "nullable": true,
+            "description": "합류한 구성원의 표시 이름"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "ClinicInvitationPreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "clinicName": {
+            "type": "string",
+            "example": "서울한의원"
+          }
+        },
+        "required": [
+          "clinicName"
+        ]
+      },
+      "ClinicMemberResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "isOwner": {
+            "type": "boolean",
+            "description": "개설자 여부 — 초대 발급·이양 권한을 가진 한 사람이다"
+          },
+          "joinedAt": {
+            "type": "string",
+            "description": "합류 시각"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "isOwner",
+          "joinedAt"
+        ]
+      },
+      "TransferClinicOwnerRequestDto": {
+        "type": "object",
+        "properties": {
+          "toClinicianId": {
+            "type": "string",
+            "description": "새 개설자가 될 구성원 id — 같은 클리닉의 살아 있는 구성원이어야 한다"
+          }
+        },
+        "required": [
+          "toClinicianId"
+        ]
+      },
       "ClinicSummaryResponseDto": {
         "type": "object",
         "properties": {
@@ -2045,7 +2407,12 @@
           },
           "clinicName": {
             "type": "string",
-            "example": "서울한의원"
+            "example": "서울한의원",
+            "description": "새 한의원 개설 시 필수. 초대로 합류할 때는 보내지 않는다 (docs/specs/35)"
+          },
+          "invitationToken": {
+            "type": "string",
+            "description": "초대 링크 토큰 — 있으면 clinic을 만들지 않고 초대의 클리닉에 합류한다 (docs/specs/35)"
           },
           "licenseNumber": {
             "type": "string",
@@ -2059,7 +2426,6 @@
         "required": [
           "ticket",
           "displayName",
-          "clinicName",
           "licenseNumber",
           "termsAccepted"
         ]
