@@ -20,7 +20,11 @@ export const AssistantWorkspace = () => (
   <AppShell me={CLINICIAN}>
     <div className="grid h-[calc(100vh-8rem)] grid-cols-[16rem_1fr_20rem] gap-4">
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white p-3">
-        <ConversationList selectedId={CONVERSATIONS[0].id} onSelect={() => undefined} />
+        <ConversationList
+          selectedId={CONVERSATIONS[0].id}
+          onSelect={() => undefined}
+          onDeleted={() => undefined}
+        />
       </div>
       <ChatPanel conversationId={CONVERSATIONS[0].id} onSelectMarker={() => undefined} />
       <EvidenceInspector

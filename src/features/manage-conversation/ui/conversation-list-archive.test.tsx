@@ -34,7 +34,11 @@ const ARCHIVED_ROW = /불면 진료 상담/;
 function Harness(): React.ReactElement {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   return (
-    <ConversationList selectedId={selectedId} onSelect={(selected) => setSelectedId(selected.id)} />
+    <ConversationList
+      selectedId={selectedId}
+      onSelect={(selected) => setSelectedId(selected.id)}
+      onDeleted={() => setSelectedId(null)}
+    />
   );
 }
 

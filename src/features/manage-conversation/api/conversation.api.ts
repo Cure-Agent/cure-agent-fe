@@ -116,6 +116,32 @@ export function useUnarchiveConversation(
   return useStatusMutation(conversationId, '/api/v1/conversations/{conversationId}/unarchive');
 }
 
+/**
+ * 대화 삭제 (BE spec 34). 멱등이고 서버에 restore가 없다 —
+ * `deletedAt`은 복구 유예가 아니라 파기 예약이므로 보관처럼 되돌리기 배너를 붙이지 않는다.
+ * 보관과 직교해서 ARCHIVED 대화도 그대로 지워진다.
+ */
+export function useDeleteConversation(
+  conversationId: string | null,
+): UseMutationResult<null, Error, void> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      if (!conversationId) throw new Error('대화가 선택되지 않았습니다.');
+      return unwrap<null>(
+        await api.DELETE('/api/v1/conversations/{conversationId}', {
+          params: { path: { conversationId } },
+        }),
+      );
+    },
+    onSuccess: () => {
+      // 지워진 대화의 메시지는 재조회해도 404다 — 무효화가 아니라 캐시에서 버린다
+      if (conversationId) queryClient.removeQueries({ queryKey: messagesKey(conversationId) });
+      void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
+    },
+  });
+}
+
 export function useCreateConversation(): UseMutationResult<ConversationSummary, Error, void> {
   const queryClient = useQueryClient();
   return useMutation({

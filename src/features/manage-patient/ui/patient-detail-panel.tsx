@@ -1,11 +1,13 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
 import { RequestGuidanceButton } from '@/features/request-clinical-guidance/ui/request-guidance-button';
 import { ApiError } from '@/shared/api/api-error';
 import {
   type UpdatePatientInput,
   useArchivePatient,
+  useDeletePatient,
   usePatient,
   useUnarchivePatient,
   useUpdatePatient,
@@ -30,13 +32,18 @@ const EMPTY_FORM = {
 };
 
 export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): React.ReactElement {
+  const router = useRouter();
   const patient = usePatient(patientId);
   const updatePatient = useUpdatePatient(patientId);
   const archivePatient = useArchivePatient(patientId);
   const unarchivePatient = useUnarchivePatient(patientId);
+  const deletePatient = useDeletePatient(patientId);
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // 서버에 restore가 없다(spec 34) — 되돌리기가 아니라 사전 확인으로 막는다
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isDeleted, setIsDeleted] = useState(false);
 
   const set = (key: keyof typeof form, value: string): void =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -55,6 +62,8 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
     }
   }, [patient.data]);
 
+  // 삭제 뒤 상세 조회는 404다 — 이동이 끝나기 전에 실패 화면을 그리지 않는다
+  if (isDeleted) return <p className="text-sm text-gray-400">삭제했습니다. 목록으로 이동합니다…</p>;
   if (patient.isPending) return <p className="text-sm text-gray-400">불러오는 중…</p>;
   if (patient.isError || !patient.data) {
     return <p className="text-sm text-red-500">환자 정보를 불러오지 못했습니다</p>;
@@ -86,6 +95,16 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
         setErrorMessage(error instanceof Error ? error.message : '저장에 실패했습니다.');
       }
     }
+  };
+
+  const handleDelete = (): void => {
+    deletePatient.mutate(undefined, {
+      onSuccess: () => {
+        setIsDeleted(true);
+        // 지워진 상세로 뒤로가기가 되면 안 되므로 replace다
+        router.replace('/patients');
+      },
+    });
   };
 
   const handleToggleArchive = async (): Promise<void> => {
@@ -123,8 +142,47 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
           >
             {isArchived ? '보관 해제' : '보관'}
           </button>
+          {/* 확인 배너의 '삭제'와 접근성 이름이 겹치지 않게 진입점은 '환자 삭제'다 */}
+          <button
+            type="button"
+            onClick={() => setIsConfirmingDelete(true)}
+            className="rounded-lg border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+          >
+            환자 삭제
+          </button>
         </div>
       </header>
+
+      {isConfirmingDelete && (
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50/60 p-4">
+          <p className="font-medium text-gray-900">{detail.caseLabel} 삭제</p>
+          <p className="mt-1 text-sm text-red-700">
+            이 환자의 대화까지 영구 삭제됩니다. 되돌릴 수 없습니다.
+          </p>
+          {deletePatient.isError && (
+            <p role="alert" className="mt-1 text-sm text-red-600">
+              삭제하지 못했습니다. 다시 시도해 주세요.
+            </p>
+          )}
+          <div className="mt-3 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsConfirmingDelete(false)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deletePatient.isPending}
+              className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              삭제
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 프로필 값은 이 폼이 유일한 표시 경로다 — 보관 상태에서는 비활성 칸으로 열람만 된다 */}
       <form onSubmit={handleSave} className="mt-6 grid grid-cols-2 gap-3">

@@ -11,6 +11,7 @@ import {
   useArchiveConversation,
   useConversations,
   useCreateConversation,
+  useDeleteConversation,
   useRenameConversation,
   useUnarchiveConversation,
 } from '../api/conversation.api';
@@ -57,6 +58,16 @@ const UnarchiveIcon = iconSvg(
   </>,
 );
 
+const TrashIcon = iconSvg(
+  <>
+    <path d="M3 6h18" />
+    <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+    <path d="M10 11v6" />
+    <path d="M14 11v6" />
+  </>,
+);
+
 type StatusFilter = 'ALL' | 'ACTIVE' | 'ARCHIVED';
 
 /**
@@ -72,11 +83,14 @@ const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
 export interface ConversationListProps {
   selectedId: string | null;
   onSelect: (conversation: ConversationSummary) => void;
+  /** 선택 중인 대화가 삭제됐을 때 — 상위가 선택을 풀지 않으면 없는 대화의 채팅 화면이 남는다 */
+  onDeleted: () => void;
 }
 
 export function ConversationList({
   selectedId,
   onSelect,
+  onDeleted,
 }: ConversationListProps): React.ReactElement {
   const [searchInput, setSearchInput] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState<string | undefined>(undefined);
@@ -87,6 +101,8 @@ export function ConversationList({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ACTIVE');
   // 보관 직후 그 대화는 목록에서 사라진다 — 되돌릴 자리를 잃지 않도록 한 번 잡아둔다
   const [justArchived, setJustArchived] = useState<{ id: string; title: string } | null>(null);
+  // 삭제는 서버에 복구 경로가 없다(spec 34) — 되돌리기 배너가 아니라 사전 확인으로 막는다
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const conversations = useConversations({
     query: submittedQuery,
@@ -96,6 +112,7 @@ export function ConversationList({
   const renameConversation = useRenameConversation(renamingId);
   const archiveConversation = useArchiveConversation(selectedId);
   const unarchiveConversation = useUnarchiveConversation(selectedId);
+  const deleteConversation = useDeleteConversation(pendingDeleteId);
 
   const items = useMemo(
     () => (conversations.data?.pages ?? []).flatMap((page) => page.items),
@@ -112,6 +129,7 @@ export function ConversationList({
     const created = await createConversation.mutateAsync();
     setRenamingId(null);
     setJustArchived(null);
+    setPendingDeleteId(null);
     onSelect(created);
   };
 
@@ -119,16 +137,19 @@ export function ConversationList({
     event.preventDefault();
     setSubmittedQuery(searchInput.trim() || undefined);
     setJustArchived(null);
+    setPendingDeleteId(null);
   };
 
   const handleFilterChange = (next: StatusFilter): void => {
     setStatusFilter(next);
     setJustArchived(null);
+    setPendingDeleteId(null);
   };
 
   const handleSelect = (conversation: ConversationSummary): void => {
     setRenamingId(null);
     setJustArchived(null);
+    setPendingDeleteId(null);
     onSelect(conversation);
   };
 
@@ -143,8 +164,26 @@ export function ConversationList({
     unarchiveConversation.mutate(undefined, { onSuccess: () => setJustArchived(null) });
   };
 
+  // 삭제 확인은 그 자리에서 열린다 — 이름 변경 폼과 동시에 열리면 취소 후 엉뚱한 폼이 남는다
+  const startDelete = (conversation: ConversationSummary): void => {
+    setRenamingId(null);
+    setPendingDeleteId(conversation.id);
+  };
+
+  const handleDelete = (): void => {
+    const deletingId = pendingDeleteId;
+    deleteConversation.mutate(undefined, {
+      onSuccess: () => {
+        setPendingDeleteId(null);
+        setJustArchived(null);
+        if (deletingId === selectedId) onDeleted();
+      },
+    });
+  };
+
   const startRename = (conversation: ConversationSummary): void => {
     setTitleInput(conversation.title);
+    setPendingDeleteId(null);
     setRenamingId(conversation.id);
   };
 
@@ -270,6 +309,38 @@ export function ConversationList({
                       </button>
                     </div>
                   </form>
+                ) : pendingDeleteId === conversation.id ? (
+                  /* 되돌리기 배너가 없는 대신 여기서 막는다 — 서버에 restore가 없다(spec 34) */
+                  <div className="rounded-lg border border-red-200 bg-red-50/60 p-2">
+                    <p className="truncate text-sm font-medium text-gray-800">
+                      {conversation.title}
+                    </p>
+                    <p className="mt-0.5 text-xs text-red-700">
+                      영구 삭제됩니다. 되돌릴 수 없습니다.
+                    </p>
+                    {deleteConversation.isError && (
+                      <p role="alert" className="mt-1 text-xs text-red-600">
+                        삭제하지 못했습니다. 다시 시도해 주세요.
+                      </p>
+                    )}
+                    <div className="mt-2 flex justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setPendingDeleteId(null)}
+                        className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={deleteConversation.isPending}
+                        className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <div
                     className={`flex items-center rounded-lg ${
@@ -322,6 +393,16 @@ export function ConversationList({
                             <ArchiveIcon className="h-3.5 w-3.5" />
                           </button>
                         )}
+                        {/* 파괴적 액션이라 나머지 emerald 액션과 시각적 무게를 달리한다 */}
+                        <button
+                          type="button"
+                          onClick={() => startDelete(conversation)}
+                          aria-label="삭제"
+                          title="삭제"
+                          className="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                        >
+                          <TrashIcon className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     )}
                   </div>

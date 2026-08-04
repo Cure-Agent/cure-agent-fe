@@ -11,6 +11,8 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
+// 환자 삭제가 그 환자의 대화까지 끄므로(spec 34) 대화 목록 키를 여기서도 무효화한다
+import { CONVERSATIONS_KEY } from '@/features/manage-conversation/api/conversation.api';
 import { api } from '@/shared/api/api-client';
 import { unwrap, unwrapPage } from '@/shared/api/api-error';
 import type { components } from '@/shared/api/generated/schema';
@@ -103,6 +105,25 @@ function useStatusMutation(
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: patientKey(patientId) });
       void queryClient.invalidateQueries({ queryKey: PATIENTS_KEY });
+    },
+  });
+}
+
+/**
+ * 환자 삭제 (BE spec 34). 서버가 같은 트랜잭션에서 그 환자의 대화까지 함께 끄므로
+ * 대화 목록 캐시도 낡는다. restore가 없어 되돌리기 경로는 두지 않는다.
+ */
+export function useDeletePatient(patientId: string): UseMutationResult<null, Error, void> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () =>
+      unwrap<null>(
+        await api.DELETE('/api/v1/patients/{patientId}', { params: { path: { patientId } } }),
+      ),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: patientKey(patientId) });
+      void queryClient.invalidateQueries({ queryKey: PATIENTS_KEY });
+      void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
     },
   });
 }
