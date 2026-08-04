@@ -44,6 +44,9 @@
     },
     "PatientListPanel": {
       "cardMode": "column"
+    },
+    "ProfilePanel": {
+      "cardMode": "column"
     }
   },
   "componentSrcMap": {
@@ -52,6 +55,7 @@
     "GuidanceCard": "src/features/review-clinical-guidance/ui/guidance-card.tsx",
     "SocialLoginButtons": "src/features/auth/ui/social-login-buttons.tsx",
     "OnboardingForm": "src/features/auth/ui/onboarding-form.tsx",
+    "ProfilePanel": "src/features/auth/ui/profile-panel.tsx",
     "RequestGuidanceButton": "src/features/request-clinical-guidance/ui/request-guidance-button.tsx",
     "PatientCreateForm": "src/features/manage-patient/ui/patient-create-form.tsx",
     "PatientListPanel": "src/features/manage-patient/ui/patient-list-panel.tsx",
@@ -63,6 +67,7 @@
   },
   "dtsPropsFor": {
     "AppShell": "/** 로그인한 의료인 — 사이드바 하단에 이름·소속 한의원으로 표시된다. */\nme: {\n  id: string;\n  email: string;\n  displayName: string;\n  clinic: { id: string; name: string };\n  verificationStatus: \"PENDING\" | \"VERIFIED\" | \"REJECTED\";\n};\n/** 우측 main 영역에 렌더되는 페이지 본문. */\nchildren: React.ReactNode;",
+    "ProfilePanel": "/** 로그인한 의료인 — 이 패널은 값을 그대로 표시만 한다.\n * 프로필 수정 API가 없어 읽기 전용이고, 유일한 변형 축은 verificationStatus 다. */\nme: {\n  id: string;\n  email: string;\n  displayName: string;\n  clinic: { id: string; name: string };\n  verificationStatus: \"PENDING\" | \"VERIFIED\" | \"REJECTED\";\n};",
     "EvidenceInspector": "/** 인용 근거 목록. marker 가 있으면 그 번호를, 없으면 배열 순서(index + 1)를 마커로 쓴다 (§8).\n * 스트림 근거(EvidenceDetailResponseDto)는 구조적 부분집합이라 그대로 대입된다. */\nevidence: {\n  /** EvidenceChunk id — 카드의 \"전문 보기\" 가 GET /evidence/{id} 로 전문을 조회한다. */\n  id: string;\n  guidelineTitle: string;\n  /** @example \"2.0\" */\n  version: string;\n  /** 지침 내 섹션 경로 — UI 에서 \" > \" 로 이어 붙인다. */\n  sectionPath: string[];\n  /** 카드 요약 발췌 — 3줄 클램프로 표시된다. */\n  excerpt: string;\n  recommendationGrade?: { system: string; code: string; label: string };\n  /** 명시 마커 — 저장된 메시지의 인용 경로가 넘긴다. 없으면 index + 1 이 마커다. */\n  marker?: number;\n  /** EvidenceDetailResponseDto 의 나머지 필드(guidelineId 등)는 그대로 넘겨도 되며 렌더에 쓰지 않는다. */\n}[];\n/** 강조할 마커 번호. null 이면 선택 없음. */\nactiveMarker: number | null;\nonSelectMarker: (marker: number) => void;",
     "GuidanceCard": "/** 임상 참고안. reviewStatus 가 \"DRAFT\" 일 때만 하단 검토 폼이 렌더된다. */\nguidance: {\n  id: string;\n  patientId: string;\n  patientProfileSnapshotId: string;\n  /** 참고안 요약 — 개행이 보존되어 표시된다. */\n  summary: string;\n  considerations: { title: string; rationale: string; citations: { marker: number; evidenceId: string; guidelineTitle: string; guidelineVersion: string; sectionPath: string[]; quote: string; sourceUrl: string }[]; /** 근거 조건과 환자 프로필이 만나는 지점의 적용 판단 — 구조화 경로에서만 실린다. */ applicability?: \"APPLICABLE\" | \"CAUTION\" | \"NOT_APPLICABLE\"; /** 이 판단이 딛고 선 환자 프로필 필드명 — missingInformation 과 같은 어휘의 여집합. */ patientFactors?: string[] }[];\n  safetyAlerts: { severity: \"INFO\" | \"WARNING\" | \"CRITICAL\"; description: string; citations: { marker: number; evidenceId: string; guidelineTitle: string; guidelineVersion: string; sectionPath: string[]; quote: string; sourceUrl: string }[] }[];\n  missingInformation: string[];\n  reviewStatus: \"DRAFT\" | \"ACCEPTED\" | \"MODIFIED\" | \"REJECTED\";\n  /** ISO 8601 */\n  generatedAt: string;\n};",
     "SocialLoginButtons": "/**\n * OAuth 콜백이 로그인 페이지로 되돌려 보낸 에러 코드. 지정하면 상단에 사용자 문구를 띄운다.\n * AUTH_OAUTH_DENIED | AUTH_OAUTH_STATE_MISMATCH | AUTH_OAUTH_EMAIL_MISSING |\n * AUTH_OAUTH_PROVIDER_UNSUPPORTED | AUTH_OAUTH_TICKET_INVALID | AUTH_OAUTH_FAILED\n */\nerror?: string;",

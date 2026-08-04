@@ -28,6 +28,10 @@ export {
 // features — auth
 export { SocialLoginButtons } from '../../src/features/auth/ui/social-login-buttons';
 export { OnboardingForm } from '../../src/features/auth/ui/onboarding-form';
+export {
+  ProfilePanel,
+  type ProfilePanelProps,
+} from '../../src/features/auth/ui/profile-panel';
 
 // features — ask-guideline
 export { ChatPanel, type ChatPanelProps } from '../../src/features/ask-guideline/ui/chat-panel';
