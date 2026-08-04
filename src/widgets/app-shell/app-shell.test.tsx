@@ -70,6 +70,26 @@ describe('AppShell 사이드바 토글', () => {
     expect(rail.getByRole('link', { name: '어시스턴트' })).toHaveAttribute('aria-current', 'page');
     expect(rail.getByRole('link', { name: '지침' })).not.toHaveAttribute('aria-current');
   });
+
+  it('닫힘 상태에서도 프로필로 갈 수 있다 — 계정 블록이 사이드바와 함께 사라지기 때문이다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <AppShell me={ME}>
+        <p>본문</p>
+      </AppShell>,
+    );
+
+    await user.click(screen.getByRole('button', { name: '사이드바 닫기' }));
+
+    // 프로필은 계정 진입점이라 '주요 메뉴' 밖에 있다 — 레일 링크만 남기고 inert 사이드바 쪽은 제외한다
+    const railProfile = screen
+      .getAllByRole('link', { name: '내 프로필' })
+      .find((link) => !link.closest('aside'));
+    expect(railProfile).toHaveAttribute('href', '/profile');
+
+    const rail = within(screen.getByRole('navigation', { name: '주요 메뉴' }));
+    expect(rail.queryByRole('link', { name: '내 프로필' })).toBeNull();
+  });
 });
 
 describe('AppShell 계정 영역', () => {
