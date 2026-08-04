@@ -1,14 +1,21 @@
 // @vitest-environment happy-dom
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { http } from 'msw';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { envelope, server, useMswServer } from '@/shared/test/msw';
 import { renderWithProviders } from '@/shared/test/render';
 import { AppShell } from './app-shell';
 
+const replaceMock = vi.fn();
 vi.mock('next/navigation', () => ({
   usePathname: () => '/assistant',
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace: replaceMock }),
 }));
+
+useMswServer();
+
+beforeEach(() => replaceMock.mockClear());
 
 const ME = {
   id: 'clinician-1',
@@ -71,7 +78,7 @@ describe('AppShell 사이드바 토글', () => {
     expect(rail.getByRole('link', { name: '지침' })).not.toHaveAttribute('aria-current');
   });
 
-  it('닫힘 상태에서도 프로필로 갈 수 있다 — 계정 블록이 사이드바와 함께 사라지기 때문이다', async () => {
+  it('닫힘 상태에서도 프로필·로그아웃이 남는다 — 계정 블록이 사이드바와 함께 사라지기 때문이다', async () => {
     const user = userEvent.setup();
     renderWithProviders(
       <AppShell me={ME}>
@@ -81,14 +88,47 @@ describe('AppShell 사이드바 토글', () => {
 
     await user.click(screen.getByRole('button', { name: '사이드바 닫기' }));
 
-    // 프로필은 계정 진입점이라 '주요 메뉴' 밖에 있다 — 레일 링크만 남기고 inert 사이드바 쪽은 제외한다
+    // 계정 동작은 '주요 메뉴' 밖에 있다 — 레일 쪽만 남기고 inert 사이드바 쪽은 제외한다
     const railProfile = screen
       .getAllByRole('link', { name: '내 프로필' })
       .find((link) => !link.closest('aside'));
     expect(railProfile).toHaveAttribute('href', '/profile');
+    expect(
+      screen.getAllByRole('button', { name: '로그아웃' }).some((btn) => !btn.closest('aside')),
+    ).toBe(true);
 
     const rail = within(screen.getByRole('navigation', { name: '주요 메뉴' }));
     expect(rail.queryByRole('link', { name: '내 프로필' })).toBeNull();
+    expect(rail.queryByRole('button', { name: '로그아웃' })).toBeNull();
+  });
+
+  it('레일 로그아웃도 열림 상태와 같은 로그아웃 경로를 탄다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <AppShell me={ME}>
+        <p>본문</p>
+      </AppShell>,
+    );
+
+    let logoutCalled = false;
+    server.use(
+      http.post('/api/v1/auth/logout', () => {
+        logoutCalled = true;
+        return Response.json(envelope(null));
+      }),
+    );
+
+    await user.click(screen.getByRole('button', { name: '사이드바 닫기' }));
+
+    const railLogout = screen
+      .getAllByRole('button', { name: '로그아웃' })
+      .find((btn) => !btn.closest('aside'));
+    await user.click(railLogout as HTMLElement);
+
+    await waitFor(() => expect(logoutCalled).toBe(true));
+
+    // 로그아웃 성공 후 /login 으로 보낸다 (열림 상태 버튼과 같은 handleLogout)
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith('/login'));
   });
 });
 

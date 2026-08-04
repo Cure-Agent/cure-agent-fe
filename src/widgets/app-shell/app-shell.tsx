@@ -61,6 +61,14 @@ const ProfileIcon = iconSvg(
   </>,
 );
 
+const LogoutIcon = iconSvg(
+  <>
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <path d="m16 17 5-5-5-5" />
+    <path d="M21 12H9" />
+  </>,
+);
+
 const NAV_ITEMS = [
   { href: '/assistant', label: '어시스턴트', Icon: AssistantIcon },
   { href: '/guidelines', label: '지침', Icon: GuidelineIcon },
@@ -195,9 +203,10 @@ export function AppShell({
               );
             })}
           </nav>
-          {/* 열림 상태에서 계정 블록이 하단 구분선 아래 있는 것과 같은 자리 — 접어도 프로필로 갈 수 있다.
-              프로필은 주요 메뉴가 아니라 계정 진입점이므로 위 nav 밖에 둔다 */}
-          <div className="mt-auto flex w-full justify-center border-t border-gray-200 py-3">
+          {/* 열림 상태에서 계정 블록이 하단 구분선 아래 있는 것과 같은 자리 — 접어도 프로필·로그아웃이 남는다.
+              둘 다 주요 메뉴가 아니라 계정 동작이므로 위 nav 밖에 두고,
+              순서도 열림 상태와 같이 프로필 → 로그아웃이다 (두 상태가 다른 순서를 가르치지 않게) */}
+          <div className="mt-auto flex w-full flex-col items-center gap-1 border-t border-gray-200 py-3">
             <Link
               href="/profile"
               aria-label="내 프로필"
@@ -207,6 +216,17 @@ export function AppShell({
             >
               <ProfileIcon className="h-5 w-5" />
             </Link>
+            {/* 로그아웃은 경로가 아니라 동작이라 활성 상태가 없다 — 항상 비활성 스타일이다 */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={logout.isPending}
+              aria-label="로그아웃"
+              title="로그아웃"
+              className={`${railIconClass(false)} disabled:opacity-50`}
+            >
+              <LogoutIcon className="h-5 w-5" />
+            </button>
           </div>
         </div>
       )}
