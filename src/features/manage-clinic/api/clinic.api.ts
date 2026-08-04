@@ -126,6 +126,29 @@ export function useTransferOwner(): UseMutationResult<null, Error, string> {
 }
 
 /**
+ * 구성원 내보내기 (spec 38). **소속만 끊는다** — 계정도 이름·이메일·면허번호도 그 사람의 것이라
+ * 개설자가 파기하지 않는다(탈퇴와 갈리는 지점). 다시 초대하면 같은 계정으로 돌아온다.
+ *
+ * 성공하면 그 구성원이 발급한 미수락 초대가 **서버에서 함께 취소되므로**(spec 38) 구성원 목록만이
+ * 아니라 초대 목록도 낡는다 — 내보낸 사람이 손에 쥔 링크로 제3자가 들어오는 것을 막는 처분이다.
+ */
+export function useRemoveMember(): UseMutationResult<null, Error, string> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (clinicianId: string) =>
+      unwrap<null>(
+        await api.DELETE('/api/v1/clinic/members/{clinicianId}', {
+          params: { path: { clinicianId } },
+        }),
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: CLINIC_MEMBERS_KEY });
+      void queryClient.invalidateQueries({ queryKey: CLINIC_INVITATIONS_KEY });
+    },
+  });
+}
+
+/**
  * 초대 프리뷰 — 비인증 경로다(spec 35). 아직 계정이 없는 사람이 링크를 여는 자리이므로
  * 재시도하지 않는다: 만료·사용됨·취소됨·없음이 전부 404 `INVITATION_INVALID` 하나로 온다.
  *
