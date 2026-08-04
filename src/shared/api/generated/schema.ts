@@ -38,6 +38,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/clinic/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 초대 목록 (개설자 전용) — 토큰은 실리지 않는다 */
+        get: operations["ClinicInvitationController_list"];
+        put?: never;
+        /** 초대 발급 (개설자 전용) — 토큰은 이 응답에서만 노출된다 */
+        post: operations["ClinicInvitationController_issue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic/invitations/{invitationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 초대 취소 (개설자 전용) */
+        delete: operations["ClinicInvitationController_revoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/invitations/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 초대 프리뷰 (비인증) — 한의원명만 반환한다 */
+        get: operations["InvitationPreviewController_preview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 클리닉 구성원 목록 (전원 조회 — 탈퇴자 제외) */
+        get: operations["ClinicMemberController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinic/owner/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 개설자 권한 이양 (개설자 전용) */
+        post: operations["ClinicMemberController_transferOwner"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/signup": {
         parameters: {
             query?: never;
@@ -103,7 +189,8 @@ export interface paths {
         get: operations["AuthController_me"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** 회원탈퇴 — 개인정보 즉시 익명화 + 전 세션 폐기 (docs/specs/36) */
+        delete: operations["AuthController_withdraw"];
         options?: never;
         head?: never;
         patch?: never;
@@ -640,6 +727,50 @@ export interface components {
             status: string;
             dependencies: components["schemas"]["ReadinessDependenciesDto"];
         };
+        ClinicInvitationIssuedResponseDto: {
+            id: string;
+            /**
+             * @description acceptedAt·revokedAt·expiresAt에서 파생한다 — 상태 컬럼은 없다
+             * @enum {string}
+             */
+            status: "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED";
+            expiresAt: string;
+            acceptedAt?: Record<string, never> | null;
+            /** @description 합류한 구성원의 표시 이름 */
+            acceptedByDisplayName?: Record<string, never> | null;
+            createdAt: string;
+            /** @description 초대 링크 토큰 `{invitationId}.{secret}` — 이 응답에서만 노출된다 */
+            token: string;
+        };
+        ClinicInvitationResponseDto: {
+            id: string;
+            /**
+             * @description acceptedAt·revokedAt·expiresAt에서 파생한다 — 상태 컬럼은 없다
+             * @enum {string}
+             */
+            status: "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED";
+            expiresAt: string;
+            acceptedAt?: Record<string, never> | null;
+            /** @description 합류한 구성원의 표시 이름 */
+            acceptedByDisplayName?: Record<string, never> | null;
+            createdAt: string;
+        };
+        ClinicInvitationPreviewResponseDto: {
+            /** @example 서울한의원 */
+            clinicName: string;
+        };
+        ClinicMemberResponseDto: {
+            id: string;
+            displayName: string;
+            /** @description 개설자 여부 — 초대 발급·이양 권한을 가진 한 사람이다 */
+            isOwner: boolean;
+            /** @description 합류 시각 */
+            joinedAt: string;
+        };
+        TransferClinicOwnerRequestDto: {
+            /** @description 새 개설자가 될 구성원 id — 같은 클리닉의 살아 있는 구성원이어야 한다 */
+            toClinicianId: string;
+        };
         ClinicSummaryResponseDto: {
             id: string;
             name: string;
@@ -665,8 +796,13 @@ export interface components {
              * @example 김의사
              */
             displayName: string;
-            /** @example 서울한의원 */
-            clinicName: string;
+            /**
+             * @description 새 한의원 개설 시 필수. 초대로 합류할 때는 보내지 않는다 (docs/specs/35)
+             * @example 서울한의원
+             */
+            clinicName?: string;
+            /** @description 초대 링크 토큰 — 있으면 clinic을 만들지 않고 초대의 클리닉에 합류한다 (docs/specs/35) */
+            invitationToken?: string;
             /** @description 면허번호 — 저장 시 암호화된다 */
             licenseNumber: string;
             /** @description true 필수 */
@@ -1202,6 +1338,137 @@ export interface operations {
             };
         };
     };
+    ClinicInvitationController_list: {
+        parameters: {
+            query?: {
+                /** @description 불투명 커서 (§10.4) */
+                cursor?: string;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["ClinicInvitationResponseDto"][];
+                        page?: components["schemas"]["PageMetaDto"];
+                    };
+                };
+            };
+        };
+    };
+    ClinicInvitationController_issue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["ClinicInvitationIssuedResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    ClinicInvitationController_revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InvitationPreviewController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["ClinicInvitationPreviewResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    ClinicMemberController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: components["schemas"]["ClinicMemberResponseDto"][];
+                    };
+                };
+            };
+        };
+    };
+    ClinicMemberController_transferOwner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferClinicOwnerRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AuthController_completeSignUp: {
         parameters: {
             query?: never;
@@ -1283,6 +1550,23 @@ export interface operations {
                         data?: components["schemas"]["ClinicianResponseDto"];
                     };
                 };
+            };
+        };
+    };
+    AuthController_withdraw: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
