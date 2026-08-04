@@ -15,7 +15,11 @@ vi.mock('next/navigation', () => ({
 
 useMswServer();
 
-beforeEach(() => replaceMock.mockClear());
+// 사이드바 상태가 저장소에 남으므로, 닫는 테스트가 다음 테스트의 초기 상태를 바꾸지 않게 비운다
+beforeEach(() => {
+  replaceMock.mockClear();
+  localStorage.clear();
+});
 
 const ME = {
   id: 'clinician-1',
@@ -49,6 +53,52 @@ describe('AppShell 사이드바 토글', () => {
 
     expect(sidebar).not.toHaveAttribute('inert');
     expect(screen.queryByRole('button', { name: '사이드바 열기' })).toBeNull();
+  });
+
+  it('접어 둔 선택을 다음 방문에도 기억한다 — 세션이 아니라 그 사람의 화면에 맞춘 취향이기 때문이다', async () => {
+    const user = userEvent.setup();
+    const first = renderWithProviders(
+      <AppShell me={ME}>
+        <p>본문</p>
+      </AppShell>,
+    );
+
+    await user.click(screen.getByRole('button', { name: '사이드바 닫기' }));
+    first.unmount();
+
+    // 새로고침·재로그인에 해당한다. 첫 렌더부터 접혀 있어야 열림→접힘이 번쩍이지 않는다
+    renderWithProviders(
+      <AppShell me={ME}>
+        <p>본문</p>
+      </AppShell>,
+    );
+
+    expect(screen.getByRole('complementary')).toHaveAttribute('inert');
+    expect(screen.getByRole('button', { name: '사이드바 열기' })).toBeVisible();
+  });
+
+  it('저장소를 쓸 수 없어도 화면은 살아 있다 — 사파리 프라이빗 등에서 접근 자체가 throw한다', async () => {
+    const user = userEvent.setup();
+    // 읽기·쓰기 모두 막힌 상황: 렌더가 죽으면 앱 전체가 빈 화면이 된다
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('storage blocked');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage blocked');
+    });
+
+    renderWithProviders(
+      <AppShell me={ME}>
+        <p>본문</p>
+      </AppShell>,
+    );
+
+    // 읽지 못하면 기본값 열림으로 가고, 저장하지 못해도 이번 방문의 토글은 동작한다
+    expect(screen.getByRole('complementary')).not.toHaveAttribute('inert');
+    await user.click(screen.getByRole('button', { name: '사이드바 닫기' }));
+    expect(screen.getByRole('complementary')).toHaveAttribute('inert');
+
+    vi.restoreAllMocks();
   });
 
   it('닫힘 상태에는 아이콘 레일이 나타나 열지 않고도 각 화면으로 이동할 수 있다', async () => {

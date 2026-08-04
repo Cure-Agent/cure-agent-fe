@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useCallback, useState } from 'react';
 import { Clinician, useLogout } from '@/features/auth/api/auth.api';
 import { LogoMark } from '@/shared/ui/logo-mark';
 
@@ -75,6 +75,21 @@ const NAV_ITEMS = [
   { href: '/patients', label: '환자', Icon: PatientIcon },
 ] as const;
 
+// 사이드바를 접을지는 로그인 세션이 아니라 그 사람의 화면 크기·작업 습관에 딸린 취향이다 —
+// 계정으로 나누지 않은 단일 키에 남겨, 다시 로그인해도 마지막 배치가 그대로 이어지게 한다
+const SIDEBAR_STORAGE_KEY = 'cure-agent:sidebar-open';
+
+// AppShell은 세션 확인이 끝난 뒤에만 마운트되므로((protected)/layout) 서버 렌더에 실리지 않는다.
+// 그래서 첫 렌더에서 곧바로 읽어도 hydration이 어긋나지 않고, 접어 둔 사용자에게 열림→접힘이 번쩍이지도 않는다.
+// try/catch는 저장소 차단(사파리 프라이빗 등)과 window 없는 환경을 함께 덮는다 — 어느 쪽이든 기본값 열림이다
+function readSidebarOpen(): boolean {
+  try {
+    return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) !== 'false';
+  } catch {
+    return true;
+  }
+}
+
 // 레일 아이콘의 형태·색을 한곳에 묶는다 — 메뉴와 프로필이 따로 흘러가지 않게 한다
 function railIconClass(active: boolean): string {
   return `rounded-lg p-2 ${
@@ -92,7 +107,17 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const logout = useLogout();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
+
+  // 접기·펼치기는 곧 사용자가 명시적으로 내린 선택이다 — 화면과 저장소를 한 번에 움직여 둘이 갈라지지 않게 한다
+  const persistSidebarOpen = useCallback((open: boolean): void => {
+    setSidebarOpen(open);
+    try {
+      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(open));
+    } catch {
+      // 저장이 막혀 있어도 이번 방문 동안의 토글은 그대로 동작해야 한다
+    }
+  }, []);
 
   const handleLogout = async (): Promise<void> => {
     try {
@@ -122,7 +147,7 @@ export function AppShell({
               세로는 접힘 레일의 토글과 같은 중앙 정렬 */}
           <button
             type="button"
-            onClick={() => setSidebarOpen(false)}
+            onClick={() => persistSidebarOpen(false)}
             aria-label="사이드바 닫기"
             className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
           >
@@ -179,7 +204,7 @@ export function AppShell({
           <div className="flex h-18 w-full items-center justify-center border-b border-gray-200">
             <button
               type="button"
-              onClick={() => setSidebarOpen(true)}
+              onClick={() => persistSidebarOpen(true)}
               aria-label="사이드바 열기"
               className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
             >
