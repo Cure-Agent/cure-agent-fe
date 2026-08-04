@@ -124,15 +124,24 @@ export function AppShell({
           })}
         </nav>
         <div className="border-t border-gray-200 p-4">
-          <p className="truncate text-sm font-medium text-gray-900">{me.displayName}</p>
-          {/* 소셜 계정에서 받은 이메일이 이 계정의 식별자다 — 어느 계정으로 들어와 있는지 확인할 곳이 여기뿐이다 */}
-          <p className="truncate text-xs text-gray-500">{me.email}</p>
-          <p className="truncate text-xs text-gray-500">{me.clinic.name}</p>
+          {/* 계정 정보 블록이 프로필 진입점이다. -mx-2 px-2: 글자 위치는 그대로 두고 호버 영역만 넓힌다.
+              되돌릴 수 없는 계정 동작(회원탈퇴)은 이 자리가 아니라 프로필 안에 둔다 — 로그아웃과
+              나란히 두면 나가려다 지우는 오조작이 만들어진다 */}
+          <Link
+            href="/profile"
+            aria-label="내 프로필"
+            className="-mx-2 block rounded-lg px-2 py-1.5 hover:bg-gray-100"
+          >
+            <p className="truncate text-sm font-medium text-gray-900">{me.displayName}</p>
+            {/* 소셜 계정에서 받은 이메일이 이 계정의 식별자다 — 어느 계정으로 들어와 있는지 알려 준다 */}
+            <p className="truncate text-xs text-gray-500">{me.email}</p>
+            <p className="truncate text-xs text-gray-500">{me.clinic.name}</p>
+          </Link>
           <button
             type="button"
             onClick={handleLogout}
             disabled={logout.isPending}
-            className="mt-3 w-full rounded-lg border border-gray-300 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+            className="mt-1.5 w-full rounded-lg border border-gray-300 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
           >
             로그아웃
           </button>

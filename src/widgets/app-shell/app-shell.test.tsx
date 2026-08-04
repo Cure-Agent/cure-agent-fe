@@ -71,3 +71,26 @@ describe('AppShell 사이드바 토글', () => {
     expect(rail.getByRole('link', { name: '지침' })).not.toHaveAttribute('aria-current');
   });
 });
+
+describe('AppShell 계정 영역', () => {
+  it('계정 정보 블록이 프로필 진입점이고, 로그아웃은 사이드바에 그대로 남는다', () => {
+    renderWithProviders(
+      <AppShell me={ME}>
+        <p>본문</p>
+      </AppShell>,
+    );
+
+    expect(screen.getByRole('link', { name: '내 프로필' })).toHaveAttribute('href', '/profile');
+    expect(screen.getByRole('button', { name: '로그아웃' })).toBeVisible();
+  });
+
+  it('되돌릴 수 없는 계정 동작을 사이드바에 두지 않는다 — 로그아웃 오클릭을 막는 배치다', () => {
+    renderWithProviders(
+      <AppShell me={ME}>
+        <p>본문</p>
+      </AppShell>,
+    );
+
+    expect(screen.queryByRole('button', { name: /회원탈퇴|탈퇴|계정 삭제/ })).toBeNull();
+  });
+});
