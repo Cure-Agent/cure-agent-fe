@@ -3,7 +3,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CONVERSATIONS_KEY } from '@/features/manage-conversation/api/conversation.api';
 import { envelope, server, useMswServer } from '@/shared/test/msw';
 import { renderWithProviders } from '@/shared/test/render';
@@ -18,6 +18,12 @@ function patient(id: string, caseLabel: string, status: 'ACTIVE' | 'ARCHIVED' = 
 }
 
 const DELETE_SCOPE = '이 환자의 대화까지 영구 삭제됩니다. 되돌릴 수 없습니다.';
+
+// happy-dom에는 scrollIntoView가 없다 — 스텁을 심으므로 케이스마다 원복한다
+const originalScrollIntoView = Element.prototype.scrollIntoView;
+afterEach(() => {
+  Element.prototype.scrollIntoView = originalScrollIntoView;
+});
 
 describe('환자 목록 삭제 액션', () => {
   it('삭제 버튼은 확인을 먼저 띄우고, 대화까지 지워지는 범위를 밝힌다', async () => {
@@ -107,6 +113,28 @@ describe('환자 목록 삭제 액션', () => {
     await waitFor(() =>
       expect(queryClient.getQueryState(conversationListKey)?.isInvalidated).toBe(true),
     );
+  });
+
+  it('확인이 열리면 카드 전체가 보이도록 스크롤을 보정한다', async () => {
+    // 목록 하단에서 열면 카드보다 높은 확인 카드가 스크롤 밖으로 나가 버튼이 가린다
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    server.use(
+      http.get('/api/v1/patients', () =>
+        HttpResponse.json(envelope([patient('patient-1', 'CASE-001')], page)),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<PatientListPanel onSelect={vi.fn()} />);
+
+    await screen.findByRole('button', { name: 'CASE-001' });
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'CASE-001 삭제' }));
+
+    // 'nearest' — 이미 다 보이면 움직이지 않는다. 목록이 늘 튀면 그것대로 거슬린다
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' }));
   });
 
   it('보관된 환자도 그대로 삭제된다 — 보관과 삭제는 직교한다', async () => {

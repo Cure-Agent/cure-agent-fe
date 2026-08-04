@@ -4,7 +4,7 @@
  * 어시스턴트 좌측 대화 목록 (docs/specs/08 기준 5 + docs/specs/11 개정 기준 6~9).
  * 검색·이름 변경·보관을 이 목록에 통합한다 — 전용 /history 화면은 폐지됨.
  */
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteListScroll } from '@/shared/lib/use-infinite-list-scroll';
 import {
   type ConversationSummary,
@@ -113,6 +113,16 @@ export function ConversationList({
   const archiveConversation = useArchiveConversation(selectedId);
   const unarchiveConversation = useUnarchiveConversation(selectedId);
   const deleteConversation = useDeleteConversation(pendingDeleteId);
+  const confirmRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * 확인 블록은 행보다 훨씬 높아, 목록 하단에서 열면 늘어난 만큼 스크롤 밖으로 나가
+   * 취소·삭제 버튼이 가린다. 'nearest'는 이미 다 보이면 움직이지 않고 넘칠 때만
+   * 최소한으로 끌어당기므로, 하단에서는 블록이 위로 올라오고 최상단에서도 안전하다.
+   */
+  useEffect(() => {
+    if (pendingDeleteId) confirmRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [pendingDeleteId]);
 
   const items = useMemo(
     () => (conversations.data?.pages ?? []).flatMap((page) => page.items),
@@ -311,7 +321,7 @@ export function ConversationList({
                   </form>
                 ) : pendingDeleteId === conversation.id ? (
                   /* 되돌리기 배너가 없는 대신 여기서 막는다 — 서버에 restore가 없다(spec 34) */
-                  <div className="rounded-lg border border-red-200 bg-red-50/60 p-2">
+                  <div ref={confirmRef} className="rounded-lg border border-red-200 bg-red-50/60 p-2">
                     <p className="truncate text-sm font-medium text-gray-800">
                       {conversation.title}
                     </p>

@@ -4,7 +4,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { useState } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { envelope, errorEnvelope, server, useMswServer } from '@/shared/test/msw';
 import { renderWithProviders } from '@/shared/test/render';
 import type { ConversationSummary } from '../api/conversation.api';
@@ -49,6 +49,12 @@ function listHandler(deleted: () => boolean, item: ConversationSummary) {
     return HttpResponse.json(envelope(items, { ...page, size: items.length }));
   });
 }
+
+// happy-dom에는 scrollIntoView가 없다 — 스텁을 심으므로 케이스마다 원복한다
+const originalScrollIntoView = Element.prototype.scrollIntoView;
+afterEach(() => {
+  Element.prototype.scrollIntoView = originalScrollIntoView;
+});
 
 describe('대화 삭제', () => {
   it('휴지통을 눌러도 확인 전에는 DELETE를 호출하지 않는다', async () => {
@@ -140,6 +146,24 @@ describe('대화 삭제', () => {
     await user.click(await screen.findByRole('button', { name: '삭제' }));
 
     await waitFor(() => expect(deleted).toBe(true));
+  });
+
+  it('확인이 열리면 블록 전체가 보이도록 스크롤을 보정한다', async () => {
+    // 목록 하단에서 열면 행보다 높은 확인 블록이 스크롤 밖으로 나가 버튼이 가린다
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    server.use(listHandler(() => false, conversation('conversation-1', '요통 진료 상담')));
+
+    const user = userEvent.setup();
+    renderWithProviders(<Harness />);
+
+    await user.click(await screen.findByRole('button', { name: '요통 진료 상담' }));
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    await user.click(await screen.findByRole('button', { name: '삭제' }));
+
+    // 'nearest' — 이미 다 보이면 움직이지 않는다. 목록이 늘 튀면 그것대로 거슬린다
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' }));
   });
 
   it('삭제에 실패하면 확인을 닫지 않고 실패를 알린다', async () => {

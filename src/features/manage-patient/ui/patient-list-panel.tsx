@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteListScroll } from '@/shared/lib/use-infinite-list-scroll';
 import {
   type PatientSummary,
@@ -127,8 +127,19 @@ function PatientDeleteConfirm({
   onDeleted: () => void;
 }): React.ReactElement {
   const deletePatient = useDeletePatient(patient.id);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * 확인 카드는 목록 카드보다 높아, 목록 하단에서 열면 늘어난 만큼 스크롤 밖으로 나가
+   * 취소·삭제 버튼이 가린다. 'nearest'는 이미 다 보이면 움직이지 않고 넘칠 때만
+   * 최소한으로 끌어당기므로, 하단에서는 카드가 위로 올라오고 최상단에서도 안전하다.
+   */
+  useEffect(() => {
+    ref.current?.scrollIntoView?.({ block: 'nearest' });
+  }, []);
+
   return (
-    <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
+    <div ref={ref} className="rounded-xl border border-red-200 bg-red-50/60 p-4">
       <p className="font-medium text-gray-900">{patient.caseLabel} 삭제</p>
       <p className="mt-1 text-sm text-red-700">
         이 환자의 대화까지 영구 삭제됩니다. 되돌릴 수 없습니다.
