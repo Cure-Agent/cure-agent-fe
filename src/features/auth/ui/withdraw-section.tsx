@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { useClinicMembers, useTransferOwner } from '@/features/manage-clinic/api/clinic.api';
+import { useClinicMembers } from '@/features/manage-clinic/api/clinic.api';
 import { ApiError } from '@/shared/api/api-error';
 import { useWithdraw } from '../api/auth.api';
 
@@ -11,65 +11,45 @@ import { useWithdraw } from '../api/auth.api';
  * 로그아웃과 나란히 두면 나가려다 지우는 오조작이 만들어진다.
  *
  * 개설자에게 남은 동료가 있으면 서버가 409 `CLINIC_OWNER_MUST_TRANSFER`로 막는다. 그 요청은
- * 익명화를 시작하지도 않으므로(판정이 파기보다 앞선다) 여기서 이양 대상을 고르고 다시 시도한다.
- * 이양 화면을 상시 노출하지 않는 이유는, 이양이 필요한 유일한 순간이 바로 이 자리이기 때문이다.
+ * 익명화를 시작하지도 않으므로(판정이 파기보다 앞선다) 안내만 하고 그대로 멈춘다.
+ * **이양은 여기서 하지 않는다** — 「함께 일하는 사람」의 상시 동작이다. 탈퇴 흐름 안에 숨겨 두면
+ * 떠날 생각이 없는 개설자가 권한만 넘길 방법이 없어진다.
  */
 export function WithdrawSection({ meId }: { meId: string }): React.ReactElement {
   const router = useRouter();
   const members = useClinicMembers();
   const withdraw = useWithdraw();
-  const transferOwner = useTransferOwner();
 
-  const [stage, setStage] = useState<'idle' | 'confirming' | 'transferring' | 'done'>('idle');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [stage, setStage] = useState<'idle' | 'confirming' | 'done'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [needsTransfer, setNeedsTransfer] = useState(false);
 
   const others = members.data?.filter((member) => member.id !== meId) ?? [];
   // 마지막 한 사람이면 서버가 클리닉 전체를 파기 예약한다 — 남는 것과 사라지는 것이 달라진다
   const isLastMember = members.isSuccess && others.length === 0;
-  const isBusy = withdraw.isPending || transferOwner.isPending;
 
   const reset = (): void => {
     setStage('idle');
-    setSelectedId(null);
     setErrorMessage(null);
-  };
-
-  const finish = (): void => {
-    setStage('done');
-    // 세션이 이미 끊겼다 — 돌아올 화면이 없으므로 replace다
-    router.replace('/login');
-  };
-
-  const fail = (error: unknown): void => {
-    setErrorMessage(error instanceof Error ? error.message : '탈퇴에 실패했습니다.');
+    setNeedsTransfer(false);
   };
 
   const handleWithdraw = async (): Promise<void> => {
     setErrorMessage(null);
+    setNeedsTransfer(false);
     try {
       await withdraw.mutateAsync();
-      finish();
+      setStage('done');
+      // 세션이 이미 끊겼다 — 돌아올 화면이 없으므로 replace다
+      router.replace('/login');
     } catch (error) {
       if (error instanceof ApiError && error.code === 'CLINIC_OWNER_MUST_TRANSFER') {
-        // 서버 문구가 다음 행동을 담고 있다 (§10.1 — message 그대로 쓴다)
+        // 서버 문구가 무엇을 해야 하는지 담고 있다 (§10.1 — message 그대로 쓴다)
         setErrorMessage(error.message);
-        setStage('transferring');
+        setNeedsTransfer(true);
         return;
       }
-      fail(error);
-    }
-  };
-
-  const handleTransferAndWithdraw = async (): Promise<void> => {
-    if (!selectedId) return;
-    setErrorMessage(null);
-    try {
-      await transferOwner.mutateAsync(selectedId);
-      await withdraw.mutateAsync();
-      finish();
-    } catch (error) {
-      fail(error);
+      setErrorMessage(error instanceof Error ? error.message : '탈퇴에 실패했습니다.');
     }
   };
 
@@ -130,11 +110,18 @@ export function WithdrawSection({ meId }: { meId: string }): React.ReactElement 
               {errorMessage}
             </p>
           )}
+          {needsTransfer && (
+            // 여기서 대상을 고르게 하지 않는다 — 이양은 위 「함께 일하는 사람」의 동작이다
+            <p className="mt-1 text-xs leading-relaxed text-gray-600">
+              위 「함께 일하는 사람」에서 <strong>개설자 권한 넘기기</strong>로 다른 구성원에게
+              권한을 넘긴 뒤 다시 시도해주세요.
+            </p>
+          )}
           <div className="mt-4 flex gap-2">
             <button
               type="button"
               onClick={reset}
-              disabled={isBusy}
+              disabled={withdraw.isPending}
               className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
             >
               취소
@@ -143,69 +130,10 @@ export function WithdrawSection({ meId }: { meId: string }): React.ReactElement 
             <button
               type="button"
               onClick={handleWithdraw}
-              disabled={isBusy || members.isPending}
+              disabled={withdraw.isPending || members.isPending}
               className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
             >
               탈퇴하기
-            </button>
-          </div>
-        </div>
-      )}
-
-      {stage === 'transferring' && (
-        <div className="mt-2">
-          {errorMessage && (
-            <p role="alert" className="text-sm text-red-700">
-              {errorMessage}
-            </p>
-          )}
-          <fieldset className="mt-3">
-            <legend className="text-xs font-medium text-gray-700">
-              개설자 권한을 넘길 구성원
-            </legend>
-            <div className="mt-2">
-              {others.map((member) => (
-                <label
-                  key={member.id}
-                  className="flex cursor-pointer items-center gap-2 border-b border-gray-100 py-2.5 last:border-b-0"
-                >
-                  <input
-                    type="radio"
-                    name="transfer-target"
-                    value={member.id}
-                    checked={selectedId === member.id}
-                    onChange={() => setSelectedId(member.id)}
-                  />
-                  <span className="min-w-0 truncate text-sm text-gray-800">
-                    {member.displayName}
-                  </span>
-                  <span className="ml-auto shrink-0 text-xs text-gray-500">
-                    {new Date(member.joinedAt).toLocaleDateString('ko-KR')} 합류
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <p className="mt-3 text-xs leading-relaxed text-gray-500">
-            권한을 넘기면 그 구성원이 초대를 발급하고 다음 개설자를 정하게 됩니다. 이양은 되돌릴 수
-            없으며, 이어서 탈퇴가 진행됩니다.
-          </p>
-          <div className="mt-4 flex gap-2">
-            <button
-              type="button"
-              onClick={reset}
-              disabled={isBusy}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
-            >
-              취소
-            </button>
-            <button
-              type="button"
-              onClick={handleTransferAndWithdraw}
-              disabled={isBusy || !selectedId}
-              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-            >
-              권한 넘기고 탈퇴하기
             </button>
           </div>
         </div>

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-// 회원탈퇴와 개설자 이양 (BE spec 36) — 되돌릴 수 없으므로 확인이 먼저고,
-// 개설자는 남은 동료가 있으면 409로 막힌 뒤 그 자리에서 권한을 넘긴다
+// 회원탈퇴 (BE spec 36) — 되돌릴 수 없으므로 확인이 먼저다.
+// 이양은 이 화면의 동작이 아니다: 개설자는 409로 막히고 구성원 섹션으로 안내받는다.
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -92,120 +92,64 @@ describe('회원탈퇴', () => {
   });
 });
 
-describe('개설자 이양', () => {
+describe('동료가 남은 개설자의 탈퇴', () => {
   beforeEach(() => replaceMock.mockClear());
 
-  it('409를 만나면 서버 안내와 함께 넘길 상대를 고르게 한다', async () => {
-    server.use(
-      membersHandler([ME, COLLEAGUE]),
-      http.delete('/api/v1/auth/me', () =>
-        HttpResponse.json(
-          errorEnvelope(
-            'CLINIC_OWNER_MUST_TRANSFER',
-            '개설자는 먼저 다른 구성원에게 권한을 넘겨야 탈퇴할 수 있습니다.',
-          ),
-          { status: 409 },
+  const blockedHandlers = [
+    membersHandler([ME, COLLEAGUE]),
+    http.delete('/api/v1/auth/me', () =>
+      HttpResponse.json(
+        errorEnvelope(
+          'CLINIC_OWNER_MUST_TRANSFER',
+          '개설자는 먼저 다른 구성원에게 권한을 넘겨야 탈퇴할 수 있습니다.',
         ),
+        { status: 409 },
       ),
-    );
+    ),
+  ];
+
+  const reachBlock = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    await user.click(screen.getByRole('button', { name: '회원탈퇴' }));
+    await user.click(await screen.findByRole('button', { name: '탈퇴하기' }));
+  };
+
+  it('409의 서버 문구를 그대로 보여준다', async () => {
+    server.use(...blockedHandlers);
 
     const user = userEvent.setup();
     renderWithProviders(<WithdrawSection meId="me" />);
+    await reachBlock(user);
 
-    await user.click(screen.getByRole('button', { name: '회원탈퇴' }));
-    await user.click(await screen.findByRole('button', { name: '탈퇴하기' }));
-
-    // 서버 문구가 다음 행동을 담고 있어 그대로 쓴다 (§10.1)
     expect(
       await screen.findByText('개설자는 먼저 다른 구성원에게 권한을 넘겨야 탈퇴할 수 있습니다.'),
     ).toBeVisible();
-    expect(await screen.findByRole('radio', { name: /이한의/ })).toBeVisible();
-    // 자기 자신은 넘길 상대가 아니다
-    expect(screen.queryByRole('radio', { name: /김한의/ })).toBeNull();
     expect(replaceMock).not.toHaveBeenCalled();
   });
 
-  it('상대를 고르기 전에는 이양 버튼을 누를 수 없다', async () => {
-    server.use(
-      membersHandler([ME, COLLEAGUE]),
-      http.delete('/api/v1/auth/me', () =>
-        HttpResponse.json(errorEnvelope('CLINIC_OWNER_MUST_TRANSFER', '권한을 넘겨주세요.'), {
-          status: 409,
-        }),
-      ),
-    );
+  it('여기서 이양시키지 않고 구성원 섹션으로 안내한다', async () => {
+    server.use(...blockedHandlers);
 
     const user = userEvent.setup();
     renderWithProviders(<WithdrawSection meId="me" />);
+    await reachBlock(user);
 
-    await user.click(screen.getByRole('button', { name: '회원탈퇴' }));
-    await user.click(await screen.findByRole('button', { name: '탈퇴하기' }));
-
-    expect(await screen.findByRole('button', { name: '권한 넘기고 탈퇴하기' })).toBeDisabled();
+    expect(await screen.findByText(/개설자 권한 넘기기/)).toBeVisible();
+    // 이양은 「함께 일하는 사람」의 상시 동작이다 — 탈퇴 화면은 대상을 고르게 하지 않는다
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    expect(screen.queryByRole('button', { name: /권한 넘기/ })).toBeNull();
   });
 
-  it('이양한 뒤 같은 흐름에서 탈퇴까지 끝낸다', async () => {
-    let transferredTo: string | null = null;
-    let deleteAttempts = 0;
-    server.use(
-      membersHandler([ME, COLLEAGUE]),
-      http.post('/api/v1/clinic/owner/transfer', async ({ request }) => {
-        const body = (await request.json()) as { toClinicianId: string };
-        transferredTo = body.toClinicianId;
-        return HttpResponse.json(envelope(null));
-      }),
-      http.delete('/api/v1/auth/me', () => {
-        deleteAttempts += 1;
-        // 첫 시도는 개설자라 막히고, 이양 뒤의 재시도는 통과한다
-        if (transferredTo === null) {
-          return HttpResponse.json(
-            errorEnvelope('CLINIC_OWNER_MUST_TRANSFER', '권한을 넘겨주세요.'),
-            { status: 409 },
-          );
-        }
-        return HttpResponse.json(envelope(null));
-      }),
-    );
+  it('막힌 뒤에도 취소로 되돌아갈 수 있다', async () => {
+    server.use(...blockedHandlers);
 
     const user = userEvent.setup();
     renderWithProviders(<WithdrawSection meId="me" />);
+    await reachBlock(user);
+    await screen.findByText(/개설자 권한 넘기기/);
 
-    await user.click(screen.getByRole('button', { name: '회원탈퇴' }));
-    await user.click(await screen.findByRole('button', { name: '탈퇴하기' }));
-    await user.click(await screen.findByRole('radio', { name: /이한의/ }));
-    await user.click(screen.getByRole('button', { name: '권한 넘기고 탈퇴하기' }));
+    await user.click(screen.getByRole('button', { name: '취소' }));
 
-    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith('/login'));
-    expect(transferredTo).toBe('colleague');
-    expect(deleteAttempts).toBe(2);
-  });
-
-  it('이양이 실패하면 탈퇴를 보내지 않는다 — 권한이 남은 채로 계정만 지워지면 안 된다', async () => {
-    let deleteAttempts = 0;
-    server.use(
-      membersHandler([ME, COLLEAGUE]),
-      http.post('/api/v1/clinic/owner/transfer', () =>
-        HttpResponse.json(errorEnvelope('NOT_FOUND', '대상을 찾을 수 없습니다.'), { status: 404 }),
-      ),
-      http.delete('/api/v1/auth/me', () => {
-        deleteAttempts += 1;
-        return HttpResponse.json(errorEnvelope('CLINIC_OWNER_MUST_TRANSFER', '권한을 넘겨주세요.'), {
-          status: 409,
-        });
-      }),
-    );
-
-    const user = userEvent.setup();
-    renderWithProviders(<WithdrawSection meId="me" />);
-
-    await user.click(screen.getByRole('button', { name: '회원탈퇴' }));
-    await user.click(await screen.findByRole('button', { name: '탈퇴하기' }));
-    await user.click(await screen.findByRole('radio', { name: /이한의/ }));
-    await user.click(screen.getByRole('button', { name: '권한 넘기고 탈퇴하기' }));
-
-    expect(await screen.findByText('대상을 찾을 수 없습니다.')).toBeVisible();
-    // 409를 부른 첫 시도 하나뿐이다
-    expect(deleteAttempts).toBe(1);
-    expect(replaceMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: '회원탈퇴' })).toBeVisible();
+    expect(screen.queryByText(/개설자 권한 넘기기/)).toBeNull();
   });
 });
