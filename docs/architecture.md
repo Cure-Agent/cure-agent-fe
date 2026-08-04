@@ -17,6 +17,7 @@ cure-agent-fe/
 │   ├── app/
 │   │   ├── (auth)/
 │   │   │   ├── login/page.tsx        # 소셜 로그인 진입 (?error= 표시)
+│   │   │   ├── invite/[token]/page.tsx  # 초대 링크 수락 진입 (비인증 — BE specs/35)
 │   │   │   └── signup/page.tsx       # 소셜 인증 후 온보딩 (?ticket= 필수)
 │   │   ├── (protected)/
 │   │   │   ├── layout.tsx
@@ -39,10 +40,11 @@ cure-agent-fe/
 │   │   └── evidence-inspector/       # /assistant, /guidelines 공용
 │   │
 │   ├── features/
-│   │   ├── auth/                     # 소셜 로그인 + 온보딩 + logout 통합 (BE docs/specs/17)
+│   │   ├── auth/                     # 소셜 로그인 + 온보딩 + logout + 회원탈퇴 (BE docs/specs/17·36)
 │   │   ├── ask-guideline/
 │   │   ├── filter-guidelines/
 │   │   ├── inspect-evidence/
+│   │   ├── manage-clinic/            # 구성원·초대·개설자 이양 (BE docs/specs/35·36)
 │   │   ├── manage-patient/
 │   │   ├── request-clinical-guidance/
 │   │   ├── review-clinical-guidance/
@@ -95,6 +97,14 @@ cure-agent-fe/
 - POST + `fetch()` + ReadableStream으로 SSE를 소비한다 (EventSource 미사용).
 - **http.ts의 `ensureRefreshed()`를 공유한다** — 스트리밍 요청도 토큰 만료를 만난다.
 - CSRF 헤더도 동일하게 부착한다.
+
+**초대 링크 왕복 규칙 (원본 §5.2, BE docs/specs/35):**
+
+- BE 소셜 콜백은 `/signup?ticket=`만 들고 돌아온다 — **초대 토큰을 실을 자리가 없다.** `/invite/[token]`이 sessionStorage(`cure.invitationToken`)에 맡기고 온보딩이 되찾는다. 소셜 로그인은 같은 탭의 전체 페이지 이동이라 왕복 동안 값이 살아남는다.
+- localStorage가 아니라 **sessionStorage**다: 1회용 합류 권한이므로 탭을 닫으면 함께 사라져야 하고, 다른 탭의 가입 흐름에 새어 들어가서도 안 된다.
+- **유효한 초대일 때만** 맡기고, 가입에 **성공한 뒤** 지운다 — 읽으면서 비우면 폼 검증 실패로 한 번 되돌아왔을 때 합류 맥락이 사라진다.
+- `clinicName`(새 개설)과 `invitationToken`(합류)은 **상호배타**다(함께 보내면 422). 화면도 입력을 하나만 띄운다.
+- 프리뷰(`GET /invitations/{token}`)는 **비인증 경로**다. 이 화면에서 `useMe()`를 부르지 않는다 — 비로그인 방문자가 401 → refresh 실패 → 전역 `/login` 리다이렉트로 튕겨 나가 정작 초대받은 사람이 화면을 못 본다.
 
 ---
 

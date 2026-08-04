@@ -10,14 +10,11 @@ export type Clinician = components['schemas']['ClinicianResponseDto'];
 export type AuthSession = components['schemas']['AuthSessionResponseDto'];
 export type OAuthProvider = components['schemas']['OAuthProvidersResponseDto']['providers'][number];
 
-/** 티켓과 함께 보내는 온보딩 입력 — 이메일·소셜 신원은 서버가 티켓에서 꺼낸다 (docs/specs/17) */
-export interface CompleteSignUpInput {
-  ticket: string;
-  displayName: string;
-  clinicName: string;
-  licenseNumber: string;
-  termsAccepted: boolean;
-}
+/**
+ * 티켓과 함께 보내는 온보딩 입력 — 이메일·소셜 신원은 서버가 티켓에서 꺼낸다 (docs/specs/17).
+ * `clinicName`(새 개설)과 `invitationToken`(합류)은 **상호배타다** — 함께 보내면 422다 (docs/specs/35).
+ */
+export type CompleteSignUpInput = components['schemas']['CompleteSignUpRequestDto'];
 
 export const ME_QUERY_KEY = ['auth', 'me'] as const;
 export const OAUTH_PROVIDERS_QUERY_KEY = ['auth', 'oauth', 'providers'] as const;
@@ -70,6 +67,25 @@ export function useLogout() {
   return useMutation({
     mutationFn: async () => unwrap<null>(await api.POST('/api/v1/auth/logout')),
     onSettled: () => {
+      queryClient.clear();
+    },
+  });
+}
+
+/**
+ * 회원탈퇴 (docs/specs/36) — 개인정보를 즉시 익명화하고 모든 기기의 세션을 끊는다.
+ * **철회·복구 경로는 없다**(spec 36 Out of scope).
+ *
+ * 남은 구성원이 있는 개설자는 409 `CLINIC_OWNER_MUST_TRANSFER`로 막히며, 그 요청은
+ * 익명화를 시작하지도 않는다 — 호출부가 이양을 안내한 뒤 다시 시도할 수 있다.
+ * 그래서 캐시 비우기를 `onSettled`가 아니라 `onSuccess`에 둔다: 409로 돌아온 화면은
+ * 이양 대상을 고르기 위해 살아 있어야 한다.
+ */
+export function useWithdraw() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => unwrap<null>(await api.DELETE('/api/v1/auth/me')),
+    onSuccess: () => {
       queryClient.clear();
     },
   });
