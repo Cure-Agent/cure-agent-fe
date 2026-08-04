@@ -18,9 +18,10 @@ const STATUS_LABEL: Record<InvitationStatus, string> = {
   EXPIRED: '만료됨',
 };
 
+/** 색은 면허 인증 뱃지와 같은 뜻으로 읽힌다 — 초록은 끝난 일, 노랑은 아직 기다리는 일 */
 const STATUS_STYLE: Record<InvitationStatus, string> = {
-  PENDING: 'bg-emerald-100 text-emerald-800',
-  ACCEPTED: 'bg-gray-100 text-gray-600',
+  PENDING: 'bg-amber-100 text-amber-800',
+  ACCEPTED: 'bg-emerald-100 text-emerald-800',
   REVOKED: 'bg-gray-100 text-gray-500',
   EXPIRED: 'bg-gray-100 text-gray-500',
 };
