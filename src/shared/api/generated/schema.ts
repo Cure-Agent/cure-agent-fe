@@ -124,6 +124,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/clinic/members/{clinicianId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 구성원 강퇴 — 소속 해제 (개설자 전용) */
+        delete: operations["ClinicMemberController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/signup": {
         parameters: {
             query?: never;
@@ -1460,6 +1477,25 @@ export interface operations {
                 "application/json": components["schemas"]["TransferClinicOwnerRequestDto"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ClinicMemberController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clinicianId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
