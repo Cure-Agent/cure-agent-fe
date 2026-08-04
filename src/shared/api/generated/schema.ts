@@ -387,7 +387,11 @@ export interface paths {
         get: operations["ConversationController_detail"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 대화 삭제 (docs/specs/34 — 멱등)
+         * @description 소프트 삭제다. 유예가 지나면 크론이 물리 삭제하며 복구 API는 없다. 재삭제해도 파기 시각은 미뤄지지 않는다. 보관 여부와 무관하게 삭제된다.
+         */
+        delete: operations["ConversationController_remove"];
         options?: never;
         head?: never;
         /** 대화명 변경 (§5.7) */
@@ -511,7 +515,11 @@ export interface paths {
         get: operations["PatientController_detail"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 환자 삭제 (docs/specs/34 — 멱등)
+         * @description 소프트 삭제다. 이 환자의 대화도 함께 파기 예약되며, 유예가 지나면 크론이 물리 삭제한다. 복구 API는 없다. 보관 여부와 무관하게 삭제된다.
+         */
+        delete: operations["PatientController_remove"];
         options?: never;
         head?: never;
         /** 환자 수정 (낙관적 잠금 — version 필수) */
@@ -1750,6 +1758,25 @@ export interface operations {
             };
         };
     };
+    ConversationController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ConversationController_rename: {
         parameters: {
             query?: never;
@@ -1965,6 +1992,25 @@ export interface operations {
                         data?: components["schemas"]["PatientDetailResponseDto"];
                     };
                 };
+            };
+        };
+    };
+    PatientController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
