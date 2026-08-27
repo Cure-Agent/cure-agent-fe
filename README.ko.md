@@ -1,40 +1,63 @@
-# cure-agent-fe
+# CureAgent Frontend
 
 [English](README.md) | [한국어](README.ko.md)
 
-한의사용 임상 어시스턴트 CureAgent의 프론트엔드. 지침 질의 3단 화면(대화·스트리밍 답변·인용 근거),
-환자 관리, 임상 가이던스 검토, 대화 히스토리를 제공한다.
-**설계 단일 원본은 [cure-agent-be/docs/architecture.md](https://github.com/Cure-Agent/cure-agent-be/blob/main/docs/architecture.md)**.
+CureAgent의 프론트엔드 애플리케이션. CureAgent는 의료 가이드라인에서 근거를 검색하고
+인용에 기반한 답변을 생성하는 임상 RAG 어시스턴트다.
 
-## 스택
+**Live Demo:** [cure.demo01.xyz](https://cure.demo01.xyz)
 
-Next.js 16 · React 19 · Tailwind CSS 4 · TanStack Query 5 · openapi-typescript/openapi-fetch(생성 타입) ·
-vitest 4 + happy-dom + MSW
+시스템 설계의 단일 원본은 백엔드다. RAG 파이프라인과 서비스 경계는
+[CureAgent architecture](https://github.com/Cure-Agent/cure-agent-be/blob/main/docs/architecture.md)를
+참고한다.
 
-## 구동
+## 주요 기능
+
+- 스트리밍 임상 질의응답
+- 인용 및 근거 뷰어
+- 환자 관리
+- 임상 가이던스 검토
+- 대화 기록
+
+## 기술 스택
+
+Next.js 16 · React 19 · TypeScript 5 · Tailwind CSS 4 · TanStack Query 5 ·
+openapi-typescript · openapi-fetch
+
+## 시작하기
+
+Node.js 22+와 pnpm 10이 필요하다. 먼저
+[CureAgent 백엔드](https://github.com/Cure-Agent/cure-agent-be)를 실행한다.
 
 ```bash
 pnpm install
-pnpm dev            # http://localhost:3001 — /api/v1/*는 rewrites로 BE(3000) 프록시
+pnpm dev  # http://localhost:3001; /api/v1/* 요청을 3000번 포트의 백엔드로 프록시
 ```
 
-BE는 [cure-agent-be README](https://github.com/Cure-Agent/cure-agent-be#구동)대로 먼저 띄운다.
+## API 계약 동기화
 
-## 계약 동기화 (§1)
-
-API 타입은 손으로 쓰지 않는다 — `src/shared/api/generated/`는 BE의 `openapi/cure-agent.v1.json`에서 생성된다.
+API 타입은 손으로 작성하지 않고 백엔드 OpenAPI 명세에서 생성한다.
 
 ```bash
-pnpm api:sync       # BE 스펙 가져와 재생성 (BE 레포가 형제 디렉토리에 있을 때)
-pnpm api:generate   # 로컬 openapi/ 스냅샷 기준 재생성 (CI가 드리프트 0을 검사)
+pnpm api:sync      # 백엔드 명세를 가져와 타입 재생성
+pnpm api:generate  # 커밋된 로컬 스냅샷에서 타입 재생성
 ```
 
-BE main 머지 시 repository_dispatch → Contract Sync 워크플로우가 동기화 PR을 자동 생성한다.
+- 생성된 타입은 `src/shared/api/generated/`에 둔다.
+- CI는 클라이언트를 다시 생성하고 OpenAPI 스냅샷과 생성 타입에 차이가 없는지 검증한다.
+- 백엔드 `main` merge는 Contract Sync 워크플로우를 트리거하며, 이 워크플로우가 동기화 PR을
+  자동으로 열거나 갱신한다.
 
-## 검증
+## 테스트
+
+Vitest · MSW · Testing Library · Playwright
 
 ```bash
-pnpm typecheck && pnpm test && pnpm build
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm test:e2e
 ```
 
-테스트는 vitest + MSW(수동 mock 금지). 수용 기준 테스트는 구현 전 동결(Codex 작성/Claude 리뷰·구현)한다.
+Vitest 테스트는 네트워크 경계에서 MSW를 사용한다. Playwright는 결정적인 API 스텁을 통해
+핵심 브라우저 흐름을 검증한다.
