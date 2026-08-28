@@ -413,7 +413,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 잡 진행 SSE (§8 — 봉투 미적용)
+         * 잡 진행 SSE
          * @description job.snapshot → run.stage(단계마다) → job.completed. 모든 이벤트가 job 카운터를 함께 싣는다. GET이라 EventSource를 그대로 쓴다.
          */
         get: operations["AdminGuidelineJobController_stream"];
@@ -563,7 +563,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 질문 전송 + SSE 스트리밍 답변 (§8 — 봉투 미적용)
+         * 질문 전송 + SSE 스트리밍 답변
          * @description message.accepted → retrieval.started/completed → answer.delta(seq) → answer.completed | answer.abstained | error. 15초 heartbeat 주석 전송.
          */
         post: operations["ConversationController_streamMessage"];
@@ -1108,6 +1108,8 @@ export interface components {
             id: string;
             /** @enum {string} */
             type: "GUIDELINE_QA" | "PATIENT_GUIDANCE";
+            /** @description PATIENT_GUIDANCE 대화가 가리키는 환자 — GUIDELINE_QA에는 없다. 대화만 알고 들어온 화면이 환자 프로필을 되찾는 유일한 축이다 */
+            patientId?: string;
             title: string;
             /**
              * @description 보관 여부 (docs/specs/11 additive)
@@ -1132,6 +1134,8 @@ export interface components {
             id: string;
             /** @enum {string} */
             type: "GUIDELINE_QA" | "PATIENT_GUIDANCE";
+            /** @description PATIENT_GUIDANCE 대화가 가리키는 환자 — GUIDELINE_QA에는 없다. 대화만 알고 들어온 화면이 환자 프로필을 되찾는 유일한 축이다 */
+            patientId?: string;
             title: string;
             /**
              * @description 보관 여부 (docs/specs/11 additive)
