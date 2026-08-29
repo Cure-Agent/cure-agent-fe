@@ -10,7 +10,24 @@
  */
 export type ResponseLang = 'ko' | 'en';
 
-export function resolveResponseLang(_text: string): ResponseLang {
-  void _text;
-  return 'ko';
+/**
+ * 한국어로 판정하는 최소 한글 비율. 임상 질의는 「ADHD 소아·청소년에서…」처럼 라틴 문자가
+ * 섞이므로 과반을 요구하면 한국어 질의가 영어로 오판되고, 그러면 **번역이 필요 없는 질의에
+ * 영문 답변이 붙어** 한국어 경로가 조용히 바뀐다. 낮게 잡아 한국어 쪽으로 기울인다.
+ *
+ * BE의 `query-language.ts`와 같은 값이다 — 두 판정의 축은 다르지만(BE는 검색 번역 여부,
+ * 여기는 답변 언어) 같은 문장을 서로 다르게 읽으면 진단이 어려워진다.
+ */
+const HANGUL_RATIO = 0.2;
+
+const HANGUL = /[가-힣ㄱ-ㅎㅏ-ㅣ]/g;
+const LETTER = /[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z]/g;
+
+export function resolveResponseLang(text: string): ResponseLang {
+  const letters = text.match(LETTER)?.length ?? 0;
+  // 숫자·기호뿐인 입력은 가릴 언어가 없다 — 오늘 경로인 한국어로 둔다
+  if (letters === 0) return 'ko';
+
+  const hangul = text.match(HANGUL)?.length ?? 0;
+  return hangul / letters >= HANGUL_RATIO ? 'ko' : 'en';
 }

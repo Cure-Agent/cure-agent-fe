@@ -43,15 +43,15 @@ export interface SuggestedPrompt {
 export const GENERAL_SUGGESTED_PROMPTS: readonly SuggestedPrompt[] = [
   {
     ko: '성인 만성 비특이적 요통 환자에게 침 치료를 할 때, 모든 환자에게 같은 혈자리를 쓰는 표준 처방과 환자별로 달리하는 개별 처방 중 어느 쪽이 권고되나요?',
-    en: '',
+    en: 'For adult patients with chronic nonspecific low back pain, when providing acupuncture treatment, is a standardized prescription using the same acupoints for all patients or an individualized prescription tailored to each patient recommended?',
   },
   {
     ko: '성인 원발성 불면 환자에서 불면 증상 개선을 위해 고려할 수 있는 한약 처방은 무엇인가요?',
-    en: '',
+    en: 'What herbal medicine prescription can be considered to improve insomnia symptoms in adult patients with primary insomnia?',
   },
   {
     ko: '편두통 환자에서 전침치료를 고려할 때, 일반적인 양약치료보다 증상 호전이나 두통 강도 완화에 도움이 될 수 있는가?',
-    en: '',
+    en: 'In patients with migraine, when considering electroacupuncture treatment, can it help improve symptoms or relieve headache intensity compared with conventional medication treatment?',
   },
 ];
 
@@ -71,21 +71,21 @@ const PATIENT_PROMPTS: readonly { keywords: readonly string[]; prompt: Suggested
     keywords: ['골다공증'],
     prompt: {
       ko: '골다공증 환자에게 골밀도나 통증 개선을 목적으로 침 치료를 고려할 때, 유침 시간은 보통 어느 정도로 잡는 것이 적절한가요?',
-      en: '',
+      en: 'When considering acupuncture for a patient with osteoporosis to improve bone density or relieve pain, what is the usual appropriate retention time for the needles?',
     },
   },
   {
     keywords: ['주의력결핍', '과잉행동', 'ADHD'],
     prompt: {
       ko: 'ADHD 소아·청소년에서 한약 치료를 우선 검토할 수 있는 임상 상황은 어떤 경우인가요?',
-      en: '',
+      en: 'In what clinical situations can herbal medicine treatment be considered first for children and adolescents with ADHD?',
     },
   },
   {
     keywords: ['류마티스'],
     prompt: {
       ko: '성인 류마티스 관절염 환자의 증상 완화를 위해 약침을 쓸 때, 시술 부위와 함께 어떤 취혈 원칙을 적용하고 봉약침 사용 전에는 어떤 안전 조치가 필요한가?',
-      en: '',
+      en: 'When using pharmacopuncture to relieve symptoms in adult patients with rheumatoid arthritis, what acupoint selection principles should be applied in addition to the treatment site, and what safety precautions are necessary before using bee venom pharmacopuncture?',
     },
   },
 ];
@@ -110,7 +110,7 @@ export interface SuggestedPromptsInput {
  * 예시를 나란히 두면 무엇이 맞춤인지가 흐려진다.
  */
 export function resolveSuggestedPrompts(input: SuggestedPromptsInput): readonly string[] {
-  const pick = (prompt: SuggestedPrompt): string => prompt.ko;
+  const pick = (prompt: SuggestedPrompt): string => prompt[input.lang];
 
   if (input.type !== 'PATIENT_GUIDANCE') return GENERAL_SUGGESTED_PROMPTS.map(pick);
 

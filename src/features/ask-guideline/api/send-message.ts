@@ -19,10 +19,16 @@ export interface SendMessageArgs {
 }
 
 export async function sendMessageStream(args: SendMessageArgs): Promise<void> {
-  const { conversationId, content, clientRequestId, filters, onEvent, signal } = args;
+  const { conversationId, content, clientRequestId, filters, responseLang, onEvent, signal } = args;
   await postStream(
     `/api/v1/conversations/${conversationId}/messages/stream`,
-    { content, clientRequestId, ...(filters ? { filters } : {}) },
+    {
+      content,
+      clientRequestId,
+      ...(filters ? { filters } : {}),
+      // 없으면 키를 싣지 않는다 — 계약의 기본값이 'ko'라, 안 보내는 것이 오늘 요청과 같다
+      ...(responseLang ? { responseLang } : {}),
+    },
     { onEvent, signal },
   );
 }

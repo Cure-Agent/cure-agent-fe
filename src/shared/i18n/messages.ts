@@ -39,26 +39,28 @@ const ko = {
 export type MessageKey = keyof typeof ko;
 
 const en: Record<MessageKey, string> = {
-  suggestedPromptsHeading: '',
-  suggestedPromptsListLabel: '',
-  questionInputLabel: '',
-  questionInputPlaceholder: '',
-  send: '',
-  retry: '',
-  loadingOlderMessages: '',
-  retrievingEvidence: '',
-  abstainedNotice: '',
-  streamDisconnected: '',
-  streamAborted: '',
+  suggestedPromptsHeading: 'Try asking',
+  suggestedPromptsListLabel: 'Example questions',
+  questionInputLabel: 'Question',
+  questionInputPlaceholder:
+    'Ask about the guidelines (e.g. Is acupuncture effective for chronic low back pain?)',
+  send: 'Send',
+  retry: 'Try again',
+  loadingOlderMessages: 'Loading earlier messages…',
+  retrievingEvidence: 'Searching the guidelines for evidence…',
+  abstainedNotice:
+    'No guideline evidence matched this question, so the answer was withheld.',
+  streamDisconnected: 'The connection dropped before the answer finished.',
+  streamAborted: 'The stream was interrupted.',
 
-  evidencePanelHeading: '',
-  evidencePanelEmpty: '',
-  showFullText: '',
-  hideFullText: '',
+  evidencePanelHeading: 'Cited evidence',
+  evidencePanelEmpty: 'Ask a question and the guideline evidence cited in the answer appears here.',
+  showFullText: 'Show full text',
+  hideFullText: 'Collapse',
 
-  citationNotTranslated: '',
-  showKoreanOriginal: '',
-  hideKoreanOriginal: '',
+  citationNotTranslated: 'Not translated',
+  showKoreanOriginal: 'Show Korean original',
+  hideKoreanOriginal: 'Hide Korean original',
 };
 
 export const UI_MESSAGES: Record<UiLang, Record<MessageKey, string>> = { ko, en };
