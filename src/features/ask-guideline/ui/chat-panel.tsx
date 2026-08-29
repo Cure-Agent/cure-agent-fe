@@ -93,6 +93,7 @@ export function ChatPanel({
     if (!isConversationEmpty || !conversation.data) return [];
     return resolveSuggestedPrompts({
       type: conversation.data.type,
+      lang: 'ko',
       // 환자를 못 불러온 경우(삭제된 환자 등)는 빈 배열 = 「걸리는 진단 없음」으로 넘겨
       // 일반 질의문으로 떨어뜨린다 — 무한정 빈 자리로 두지 않는다
       diagnoses: patient.isError ? [] : patient.data?.diagnoses,

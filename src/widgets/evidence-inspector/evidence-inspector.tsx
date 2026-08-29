@@ -19,6 +19,14 @@ export interface EvidenceItem {
   recommendationGrade?: components['schemas']['RatingResponseDto'];
   /** 명시 마커 — 저장된 인용 경로가 넘긴다. 없으면 배열 순서(index + 1)가 마커다 (§8) */
   marker?: number;
+  /**
+   * 근거 번역 (BE docs/specs/42) — **배치 산출물이라 없을 수 있다.**
+   * 1차 대상이 6주제 655청크뿐이고, 원문이 개정되면 stale로 판정돼 BE가 키를 아예 싣지 않는다.
+   * 스트림 근거는 `excerptTranslated`, 저장된 인용은 `quoteTranslated`가 여기로 들어온다 —
+   * 둘 다 같은 자리(발췌)의 번역이라 카드에서는 하나로 본다.
+   */
+  excerptTranslated?: string;
+  titleTranslated?: string;
   /** 이하 EvidenceDetailResponseDto 통과 필드 — 리터럴 대입 호환용, 렌더에는 쓰지 않는다 */
   guidelineId?: string;
   guidelineVersionId?: string;
@@ -28,6 +36,8 @@ export interface EvidenceItem {
   pageStart?: number;
   pageEnd?: number;
   sourceUrl?: string;
+  /** 번역을 만든 모델 — provenance. 렌더에는 쓰지 않는다 */
+  translationModel?: string;
 }
 
 export interface EvidenceInspectorProps {

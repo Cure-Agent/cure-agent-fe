@@ -1,4 +1,5 @@
 /** postStream 래퍼 — ChatPanel이 사용한다. 테스트에서 vi.mock 대상. */
+import type { ResponseLang } from '../lib/response-lang';
 import { postStream, type StreamEvent } from '@/shared/api/stream-client';
 
 export interface SendMessageArgs {
@@ -11,6 +12,8 @@ export interface SendMessageArgs {
     recommendationGrades?: string[];
     evidenceLevels?: string[];
   };
+  /** 답변 언어 — 입력 문장에서 유도한다 (BE docs/specs/42) */
+  responseLang?: ResponseLang;
   onEvent: (event: StreamEvent) => void;
   signal?: AbortSignal;
 }
