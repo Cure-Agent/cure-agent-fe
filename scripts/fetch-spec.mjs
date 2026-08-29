@@ -25,7 +25,17 @@ const OUT_DIR = join(ROOT, '.cure-implement');
 const SIBLING_SPECS = join(ROOT, '..', 'cure-agent-be', 'docs', 'specs');
 
 const REPO = process.env.CURE_AGENT_BE_REPO ?? 'Cure-Agent/cure-agent-be';
-const REF = process.env.CURE_AGENT_BE_REF ?? 'main';
+/**
+ * **기본 ref가 `dev`인 이유**: BE의 기본 브랜치가 `dev`이고 스펙은 `dev-only`로 착지한다
+ * (문서는 배포 산출물을 바꾸지 않으므로 main 머지·CD를 돌리지 않는다). 즉 **스펙은 항상 dev에
+ * 먼저 있고 main에는 다음 `full` 배포가 실어 나른다** — main을 기본으로 두면 갓 쓴 스펙도,
+ * dev에만 반영된 개정도 못 읽는다. 실측(2026-08-29): spec 41의 수용 기준 레포 라벨이
+ * dev에 29곳, main에 2곳이었다.
+ *
+ * dev에서 못 찾으면 main으로 한 번 더 시도한다 — 오래된 스펙이 dev에서 정리됐을 가능성 대비.
+ */
+const REF = process.env.CURE_AGENT_BE_REF ?? 'dev';
+const FALLBACK_REF = 'main';
 
 const number = process.argv[2];
 if (!number || !/^\d+$/.test(number)) {
@@ -44,8 +54,8 @@ function fromSibling() {
   return { source: join(SIBLING_SPECS, hit), body: readFileSync(join(SIBLING_SPECS, hit), 'utf8') };
 }
 
-async function fromRemote() {
-  const listUrl = `https://api.github.com/repos/${REPO}/contents/docs/specs?ref=${REF}`;
+async function fromRemote(ref) {
+  const listUrl = `https://api.github.com/repos/${REPO}/contents/docs/specs?ref=${ref}`;
   const listRes = await fetch(listUrl, {
     headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'cure-agent-fe-fetch-spec' },
   });
@@ -58,18 +68,19 @@ async function fromRemote() {
   );
   if (!hit) return null;
 
-  const rawUrl = `https://raw.githubusercontent.com/${REPO}/${REF}/docs/specs/${hit.name}`;
+  const rawUrl = `https://raw.githubusercontent.com/${REPO}/${ref}/docs/specs/${hit.name}`;
   const res = await fetch(rawUrl);
   if (!res.ok) throw new Error(`스펙 fetch 실패: HTTP ${res.status} — ${rawUrl}`);
   return { source: rawUrl, body: await res.text() };
 }
 
-const found = fromSibling() ?? (await fromRemote());
+const found =
+  fromSibling() ?? (await fromRemote(REF)) ?? (REF === 'dev' ? await fromRemote(FALLBACK_REF) : null);
 if (!found) {
   console.error(
     `스펙 ${number}을(를) 찾지 못했습니다.\n` +
       `  - 로컬 형제 경로: ${SIBLING_SPECS} (없거나 해당 번호 없음)\n` +
-      `  - 원격: ${REPO}@${REF} docs/specs/\n` +
+      `  - 원격: ${REPO}@${REF}${REF === 'dev' ? ` 및 @${FALLBACK_REF}` : ''} docs/specs/\n` +
       `아직 BE에 머지되지 않은 스펙이면 두 레포를 형제 디렉토리로 두고 다시 실행하세요.`,
   );
   process.exit(1);
