@@ -1,17 +1,28 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useReducer, useState } from 'react';
+import {
+  FormEvent,
+  KeyboardEvent,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
 import {
   CONVERSATIONS_KEY,
   flatMessagesChronological,
   messagesKey,
+  useConversation,
   useMessages,
 } from '@/features/manage-conversation/api/conversation.api';
+import { usePatient } from '@/features/manage-patient/api/patient.api';
 import { useChatAutoScroll } from '@/shared/lib/use-chat-auto-scroll';
 import { GuidanceCard } from '@/features/review-clinical-guidance/ui/guidance-card';
 import { GuidanceCardLoader } from '@/features/review-clinical-guidance/ui/guidance-card-loader';
 import { sendMessageStream } from '../api/send-message';
+import { resolveSuggestedPrompts } from '../lib/suggested-prompts';
 import {
   type AnswerCitation,
   type EvidenceDetail,
@@ -46,6 +57,15 @@ export function ChatPanel({
   const [state, dispatch] = useReducer(streamReducer, initialStreamState);
   const [question, setQuestion] = useState('');
   const [lastRequest, setLastRequest] = useState<LastRequest | null>(null);
+  const questionRef = useRef<HTMLTextAreaElement | null>(null);
+
+  /**
+   * 예시 질의문에 필요한 두 가지 — 대화의 성격과, 환자 맞춤이라면 그 환자의 진단.
+   * 목록을 거치지 않고 `?conversation={id}`로 바로 들어와도 성립해야 하므로 상위에서
+   * 내려받지 않고 여기서 대화 단건을 직접 읽는다.
+   */
+  const conversation = useConversation(conversationId);
+  const patient = usePatient(conversation.data?.patientId ?? null);
 
   const inFlight =
     state.phase === 'accepted' || state.phase === 'retrieving' || state.phase === 'streaming';
@@ -59,6 +79,25 @@ export function ChatPanel({
     state.pendingUser && !persisted.some((m) => m.id === state.pendingUser?.id)
       ? state.pendingUser
       : null;
+
+  /**
+   * 예시 질의문은 **아직 아무 말도 오가지 않은 대화에만** 띄운다. 대화가 시작되면 입력창 위
+   * 자리는 방금 받은 답변이 차지해야 하고, 그때부터 예시는 다음 질문을 가리는 방해물이 된다.
+   * 내 질문을 낙관적으로 그리는 `localUser`까지 함께 보는 이유는, 전송 직후 서버 목록이
+   * 갱신되기 전의 짧은 순간에 예시가 되살아나 보이지 않게 하기 위해서다.
+   */
+  const isConversationEmpty =
+    messages.isSuccess && persisted.length === 0 && !localUser && !localFinal && state.phase === 'idle';
+
+  const suggestedPrompts = useMemo(() => {
+    if (!isConversationEmpty || !conversation.data) return [];
+    return resolveSuggestedPrompts({
+      type: conversation.data.type,
+      // 환자를 못 불러온 경우(삭제된 환자 등)는 빈 배열 = 「걸리는 진단 없음」으로 넘겨
+      // 일반 질의문으로 떨어뜨린다 — 무한정 빈 자리로 두지 않는다
+      diagnoses: patient.isError ? [] : patient.data?.diagnoses,
+    });
+  }, [isConversationEmpty, conversation.data, patient.data, patient.isError]);
 
   const scroll = useChatAutoScroll({
     resetKey: conversationId,
@@ -164,6 +203,19 @@ export function ChatPanel({
     event.currentTarget.form?.requestSubmit();
   };
 
+  /**
+   * 예시를 누르면 **보내지 않고 입력창을 채운다.** 클릭 한 번이 곧 LLM 호출이면 실수로 눌렀을 때
+   * 되돌릴 방법이 없고, 예시를 자기 환자에 맞게 고쳐 던지는 흐름도 막힌다. 커서를 문장 끝에
+   * 두는 것까지가 「채운다」의 완성이다 — focus만 주면 캐럿이 맨 앞에 붙어 이어 쓸 수 없다.
+   */
+  const handleSelectPrompt = (prompt: string): void => {
+    setQuestion(prompt);
+    const textarea = questionRef.current;
+    if (!textarea) return;
+    textarea.focus();
+    textarea.setSelectionRange?.(prompt.length, prompt.length);
+  };
+
   const handleRetry = (): void => {
     if (!lastRequest || inFlight) return;
     void send(lastRequest.content, crypto.randomUUID()); // 새 clientRequestId (§8)
@@ -248,8 +300,13 @@ export function ChatPanel({
         )}
       </div>
 
+      {suggestedPrompts.length > 0 && (
+        <SuggestedPrompts prompts={suggestedPrompts} onSelect={handleSelectPrompt} />
+      )}
+
       <form onSubmit={handleSubmit} className="flex gap-2 border-t border-gray-200 p-3">
         <textarea
+          ref={questionRef}
           aria-label="질문 입력"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
@@ -266,6 +323,42 @@ export function ChatPanel({
           전송
         </button>
       </form>
+    </div>
+  );
+}
+
+/**
+ * 입력창 바로 위에 붙는 예시 질의문. 메시지 영역이 아니라 폼 위에 두는 이유는 이것이
+ * 대화 기록이 아니라 **입력 보조**이기 때문이다 — 스크롤과 함께 떠내려가면 안 된다.
+ *
+ * 질문 문장이 길어 한 줄에 담기지 않으므로 칩이 아니라 세로 목록이다. 높이는 내용에 맡긴다 —
+ * 이 목록이 뜨는 것은 메시지가 하나도 없을 때뿐이라, 위쪽 메시지 영역(`flex-1` + `overflow-y-auto`
+ * 라 0까지 줄어든다)이 그만큼을 그대로 내준다. `max-h`는 세 줄을 자르지 않는 선의 안전장치일
+ * 뿐이다 — 고정 rem 값으로 잡으면 낮은 뷰포트에서 마지막 항목이 글자 중간에서 잘린다.
+ */
+function SuggestedPrompts({
+  prompts,
+  onSelect,
+}: {
+  prompts: readonly string[];
+  onSelect: (prompt: string) => void;
+}): React.ReactElement {
+  return (
+    <div className="shrink-0 border-t border-gray-200 px-3 pt-3">
+      <p className="mb-1.5 text-xs font-medium text-gray-500">이렇게 질문해 보세요</p>
+      <ul aria-label="예시 질의문" className="max-h-[45vh] space-y-1 overflow-y-auto">
+        {prompts.map((prompt) => (
+          <li key={prompt}>
+            <button
+              type="button"
+              onClick={() => onSelect(prompt)}
+              className="w-full rounded-lg border border-emerald-200 bg-emerald-50/50 px-3 py-2 text-left text-xs leading-relaxed text-emerald-900 hover:bg-emerald-50"
+            >
+              {prompt}
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

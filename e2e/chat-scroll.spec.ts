@@ -33,6 +33,8 @@ test('처음엔 최신이 하단 정렬로 보이고, 위로 스크롤하면 과
   const api = await mockApi(page, {
     'GET /api/v1/auth/me': ok(CLINICIAN),
     'GET /api/v1/conversations': okList([CONVERSATION]),
+    // ChatPanel이 예시 질의문을 고르려고 대화 단건을 읽는다 (type·연결 환자)
+    'GET /api/v1/conversations/:conversationId': ok(CONVERSATION),
     'GET /api/v1/conversations/:conversationId/messages': ({ searchParams }) => {
       expect(searchParams.order).toBe('desc');
       // desc 페이징: 첫 페이지 = 최신 30개(60..31), 커서 페이지 = 과거 30개(30..1)
