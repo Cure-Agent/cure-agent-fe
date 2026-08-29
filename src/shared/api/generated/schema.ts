@@ -900,6 +900,12 @@ export interface components {
             pageStart?: number;
             pageEnd?: number;
             sourceUrl: string;
+            /** @description 본문 발췌 전문의 번역 (기계 번역) */
+            excerptTranslated?: string;
+            /** @description 지침 제목의 번역 (기계 번역) */
+            titleTranslated?: string;
+            /** @description 번역을 만든 모델 — provenance */
+            translationModel?: string;
         };
         AdminIngestStatsDto: {
             sections: number;
@@ -1163,6 +1169,10 @@ export interface components {
             /** @description 인용 발췌 */
             quote: string;
             sourceUrl: string;
+            /** @description 인용 발췌의 번역 (기계 번역) */
+            quoteTranslated?: string;
+            /** @description 지침 제목의 번역 (기계 번역) */
+            titleTranslated?: string;
         };
         MessageResponseDto: {
             id: string;
@@ -1191,6 +1201,11 @@ export interface components {
             filters?: components["schemas"]["GuidelineSearchFilterDto"];
             /** @description 중복 생성 방지 키 — 재시도 시 같은 값 사용 (§8 복구 계약) */
             clientRequestId: string;
+            /**
+             * @default ko
+             * @enum {string}
+             */
+            responseLang: "ko" | "en";
         };
         SubmitFeedbackRequestDto: {
             /** @enum {string} */
