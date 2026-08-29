@@ -34,6 +34,8 @@ test('질문하면 스트리밍 답변과 인용 근거가 함께 도착한다',
       conversations = [CONVERSATION];
       return ok(CONVERSATION);
     },
+    // ChatPanel이 예시 질의문을 고르려고 대화 단건을 읽는다 (type·연결 환자)
+    'GET /api/v1/conversations/:conversationId': () => ok(CONVERSATION),
     'GET /api/v1/conversations/:conversationId/messages': () => okList(messages),
     [`POST ${STREAM_PATH}`]: () => {
       // GET messages는 order=desc 계약 — 최신(답변)이 먼저 온다 (화면은 시간순으로 뒤집는다)

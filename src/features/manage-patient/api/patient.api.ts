@@ -29,7 +29,7 @@ export interface PageInfo {
 }
 
 export const PATIENTS_KEY = ['patients'] as const;
-export const patientKey = (patientId: string) => ['patients', patientId] as const;
+export const patientKey = (patientId: string | null) => ['patients', patientId] as const;
 
 type PatientPage = { items: PatientSummary[]; page: PageInfo };
 
@@ -54,12 +54,19 @@ export function usePatients(params: {
   });
 }
 
-export function usePatient(patientId: string): UseQueryResult<PatientDetail> {
+/**
+ * 환자 상세. null이면 비활성 — 대화 화면은 「환자 맞춤 대화일 때만」 환자를 당기므로
+ * 아직 환자를 모르는 렌더에서도 훅 순서를 흔들지 않고 호출할 수 있어야 한다.
+ */
+export function usePatient(patientId: string | null): UseQueryResult<PatientDetail> {
   return useQuery({
     queryKey: patientKey(patientId),
+    enabled: patientId !== null,
     queryFn: async () =>
       unwrap<PatientDetail>(
-        await api.GET('/api/v1/patients/{patientId}', { params: { path: { patientId } } }),
+        await api.GET('/api/v1/patients/{patientId}', {
+          params: { path: { patientId: patientId as string } },
+        }),
       ),
   });
 }

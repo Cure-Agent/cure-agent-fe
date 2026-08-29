@@ -5,8 +5,10 @@ import {
   type InfiniteData,
   type UseInfiniteQueryResult,
   type UseMutationResult,
+  type UseQueryResult,
   useInfiniteQuery,
   useMutation,
+  useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
 import { api } from '@/shared/api/api-client';
@@ -14,6 +16,7 @@ import { unwrap, unwrapPage } from '@/shared/api/api-error';
 import type { components } from '@/shared/api/generated/schema';
 
 export type ConversationSummary = components['schemas']['ConversationSummaryResponseDto'];
+export type ConversationDetail = components['schemas']['ConversationDetailResponseDto'];
 export type MessageDto = components['schemas']['MessageResponseDto'];
 
 export interface PageInfo {
@@ -33,8 +36,29 @@ export interface MessagePage {
 }
 
 export const CONVERSATIONS_KEY = ['conversations'] as const;
+export const conversationKey = (conversationId: string | null) =>
+  [...CONVERSATIONS_KEY, 'detail', conversationId] as const;
 export const messagesKey = (conversationId: string | null) =>
   ['messages', conversationId] as const;
+
+/**
+ * 대화 단건 — 목록을 거치지 않고 `?conversation={id}`로 바로 들어온 화면이 대화의 성격
+ * (type·연결된 환자)을 알 수 있는 유일한 경로다. conversationId가 null이면 비활성.
+ */
+export function useConversation(
+  conversationId: string | null,
+): UseQueryResult<ConversationDetail> {
+  return useQuery({
+    queryKey: conversationKey(conversationId),
+    enabled: conversationId !== null,
+    queryFn: async () =>
+      unwrap<ConversationDetail>(
+        await api.GET('/api/v1/conversations/{conversationId}', {
+          params: { path: { conversationId: conversationId as string } },
+        }),
+      ),
+  });
+}
 
 /**
  * 최신순 + 커서(하단 무한 스크롤) + 제목 부분일치 검색 (docs/specs/11 기준 6).
