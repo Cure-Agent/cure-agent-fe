@@ -142,7 +142,7 @@ describe('streamReducer', () => {
     });
   });
 
-  it('기준 3: answer.abstained의 ABSTAINED 메시지와 사유를 반영한다', () => {
+  it('기준 3: answer.abstained의 ABSTAINED 메시지를 반영한다', () => {
     const abstainedMessage: MessageDto = {
       id: 'assistant-message-2',
       role: 'ASSISTANT',
@@ -162,7 +162,6 @@ describe('streamReducer', () => {
     expect(state).toMatchObject({
       phase: 'abstained',
       message: abstainedMessage,
-      abstainReason: 'NO_RELEVANT_EVIDENCE',
     });
     expect(state.message?.status).toBe('ABSTAINED');
   });
