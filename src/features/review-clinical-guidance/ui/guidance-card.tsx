@@ -7,6 +7,8 @@
 import { FormEvent, useState, type ReactElement } from 'react';
 import { EvidenceFullText } from '@/features/filter-guidelines/ui/evidence-full-text';
 import { ApiError } from '@/shared/api/api-error';
+import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
+import { useUiLang } from '@/shared/i18n/ui-lang';
 import {
   type ClinicalGuidance,
   type ReviewDecision,
@@ -19,17 +21,17 @@ export interface GuidanceCardProps {
   guidance: ClinicalGuidance;
 }
 
-const STATUS_LABELS: Record<ClinicalGuidance['reviewStatus'], string> = {
-  DRAFT: '검토 대기',
-  ACCEPTED: '승인됨',
-  MODIFIED: '수정 반영',
-  REJECTED: '반려됨',
+const STATUS_LABELS: Record<ClinicalGuidance['reviewStatus'], MessageKey> = {
+  DRAFT: 'guidanceStatusDraft',
+  ACCEPTED: 'guidanceStatusAccepted',
+  MODIFIED: 'guidanceStatusModified',
+  REJECTED: 'guidanceStatusRejected',
 };
 
-const DECISIONS: { value: ReviewDecision; label: string }[] = [
-  { value: 'ACCEPTED', label: '승인' },
-  { value: 'MODIFIED', label: '수정' },
-  { value: 'REJECTED', label: '반려' },
+const DECISIONS: { value: ReviewDecision; labelKey: MessageKey }[] = [
+  { value: 'ACCEPTED', labelKey: 'guidanceDecisionAccept' },
+  { value: 'MODIFIED', labelKey: 'guidanceDecisionModify' },
+  { value: 'REJECTED', labelKey: 'guidanceDecisionReject' },
 ];
 
 const SEVERITY_STYLES: Record<string, string> = {
@@ -42,10 +44,10 @@ const SEVERITY_STYLES: Record<string, string> = {
  * 적용 판단 — 근거의 조건·금기가 이 환자의 값과 만나는지 (BE docs/specs/33).
  * 구조화 경로에서만 실린다. 결정적 폴백으로 조립된 참고안에는 이 필드가 없다.
  */
-const APPLICABILITY_LABELS: Record<string, string> = {
-  APPLICABLE: '적용',
-  CAUTION: '주의',
-  NOT_APPLICABLE: '해당없음',
+const APPLICABILITY_LABELS: Record<string, MessageKey> = {
+  APPLICABLE: 'applicabilityApplicable',
+  CAUTION: 'applicabilityCaution',
+  NOT_APPLICABLE: 'applicabilityNotApplicable',
 };
 
 const APPLICABILITY_STYLES: Record<string, string> = {
@@ -97,6 +99,8 @@ function CitationList({ citations }: { citations: GuidanceCitation[] }): ReactEl
 }
 
 export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
+  const lang = useUiLang();
+  const t = messagesFor(lang);
   const review = useReviewClinicalGuidance(guidance.id);
   const [current, setCurrent] = useState(guidance);
   const [decision, setDecision] = useState<ReviewDecision | null>(null);
@@ -115,7 +119,7 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
         onSuccess: (updated) => setCurrent(updated),
         onError: (error) => {
           setErrorMessage(
-            error instanceof ApiError ? error.message : '검토 처리에 실패했습니다.',
+            error instanceof ApiError ? error.message : t.guidanceReviewFailed,
           );
         },
       },
@@ -125,9 +129,9 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
   return (
     <section className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 text-sm">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="font-semibold text-emerald-900">임상 참고안</h3>
+        <h3 className="font-semibold text-emerald-900">{t.guidanceHeading}</h3>
         <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-emerald-300">
-          {STATUS_LABELS[current.reviewStatus]}
+          {t[STATUS_LABELS[current.reviewStatus]]}
         </span>
       </div>
 
@@ -135,7 +139,7 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
 
       {current.considerations.length > 0 && (
         <div className="mt-3">
-          <h4 className="text-xs font-semibold text-gray-500">검토 항목</h4>
+          <h4 className="text-xs font-semibold text-gray-500">{t.guidanceReviewItems}</h4>
           <ul className="mt-1 space-y-2">
             {current.considerations.map((consideration, index) => (
               <li key={index} className="rounded-lg bg-white p-2.5 ring-1 ring-gray-200">
@@ -149,8 +153,9 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
                         'bg-gray-100 text-gray-700'
                       }`}
                     >
-                      {APPLICABILITY_LABELS[consideration.applicability] ??
-                        consideration.applicability}
+                      {APPLICABILITY_LABELS[consideration.applicability]
+                        ? t[APPLICABILITY_LABELS[consideration.applicability]]
+                        : consideration.applicability}
                     </span>
                   )}
                   <p className="font-medium text-gray-900">{consideration.title}</p>
@@ -160,7 +165,7 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
                   // 지침 근거([n] 칩)와 나란히 두 다리를 보여준다 — 이 판단이 환자의 어느 값을
                   // 딛고 섰는지가 카드에서 바로 읽혀야 「적용 판단」이 검증 가능해진다
                   <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                    <span className="text-xs text-gray-500">환자 근거</span>
+                    <span className="text-xs text-gray-500">{t.guidancePatientEvidence}</span>
                     {consideration.patientFactors.map((factor) => (
                       <span
                         key={factor}
@@ -180,7 +185,7 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
 
       {current.safetyAlerts.length > 0 && (
         <div className="mt-3">
-          <h4 className="text-xs font-semibold text-gray-500">안전 경고</h4>
+          <h4 className="text-xs font-semibold text-gray-500">{t.guidanceSafetyWarnings}</h4>
           <ul className="mt-1 space-y-1.5">
             {current.safetyAlerts.map((alert, index) => (
               <li key={index} className="flex items-start gap-2">
@@ -203,7 +208,7 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
 
       {current.missingInformation.length > 0 && (
         <div className="mt-3">
-          <h4 className="text-xs font-semibold text-gray-500">누락 정보</h4>
+          <h4 className="text-xs font-semibold text-gray-500">{t.guidanceMissingInformation}</h4>
           <ul className="mt-1 list-inside list-disc text-gray-600">
             {current.missingInformation.map((item) => (
               <li key={item}>{item}</li>
@@ -221,8 +226,8 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
       {isDraft && (
         <form onSubmit={handleSubmit} className="mt-4 border-t border-emerald-200 pt-3">
           <fieldset className="flex items-center gap-4">
-            <legend className="mb-1.5 text-xs font-semibold text-gray-500">의료인 검토</legend>
-            {DECISIONS.map(({ value, label }) => (
+            <legend className="mb-1.5 text-xs font-semibold text-gray-500">{t.guidanceClinicianReview}</legend>
+            {DECISIONS.map(({ value, labelKey }) => (
               <label key={value} className="flex items-center gap-1.5 text-gray-800">
                 <input
                   type="radio"
@@ -231,13 +236,13 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
                   checked={decision === value}
                   onChange={() => setDecision(value)}
                 />
-                {label}
+                {t[labelKey]}
               </label>
             ))}
           </fieldset>
           <div className="mt-2 flex flex-col gap-2">
             <label htmlFor="guidance-review-note" className="text-xs font-semibold text-gray-500">
-              검토 의견
+              {t.guidanceReviewComment}
             </label>
             <textarea
               id="guidance-review-note"
@@ -251,7 +256,7 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
               disabled={!decision || review.isPending}
               className="self-end rounded-lg bg-emerald-700 px-4 py-2 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
             >
-              검토 확정
+              {t.guidanceReviewSubmit}
             </button>
           </div>
         </form>

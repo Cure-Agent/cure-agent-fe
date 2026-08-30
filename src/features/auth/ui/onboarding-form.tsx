@@ -10,6 +10,8 @@ import {
 } from '@/features/manage-clinic/lib/invitation-link';
 import type { CompleteSignUpInput } from '../api/auth.api';
 import { useCompleteSignUp } from '../api/auth.api';
+import { formatMessageNodes, messagesFor } from '@/shared/i18n/messages';
+import { useUiLang } from '@/shared/i18n/ui-lang';
 
 const FIELD_CLASS =
   'rounded-lg border border-gray-300 px-3 py-2 focus:border-emerald-600 focus:outline-none';
@@ -29,6 +31,8 @@ export function OnboardingForm({
   ticket: string;
   defaultDisplayName?: string;
 }): React.ReactElement {
+  const lang = useUiLang();
+  const t = messagesFor(lang);
   const router = useRouter();
   const completeSignUp = useCompleteSignUp();
   // sessionStorage는 서버 렌더에 없다 — 마운트 후에 읽어 하이드레이션 불일치를 피한다
@@ -77,7 +81,7 @@ export function OnboardingForm({
       clearInvitationToken();
       router.push('/assistant');
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : '가입에 실패했습니다.');
+      setErrorMessage(error instanceof Error ? error.message : t.signupFailed);
     }
   };
 
@@ -86,22 +90,23 @@ export function OnboardingForm({
       {isJoining && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
           <p className="text-sm text-emerald-900">
-            <span className="font-medium">{preview.data?.clinicName}</span>에 합류합니다
+            {formatMessageNodes(t.joiningClinic, {
+              clinic: <span className="font-medium">{preview.data?.clinicName}</span>,
+            })}
           </p>
           <p className="mt-0.5 text-xs text-emerald-700">
-            초대로 가입하면 한의원의 환자·대화 기록을 구성원과 함께 보게 됩니다.
+            {t.joinInviteSharesRecords}
           </p>
         </div>
       )}
       {invitationExpired && (
         <p role="alert" className="rounded-lg bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
-          초대 링크가 만료되었거나 이미 사용되었습니다. 개설자에게 새 링크를 요청하거나, 아래에서
-          새 한의원을 개설할 수 있습니다.
+          {t.inviteExpiredCreateClinic}
         </p>
       )}
       <div className="flex flex-col gap-1">
         <label htmlFor="onboarding-name" className="text-sm font-medium text-gray-700">
-          이름
+          {t.displayName}
         </label>
         <input
           id="onboarding-name"
@@ -116,7 +121,7 @@ export function OnboardingForm({
       {!isJoining && (
         <div className="flex flex-col gap-1">
           <label htmlFor="onboarding-clinic" className="text-sm font-medium text-gray-700">
-            한의원명
+            {t.clinicName}
           </label>
           <input
             id="onboarding-clinic"
@@ -130,7 +135,7 @@ export function OnboardingForm({
       )}
       <div className="flex flex-col gap-1">
         <label htmlFor="onboarding-license" className="text-sm font-medium text-gray-700">
-          면허번호
+          {t.licenseNumber}
         </label>
         <input
           id="onboarding-license"
@@ -140,7 +145,7 @@ export function OnboardingForm({
           maxLength={50}
           className={FIELD_CLASS}
         />
-        <p className="text-xs text-gray-500">암호화되어 저장되며, 면허 확인은 별도 진행됩니다.</p>
+        <p className="text-xs text-gray-500">{t.licenseEncrypted}</p>
       </div>
       <label className="flex items-center gap-2 text-sm text-gray-700">
         <input
@@ -149,13 +154,13 @@ export function OnboardingForm({
           onChange={(e) => set('termsAccepted', e.target.checked)}
           required
         />
-        서비스 이용약관에 동의합니다
+        {t.agreeToTerms}
       </label>
       {errorMessage && (
         <p role="alert" className="text-sm text-red-600">
           {errorMessage}
           <Link href="/login" className="ml-2 font-medium text-emerald-700 hover:underline">
-            다시 로그인
+            {t.loginAgain}
           </Link>
         </p>
       )}
@@ -164,7 +169,7 @@ export function OnboardingForm({
         disabled={completeSignUp.isPending || isCheckingInvitation}
         className="rounded-lg bg-emerald-700 py-2.5 font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
       >
-        {isJoining ? '합류하기' : '가입 완료'}
+        {isJoining ? t.join : t.completeSignup}
       </button>
     </form>
   );

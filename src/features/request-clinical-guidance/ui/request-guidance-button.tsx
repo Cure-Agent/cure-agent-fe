@@ -3,6 +3,8 @@
 /** 환자 상세 → PATIENT_GUIDANCE 대화 시작 버튼 (docs/specs/10 기준 9) */
 import type { ReactElement } from 'react';
 import { useRequestClinicalGuidance } from '../api/request-clinical-guidance';
+import { formatMessage, messagesFor } from '@/shared/i18n/messages';
+import { useUiLang } from '@/shared/i18n/ui-lang';
 
 export interface RequestGuidanceButtonProps {
   patientId: string;
@@ -17,6 +19,8 @@ export function RequestGuidanceButton({
   caseLabel,
   onStarted,
 }: RequestGuidanceButtonProps): ReactElement {
+  const lang = useUiLang();
+  const t = messagesFor(lang);
   const requestGuidance = useRequestClinicalGuidance();
 
   const handleClick = (): void => {
@@ -40,10 +44,10 @@ export function RequestGuidanceButton({
         disabled={requestGuidance.isPending}
         className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
       >
-        환자 맞춤 대화 시작
+        {t.startPatientConversation}
       </button>
       {requestGuidance.isError && (
-        <p className="mt-1 text-xs text-red-600">환자 맞춤 대화 생성에 실패했습니다.</p>
+        <p className="mt-1 text-xs text-red-600">{t.startPatientConversationFailed}</p>
       )}
     </div>
   );

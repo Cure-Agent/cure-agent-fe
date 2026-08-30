@@ -5,6 +5,14 @@
  */
 import { ApiEnvelope, ApiError } from './api-error';
 import { buildUrl, ensureRefreshed, notifyUnauthorized } from './http';
+import { messagesFor } from '@/shared/i18n/messages';
+import { resolveUiLang } from '@/shared/i18n/ui-lang';
+
+/**
+ * 표시 언어는 **호출 시점에** 읽는다 — 모듈 로드 시점에 굳히면 전환이 반영되지 않는다.
+ * 컴포넌트가 아니라 훅을 못 쓰지만 `resolveUiLang`은 순수 함수라 그대로 부를 수 있다.
+ */
+const t = (): ReturnType<typeof messagesFor> => messagesFor(resolveUiLang());
 
 export interface StreamEvent {
   eventType: string;
@@ -57,7 +65,7 @@ export async function postStream(
     }
     throw new ApiError(
       envelope?.code ?? 'INTERNAL_ERROR',
-      envelope?.message ?? '스트림 연결에 실패했습니다.',
+      envelope?.message ?? t().streamConnectFailed,
       response.status,
       envelope?.traceId ?? '',
       envelope?.data ?? undefined,
@@ -65,7 +73,7 @@ export async function postStream(
   }
 
   if (!response.body) {
-    throw new ApiError('INTERNAL_ERROR', '스트림 본문이 없습니다.', response.status, '');
+    throw new ApiError('INTERNAL_ERROR', t().streamBodyMissing, response.status, '');
   }
 
   const reader = response.body.getReader();

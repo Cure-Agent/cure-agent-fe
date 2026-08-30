@@ -3,6 +3,13 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteListScroll } from '@/shared/lib/use-infinite-list-scroll';
 import {
+  type MessageKey,
+  formatMessage,
+  formatMessageNodes,
+  messagesFor,
+} from '@/shared/i18n/messages';
+import { useUiLang } from '@/shared/i18n/ui-lang';
+import {
   type PatientSummary,
   useArchivePatient,
   useDeletePatient,
@@ -77,9 +84,11 @@ const DANGER_ACTION_BUTTON = 'rounded-md p-1.5 text-gray-400 hover:bg-red-50 hov
 function PatientArchiveAction({
   patient,
   onArchived,
+  t,
 }: {
   patient: PatientSummary;
   onArchived: (patient: PatientSummary) => void;
+  t: Record<MessageKey, string>;
 }): React.ReactElement {
   const archivePatient = useArchivePatient(patient.id);
   const unarchivePatient = useUnarchivePatient(patient.id);
@@ -90,8 +99,8 @@ function PatientArchiveAction({
         type="button"
         onClick={() => unarchivePatient.mutate()}
         disabled={unarchivePatient.isPending}
-        aria-label={`${patient.caseLabel} 보관 해제`}
-        title="보관 해제"
+        aria-label={formatMessage(t.unarchiveWithLabel, { label: patient.caseLabel })}
+        title={t.unarchive}
         className={ACTION_BUTTON}
       >
         <UnarchiveIcon className="h-4 w-4" />
@@ -104,8 +113,8 @@ function PatientArchiveAction({
       type="button"
       onClick={() => archivePatient.mutate(undefined, { onSuccess: () => onArchived(patient) })}
       disabled={archivePatient.isPending}
-      aria-label={`${patient.caseLabel} 보관`}
-      title="보관"
+      aria-label={formatMessage(t.archiveWithLabel, { label: patient.caseLabel })}
+      title={t.archive}
       className={ACTION_BUTTON}
     >
       <ArchiveIcon className="h-4 w-4" />
@@ -121,10 +130,12 @@ function PatientDeleteConfirm({
   patient,
   onCancel,
   onDeleted,
+  t,
 }: {
   patient: PatientSummary;
   onCancel: () => void;
   onDeleted: () => void;
+  t: Record<MessageKey, string>;
 }): React.ReactElement {
   const deletePatient = useDeletePatient(patient.id);
   const ref = useRef<HTMLDivElement | null>(null);
@@ -140,13 +151,15 @@ function PatientDeleteConfirm({
 
   return (
     <div ref={ref} className="rounded-xl border border-red-200 bg-red-50/60 p-4">
-      <p className="font-medium text-gray-900">{patient.caseLabel} 삭제</p>
+      <p className="font-medium text-gray-900">
+                {formatMessage(t.deleteWithLabel, { label: patient.caseLabel })}
+              </p>
       <p className="mt-1 text-sm text-red-700">
-        이 환자의 대화까지 영구 삭제됩니다. 되돌릴 수 없습니다.
+        {t.deletePatientWarning}
       </p>
       {deletePatient.isError && (
         <p role="alert" className="mt-1 text-sm text-red-600">
-          삭제하지 못했습니다. 다시 시도해 주세요.
+          {t.deleteFailed}
         </p>
       )}
       <div className="mt-3 flex justify-end gap-2">
@@ -155,7 +168,7 @@ function PatientDeleteConfirm({
           onClick={onCancel}
           className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
         >
-          취소
+          {t.cancel}
         </button>
         <button
           type="button"
@@ -163,7 +176,7 @@ function PatientDeleteConfirm({
           disabled={deletePatient.isPending}
           className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
         >
-          삭제
+          {t.delete}
         </button>
       </div>
     </div>
@@ -174,15 +187,19 @@ function PatientDeleteConfirm({
 function UndoArchiveBanner({
   patient,
   onUndone,
+  t,
 }: {
   patient: { id: string; caseLabel: string };
   onUndone: () => void;
+  t: Record<MessageKey, string>;
 }): React.ReactElement {
   const unarchivePatient = useUnarchivePatient(patient.id);
   return (
     <div className="mb-3 flex shrink-0 items-center gap-2 rounded-lg bg-gray-100 px-2.5 py-2">
       <p className="min-w-0 flex-1 truncate text-xs text-gray-600">
-        <span className="font-medium text-gray-800">{patient.caseLabel}</span> 보관됨
+        {formatMessageNodes(t.archivedWithLabel, {
+          label: <span className="font-medium text-gray-800">{patient.caseLabel}</span>,
+        })}
       </p>
       <button
         type="button"
@@ -190,7 +207,7 @@ function UndoArchiveBanner({
         disabled={unarchivePatient.isPending}
         className="shrink-0 text-xs font-medium text-emerald-700 hover:underline disabled:opacity-50"
       >
-        되돌리기
+        {t.undo}
       </button>
     </div>
   );
@@ -199,13 +216,15 @@ function UndoArchiveBanner({
 type StatusFilter = 'ALL' | 'ACTIVE' | 'ARCHIVED';
 
 /** 라벨·크기는 대화 목록(ConversationList)의 세그먼트를 따른다 — 순서만 이 화면의 기본값에 맞춘다 */
-const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
-  { value: 'ALL', label: '전체' },
-  { value: 'ACTIVE', label: '활성' },
-  { value: 'ARCHIVED', label: '보관됨' },
+const STATUS_FILTERS: Array<{ value: StatusFilter; labelKey: MessageKey }> = [
+  { value: 'ALL', labelKey: 'statusAll' },
+  { value: 'ACTIVE', labelKey: 'statusActive' },
+  { value: 'ARCHIVED', labelKey: 'statusArchived' },
 ];
 
 export function PatientListPanel({ onSelect }: PatientListPanelProps): React.ReactElement {
+  const lang = useUiLang();
+  const t = messagesFor(lang);
   const [input, setInput] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState<string | undefined>(undefined);
   // 기본 전체 — 활성만 보이는 기본값은 보관 환자가 검색에서 조용히 빠지는 실패 모드를 만든다
@@ -247,23 +266,23 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
     <div className="flex h-full flex-col">
       <form onSubmit={handleSubmit} className="mb-2 flex gap-2">
         <input
-          aria-label="환자 검색"
+          aria-label={t.searchPatients}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="케이스 라벨 검색 (예: CASE-001)"
+          placeholder={t.searchPatientsPlaceholder}
           className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
         />
         <button
           type="submit"
           className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
         >
-          검색
+          {t.search}
         </button>
       </form>
 
       <div
         role="group"
-        aria-label="보관 상태 필터"
+        aria-label={t.archiveFilter}
         className="mb-3 flex w-fit shrink-0 rounded-lg border border-gray-200 bg-gray-100 p-0.5"
       >
         {STATUS_FILTERS.map((filter) => (
@@ -278,17 +297,18 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            {filter.label}
+            {t[filter.labelKey]}
           </button>
         ))}
       </div>
 
       {justArchived && (
-        <UndoArchiveBanner patient={justArchived} onUndone={() => setJustArchived(null)} />
+        <UndoArchiveBanner
+              t={t} patient={justArchived} onUndone={() => setJustArchived(null)} />
       )}
 
-      {patients.isPending && <p className="text-sm text-gray-400">불러오는 중…</p>}
-      {patients.isError && <p className="text-sm text-red-500">목록을 불러오지 못했습니다</p>}
+      {patients.isPending && <p className="text-sm text-gray-400">{t.loading}</p>}
+      {patients.isError && <p className="text-sm text-red-500">{t.loadFailed}</p>}
 
       <div
         ref={listScroll.containerRef}
@@ -300,6 +320,7 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
             <li key={patient.id}>
               {pendingDeleteId === patient.id ? (
                 <PatientDeleteConfirm
+              t={t}
                   patient={patient}
                   onCancel={() => setPendingDeleteId(null)}
                   onDeleted={() => {
@@ -321,23 +342,24 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
                       <p className="truncate font-medium text-gray-900">{patient.caseLabel}</p>
                       {patient.status === 'ARCHIVED' && (
                         <span className="shrink-0 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-                          보관됨
+                          {t.statusArchived}
                         </span>
                       )}
                     </div>
                     <p className="mt-1 text-xs text-gray-500">
-                      {patient.age !== undefined && `${patient.age}세`}
+                      {patient.age !== undefined && formatMessage(t.ageYears, { age: patient.age })}
                       {patient.sex && ` · ${patient.sex}`}
                       {patient.bmi !== undefined && ` · BMI ${patient.bmi}`}
                     </p>
                   </button>
                   <div className="flex shrink-0 items-center gap-0.5 pr-3">
-                    <PatientArchiveAction patient={patient} onArchived={setJustArchived} />
+                    <PatientArchiveAction
+              t={t} patient={patient} onArchived={setJustArchived} />
                     <button
                       type="button"
                       onClick={() => setPendingDeleteId(patient.id)}
-                      aria-label={`${patient.caseLabel} 삭제`}
-                      title="삭제"
+                      aria-label={formatMessage(t.deleteWithLabel, { label: patient.caseLabel })}
+                      title={t.delete}
                       className={DANGER_ACTION_BUTTON}
                     >
                       <TrashIcon className="h-4 w-4" />
@@ -351,7 +373,7 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
         {/* 하단 sentinel — 보이면 다음 페이지를 당긴다 (무한 스크롤) */}
         <div ref={listScroll.bottomSentinelRef} aria-hidden="true" />
         {patients.isFetchingNextPage && (
-          <p className="py-2 text-center text-xs text-gray-400">불러오는 중…</p>
+          <p className="py-2 text-center text-xs text-gray-400">{t.loading}</p>
         )}
       </div>
     </div>

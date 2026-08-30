@@ -4,6 +4,8 @@
  */
 import type { components } from '@/shared/api/generated/schema';
 import type { StreamEvent } from '@/shared/api/stream-client';
+import { messagesFor } from '@/shared/i18n/messages';
+import { resolveUiLang } from '@/shared/i18n/ui-lang';
 
 export type EvidenceDetail = components['schemas']['EvidenceDetailResponseDto'];
 export type MessageDto = components['schemas']['MessageResponseDto'];
@@ -158,7 +160,7 @@ function applyEvent(state: StreamState, event: StreamEvent): StreamState {
         phase: 'error',
         error: {
           code: (event.code as string) ?? 'UNKNOWN',
-          message: (event.message as string) ?? '오류가 발생했습니다.',
+          message: (event.message as string) ?? messagesFor(resolveUiLang()).genericError,
           retryable: Boolean(event.retryable),
           traceId: (event.traceId as string) ?? '',
         },

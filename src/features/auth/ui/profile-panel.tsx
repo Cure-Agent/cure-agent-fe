@@ -9,12 +9,14 @@
  */
 import type { ReactNode, ReactElement } from 'react';
 import type { Clinician } from '../api/auth.api';
+import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
+import { useUiLang } from '@/shared/i18n/ui-lang';
 
 /** 면허 인증 상태. 지금은 어떤 기능도 게이트하지 않는다 — 사실만 표시하고 제한을 암시하지 않는다 */
-const VERIFICATION_LABELS: Record<Clinician['verificationStatus'], string> = {
-  PENDING: '확인 중',
-  VERIFIED: '인증 완료',
-  REJECTED: '인증 반려',
+const VERIFICATION_LABELS: Record<Clinician['verificationStatus'], MessageKey> = {
+  PENDING: 'verificationPending',
+  VERIFIED: 'verificationVerified',
+  REJECTED: 'verificationRejected',
 };
 
 const VERIFICATION_STYLES: Record<Clinician['verificationStatus'], string> = {
@@ -38,20 +40,22 @@ export interface ProfilePanelProps {
 }
 
 export function ProfilePanel({ me }: ProfilePanelProps): ReactElement {
+  const lang = useUiLang();
+  const t = messagesFor(lang);
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-6">
       <dl>
-        <Row label="이름">{me.displayName}</Row>
+        <Row label={t.displayName}>{me.displayName}</Row>
         {/* 소셜 계정에서 받은 이메일이 계정 동일성의 단일 기준이다 (docs/specs/17) */}
-        <Row label="이메일">{me.email}</Row>
-        <Row label="소속">{me.clinic.name}</Row>
-        <Row label="면허 인증">
+        <Row label={t.fieldEmail}>{me.email}</Row>
+        <Row label={t.fieldClinic}>{me.clinic.name}</Row>
+        <Row label={t.fieldLicenseVerification}>
           <span
             className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
               VERIFICATION_STYLES[me.verificationStatus]
             }`}
           >
-            {VERIFICATION_LABELS[me.verificationStatus]}
+            {t[VERIFICATION_LABELS[me.verificationStatus]]}
           </span>
         </Row>
       </dl>
