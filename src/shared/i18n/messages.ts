@@ -42,6 +42,52 @@ const ko = {
   citationNotTranslated: '미번역',
   showKoreanOriginal: '한국어 원문 보기',
   hideKoreanOriginal: '한국어 원문 접기',
+
+  // 앱 셸
+  appTagline: '한의 임상 지침 어시스턴트',
+  navAssistant: '어시스턴트',
+  navGuidelines: '지침',
+  navPatients: '환자',
+  mainMenu: '주요 메뉴',
+  closeSidebar: '사이드바 닫기',
+  openSidebar: '사이드바 열기',
+  myProfile: '내 프로필',
+  logout: '로그아웃',
+  /**
+   * 언어 전환. 선택지 라벨(`한국어`·`English`)은 **번역하지 않는다** — 각 항목을 그 언어
+   * 자체로 적어야 그 언어를 쓰는 사람이 자기 항목을 찾을 수 있다. 데모의 실제 시나리오가
+   * 「한국어 로케일 노트북으로 영어권 방문자에게 시연」이라 이 성질이 결정적이다.
+   */
+  displayLanguage: '표시 언어',
+  switchToKorean: '한국어로 전환',
+  switchToEnglish: '영어로 전환',
+
+  // 대화 목록
+  newConversation: '새 대화',
+  searchConversations: '대화 검색',
+  searchByTitlePlaceholder: '제목으로 검색',
+  search: '검색',
+  archiveFilter: '보관 상태 필터',
+  statusActive: '활성',
+  statusArchived: '보관됨',
+  statusAll: '전체',
+  archivedSuffix: '보관됨',
+  archivedParenthetical: '(보관됨)',
+  undo: '되돌리기',
+  loading: '불러오는 중…',
+  listLoadError: '목록을 불러오지 못했습니다',
+  conversationTitle: '대화 제목',
+  cancel: '취소',
+  save: '저장',
+  rename: '이름 변경',
+  archive: '보관',
+  unarchive: '보관 해제',
+  delete: '삭제',
+  deletePermanentWarning: '영구 삭제됩니다. 되돌릴 수 없습니다.',
+  deleteFailed: '삭제하지 못했습니다. 다시 시도해 주세요.',
+  noSearchResults: '검색 결과가 없습니다',
+  noConversations: '대화가 없습니다',
+  showArchivedToo: '보관된 대화까지 보기',
 } as const;
 
 export type MessageKey = keyof typeof ko;
@@ -76,6 +122,45 @@ const en: Record<MessageKey, string> = {
   citationNotTranslated: 'Not translated',
   showKoreanOriginal: 'Show Korean original',
   hideKoreanOriginal: 'Hide Korean original',
+
+  appTagline: 'Korean medicine clinical guideline assistant',
+  navAssistant: 'Assistant',
+  navGuidelines: 'Guidelines',
+  navPatients: 'Patients',
+  mainMenu: 'Main menu',
+  closeSidebar: 'Collapse sidebar',
+  openSidebar: 'Expand sidebar',
+  myProfile: 'My profile',
+  logout: 'Log out',
+  displayLanguage: 'Display language',
+  switchToKorean: 'Switch to Korean',
+  switchToEnglish: 'Switch to English',
+
+  newConversation: 'New conversation',
+  searchConversations: 'Search conversations',
+  searchByTitlePlaceholder: 'Search by title',
+  search: 'Search',
+  archiveFilter: 'Archive filter',
+  statusActive: 'Active',
+  statusArchived: 'Archived',
+  statusAll: 'All',
+  archivedSuffix: 'archived',
+  archivedParenthetical: '(archived)',
+  undo: 'Undo',
+  loading: 'Loading…',
+  listLoadError: 'Could not load the list',
+  conversationTitle: 'Conversation title',
+  cancel: 'Cancel',
+  save: 'Save',
+  rename: 'Rename',
+  archive: 'Archive',
+  unarchive: 'Unarchive',
+  delete: 'Delete',
+  deletePermanentWarning: 'This will be deleted permanently. It cannot be undone.',
+  deleteFailed: 'Could not delete. Please try again.',
+  noSearchResults: 'No matching conversations',
+  noConversations: 'No conversations yet',
+  showArchivedToo: 'Include archived conversations',
 };
 
 export const UI_MESSAGES: Record<UiLang, Record<MessageKey, string>> = { ko, en };

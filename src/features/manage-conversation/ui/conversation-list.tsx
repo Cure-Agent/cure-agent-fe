@@ -5,6 +5,8 @@
  * 검색·이름 변경·보관을 이 목록에 통합한다 — 전용 /history 화면은 폐지됨.
  */
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
+import { useUiLang } from '@/shared/i18n/ui-lang';
 import { useInfiniteListScroll } from '@/shared/lib/use-infinite-list-scroll';
 import {
   type ConversationSummary,
@@ -74,10 +76,11 @@ type StatusFilter = 'ALL' | 'ACTIVE' | 'ARCHIVED';
  * 라벨 '보관됨' — 보관 액션 버튼(aria-label "보관")과 접근성 이름이 겹치면
  * 목록에 같은 이름의 버튼이 둘 생긴다.
  */
-const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
-  { value: 'ACTIVE', label: '활성' },
-  { value: 'ARCHIVED', label: '보관됨' },
-  { value: 'ALL', label: '전체' },
+// 라벨을 메시지 키로 든다 — 모듈 상수라 문자열을 박으면 첫 언어에 굳는다 (app-shell과 같은 이유)
+const STATUS_FILTERS: Array<{ value: StatusFilter; labelKey: MessageKey }> = [
+  { value: 'ACTIVE', labelKey: 'statusActive' },
+  { value: 'ARCHIVED', labelKey: 'statusArchived' },
+  { value: 'ALL', labelKey: 'statusAll' },
 ];
 
 export interface ConversationListProps {
@@ -92,6 +95,8 @@ export function ConversationList({
   onSelect,
   onDeleted,
 }: ConversationListProps): React.ReactElement {
+  const lang = useUiLang();
+  const t = messagesFor(lang);
   const [searchInput, setSearchInput] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState<string | undefined>(undefined);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -215,28 +220,28 @@ export function ConversationList({
         disabled={createConversation.isPending}
         className="mb-3 shrink-0 rounded-lg bg-emerald-700 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
       >
-        새 대화
+        {t.newConversation}
       </button>
 
       <form onSubmit={handleSearch} className="mb-3 flex shrink-0 gap-2">
         <input
-          aria-label="대화 검색"
+          aria-label={t.searchConversations}
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="제목으로 검색"
+          placeholder={t.searchByTitlePlaceholder}
           className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
         />
         <button
           type="submit"
           className="shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100"
         >
-          검색
+          {t.search}
         </button>
       </form>
 
       <div
         role="group"
-        aria-label="보관 상태 필터"
+        aria-label={t.archiveFilter}
         className="mb-3 flex shrink-0 rounded-lg border border-gray-200 bg-gray-100 p-0.5"
       >
         {STATUS_FILTERS.map((filter) => (
@@ -251,7 +256,7 @@ export function ConversationList({
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            {filter.label}
+            {t[filter.labelKey]}
           </button>
         ))}
       </div>
@@ -259,7 +264,7 @@ export function ConversationList({
       {justArchived?.id === selectedId && (
         <div className="mb-3 flex shrink-0 items-center gap-2 rounded-lg bg-gray-100 px-2.5 py-2">
           <p className="min-w-0 flex-1 truncate text-xs text-gray-600">
-            <span className="font-medium text-gray-800">{justArchived.title}</span> 보관됨
+            <span className="font-medium text-gray-800">{justArchived.title}</span> {t.archivedSuffix}
           </p>
           <button
             type="button"
@@ -267,13 +272,13 @@ export function ConversationList({
             disabled={unarchiveConversation.isPending}
             className="shrink-0 text-xs font-medium text-emerald-700 hover:underline disabled:opacity-50"
           >
-            되돌리기
+            {t.undo}
           </button>
         </div>
       )}
 
-      {conversations.isPending && <p className="text-sm text-gray-400">불러오는 중…</p>}
-      {conversations.isError && <p className="text-sm text-red-500">목록을 불러오지 못했습니다</p>}
+      {conversations.isPending && <p className="text-sm text-gray-400">{t.loading}</p>}
+      {conversations.isError && <p className="text-sm text-red-500">{t.listLoadError}</p>}
 
       <div
         ref={listScroll.containerRef}
@@ -294,7 +299,7 @@ export function ConversationList({
                       htmlFor="conversation-rename-title"
                       className="text-xs font-medium text-gray-500"
                     >
-                      대화 제목
+                      {t.conversationTitle}
                     </label>
                     <input
                       id="conversation-rename-title"
@@ -308,14 +313,14 @@ export function ConversationList({
                         onClick={() => setRenamingId(null)}
                         className="rounded-lg border border-gray-300 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-100"
                       >
-                        취소
+                        {t.cancel}
                       </button>
                       <button
                         type="submit"
                         disabled={renameConversation.isPending}
                         className="rounded-lg bg-emerald-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
                       >
-                        저장
+                        {t.save}
                       </button>
                     </div>
                   </form>
@@ -326,11 +331,11 @@ export function ConversationList({
                       {conversation.title}
                     </p>
                     <p className="mt-0.5 text-xs text-red-700">
-                      영구 삭제됩니다. 되돌릴 수 없습니다.
+                      {t.deletePermanentWarning}
                     </p>
                     {deleteConversation.isError && (
                       <p role="alert" className="mt-1 text-xs text-red-600">
-                        삭제하지 못했습니다. 다시 시도해 주세요.
+                        {t.deleteFailed}
                       </p>
                     )}
                     <div className="mt-2 flex justify-end gap-1.5">
@@ -339,7 +344,7 @@ export function ConversationList({
                         onClick={() => setPendingDeleteId(null)}
                         className="rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-100"
                       >
-                        취소
+                        {t.cancel}
                       </button>
                       <button
                         type="button"
@@ -347,7 +352,7 @@ export function ConversationList({
                         disabled={deleteConversation.isPending}
                         className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
                       >
-                        삭제
+                        {t.delete}
                       </button>
                     </div>
                   </div>
@@ -366,7 +371,7 @@ export function ConversationList({
                     >
                       {conversation.title}
                       {conversation.status === 'ARCHIVED' && (
-                        <span className="ml-1.5 text-xs text-gray-400">(보관됨)</span>
+                        <span className="ml-1.5 text-xs text-gray-400">{t.archivedParenthetical}</span>
                       )}
                     </button>
                     {isSelected && (
@@ -374,8 +379,8 @@ export function ConversationList({
                         <button
                           type="button"
                           onClick={() => startRename(conversation)}
-                          aria-label="이름 변경"
-                          title="이름 변경"
+                          aria-label={t.rename}
+                          title={t.rename}
                           className="rounded-md p-1.5 text-emerald-700 hover:bg-emerald-100"
                         >
                           <PencilIcon className="h-3.5 w-3.5" />
@@ -385,8 +390,8 @@ export function ConversationList({
                             type="button"
                             onClick={handleUndoArchive}
                             disabled={unarchiveConversation.isPending}
-                            aria-label="보관 해제"
-                            title="보관 해제"
+                            aria-label={t.unarchive}
+                            title={t.unarchive}
                             className="rounded-md p-1.5 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
                           >
                             <UnarchiveIcon className="h-3.5 w-3.5" />
@@ -396,8 +401,8 @@ export function ConversationList({
                             type="button"
                             onClick={() => handleArchive(conversation)}
                             disabled={archiveConversation.isPending}
-                            aria-label="보관"
-                            title="보관"
+                            aria-label={t.archive}
+                            title={t.archive}
                             className="rounded-md p-1.5 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
                           >
                             <ArchiveIcon className="h-3.5 w-3.5" />
@@ -407,8 +412,8 @@ export function ConversationList({
                         <button
                           type="button"
                           onClick={() => startDelete(conversation)}
-                          aria-label="삭제"
-                          title="삭제"
+                          aria-label={t.delete}
+                          title={t.delete}
                           className="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
                         >
                           <TrashIcon className="h-3.5 w-3.5" />
@@ -425,7 +430,7 @@ export function ConversationList({
         {conversations.isSuccess && items.length === 0 && (
           <div className="px-1 py-6 text-center">
             <p className="text-sm text-gray-400">
-              {submittedQuery ? '검색 결과가 없습니다' : '대화가 없습니다'}
+              {submittedQuery ? t.noSearchResults : t.noConversations}
             </p>
             {statusFilter === 'ACTIVE' && (
               <button
@@ -433,7 +438,7 @@ export function ConversationList({
                 onClick={() => handleFilterChange('ALL')}
                 className="mt-1.5 text-xs font-medium text-emerald-700 hover:underline"
               >
-                보관된 대화까지 보기
+                {t.showArchivedToo}
               </button>
             )}
           </div>
@@ -441,7 +446,7 @@ export function ConversationList({
         {/* 하단 sentinel — 보이면 다음 페이지를 당긴다 (무한 스크롤) */}
         <div ref={listScroll.bottomSentinelRef} aria-hidden="true" />
         {conversations.isFetchingNextPage && (
-          <p className="py-2 text-center text-xs text-gray-400">불러오는 중…</p>
+          <p className="py-2 text-center text-xs text-gray-400">{t.loading}</p>
         )}
       </div>
     </div>
