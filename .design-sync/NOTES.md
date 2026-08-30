@@ -96,6 +96,19 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 - `ChatPanel` 의 스트리밍/보류/오류 상태 — 실제 SSE 진행 중에만 나타난다. 정적으로 담지 않았다.
 - `RequestGuidanceButton` 은 외형이 하나뿐이라 스토리도 하나다 (변형 축 없음 — 의도).
 - `fonts/` 없음 / `tokens/` 비어 있음 — 정상이다. 시스템 폰트 스택만 쓰고, 커스텀 CSS 변수 토큰이 없다.
+- **`[BUNDLE_EXPORT] 14/14 not a component on window.<ns>` — 소스에 한글 정규식 리터럴이 들어간
+  경우다** (2026-08-30, spec 42). `SyntaxError: Invalid regular expression: /[ê°€-íž£…]/g:
+  Range out of order` 가 함께 뜬다. 번들러는 **문자열 리터럴만** `\uXXXX` 로 이스케이프하고
+  정규식 리터럴은 원문 바이트를 그대로 남기는데, 검증기가 번들을 `charset=utf-8` 없이
+  `page.setContent` 로 물리므로 브라우저가 Latin-1 로 읽어 문자 클래스 범위 양끝이 뒤집힌다.
+  그 `SyntaxError` 가 **번들 평가를 통째로 죽여** 네임스페이스가 정의되지 않으므로
+  **건드리지도 않은 컴포넌트까지 전부** 실패로 잡힌다 — 한 컴포넌트만 고쳤는데 14/14 가
+  뜨면 이걸 의심할 것. 개별 프리뷰 카드는 `<meta charset>` 이 있어 정상 렌더되므로
+  **렌더 체크는 통과한다**(이 실행도 14/14 통과였다). 유닛·e2e·`pnpm build` 도 전부 green 이라
+  **이 게이트만 잡는다.**
+  고치는 법: 소스의 정규식을 `\u` 이스케이프로 적는다 —
+  `/[가-힣ㄱ-ㅎㅏ-ㅣ]/` → `/[\uAC00-\uD7A3\u3131-\u314E\u314F-\u3163]/`.
+  실제 사례는 `src/features/ask-guideline/lib/response-lang.ts` 주석에 있다.
 - `[RENDER_SKIPPED] render check did not run` — **앵커가 있고 변경이 0건인 재동기화에서는 정상이다.**
   드라이버가 렌더 체크를 건너뛴다 (올릴 게 없으므로). 실제로 렌더를 다시 확인하고 싶으면
   드라이버에 `--render-sample 0` 을 붙여 전체 패스를 강제할 것. 새 경고가 아니다.
