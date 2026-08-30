@@ -23,6 +23,12 @@ export default defineConfig({
   use: {
     baseURL: BASE_URL,
     trace: 'on-first-retry',
+    /**
+     * 로케일 고정 (BE docs/specs/42) — 표시 언어가 `navigator.language`에서 유도되므로,
+     * 고정하지 않으면 **화면 문구가 러너 머신의 로케일을 따라간다.** 아래 플로우들은 한국어
+     * 경로를 단언하며, 그 경로는 스펙이 「한 바이트도 바뀌지 않는다」로 못박은 축이다.
+     */
+    locale: 'ko-KR',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {

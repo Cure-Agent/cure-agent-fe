@@ -21,7 +21,10 @@ import { usePatient } from '@/features/manage-patient/api/patient.api';
 import { useChatAutoScroll } from '@/shared/lib/use-chat-auto-scroll';
 import { GuidanceCard } from '@/features/review-clinical-guidance/ui/guidance-card';
 import { GuidanceCardLoader } from '@/features/review-clinical-guidance/ui/guidance-card-loader';
+import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
+import { useUiLang } from '@/shared/i18n/ui-lang';
 import { sendMessageStream } from '../api/send-message';
+import { resolveResponseLang } from '../lib/response-lang';
 import { resolveSuggestedPrompts } from '../lib/suggested-prompts';
 import {
   type AnswerCitation,
@@ -53,6 +56,8 @@ export function ChatPanel({
   onShowCitations,
 }: ChatPanelProps): React.ReactElement {
   const queryClient = useQueryClient();
+  const lang = useUiLang();
+  const t = messagesFor(lang);
   const messages = useMessages(conversationId);
   const [state, dispatch] = useReducer(streamReducer, initialStreamState);
   const [question, setQuestion] = useState('');
@@ -93,11 +98,12 @@ export function ChatPanel({
     if (!isConversationEmpty || !conversation.data) return [];
     return resolveSuggestedPrompts({
       type: conversation.data.type,
+      lang,
       // 환자를 못 불러온 경우(삭제된 환자 등)는 빈 배열 = 「걸리는 진단 없음」으로 넘겨
       // 일반 질의문으로 떨어뜨린다 — 무한정 빈 자리로 두지 않는다
       diagnoses: patient.isError ? [] : patient.data?.diagnoses,
     });
-  }, [isConversationEmpty, conversation.data, patient.data, patient.isError]);
+  }, [isConversationEmpty, conversation.data, patient.data, patient.isError, lang]);
 
   const scroll = useChatAutoScroll({
     resetKey: conversationId,
@@ -167,19 +173,20 @@ export function ChatPanel({
         conversationId,
         content,
         clientRequestId,
+        // 답변 언어는 **화면 언어가 아니라 방금 쓴 문장**이 정한다 — 예시를 누르면 보이던
+        // 문장이 그대로 전송되므로(spec 41 기준 27), 이 유도가 질의 언어와 답변 언어를
+        // 저절로 일치시킨다. 한국어 화면에 영문을 붙여넣어 던져도 답은 영어로 온다.
+        responseLang: resolveResponseLang(content),
         onEvent: (event) => dispatch({ type: 'event', event }),
       });
       // 종결 이벤트 없이 연결이 닫힌 경우(예: 스트리밍 도중 토큰 만료)도 실패로 확정한다.
       // 정상 종결·대화 전환 뒤라면 reducer가 무시하므로 무조건 보내도 안전하다.
-      dispatch({
-        type: 'streamFailed',
-        message: '답변이 완료되기 전에 연결이 끊겼습니다.',
-      });
+      dispatch({ type: 'streamFailed', message: t.streamDisconnected });
     } catch (error) {
       // 스트림 비정상 종료 → 오류 상태 (서버 상태 재확인은 phase 동기화 effect가 담당)
       dispatch({
         type: 'streamFailed',
-        message: error instanceof Error ? error.message : '스트림이 중단되었습니다.',
+        message: error instanceof Error ? error.message : t.streamAborted,
       });
     }
   };
@@ -238,11 +245,11 @@ export function ChatPanel({
         {/* 상단 sentinel — 보이면 과거 페이지를 당긴다 (위로 무한 스크롤) */}
         <div ref={scroll.topSentinelRef} aria-hidden="true" />
         {messages.isFetchingNextPage && (
-          <p className="text-center text-xs text-gray-400">이전 대화를 불러오는 중…</p>
+          <p className="text-center text-xs text-gray-400">{t.loadingOlderMessages}</p>
         )}
         {persisted.map((message) => (
           <div key={message.id} className="space-y-4">
-            <MessageBubble message={message} onCite={handleCite} />
+            <MessageBubble message={message} onCite={handleCite} t={t} />
             {/* 새로고침 복원 경로 — 방금 스트림으로 받은 카드(아래)가 있으면 중복 표시하지 않는다 */}
             {message.guidanceId && message.id !== state.message?.id && (
               <GuidanceCardLoader guidanceId={message.guidanceId} />
@@ -250,9 +257,9 @@ export function ChatPanel({
           </div>
         ))}
 
-        {localUser && <MessageBubble message={localUser} onCite={handleCite} />}
+        {localUser && <MessageBubble message={localUser} onCite={handleCite} t={t} />}
 
-        {localFinal && <MessageBubble message={localFinal} onCite={handleCite} />}
+        {localFinal && <MessageBubble message={localFinal} onCite={handleCite} t={t} />}
 
         {state.phase === 'completed' && state.guidance && (
           <GuidanceCard key={state.guidance.id} guidance={state.guidance} />
@@ -261,7 +268,7 @@ export function ChatPanel({
         {inFlight && (
           <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-800">
             {state.phase !== 'streaming' && (
-              <p className="text-xs text-gray-400">지침 근거를 검색하는 중…</p>
+              <p className="text-xs text-gray-400">{t.retrievingEvidence}</p>
             )}
             {state.content && (
               <p className="whitespace-pre-wrap">
@@ -275,7 +282,7 @@ export function ChatPanel({
         )}
 
         {/* message가 실려 있으면 위 localFinal(MessageBubble)이 같은 안내를 그린다 — 없을 때만 폴백 */}
-        {state.phase === 'abstained' && !state.message && <AbstainedNotice />}
+        {state.phase === 'abstained' && !state.message && <AbstainedNotice t={t} />}
 
         {/* 중단 시점까지 받은 본문은 버리지 않는다 — 사용자가 읽던 답변이다 */}
         {state.phase === 'error' && state.content && (
@@ -293,7 +300,7 @@ export function ChatPanel({
                 onClick={handleRetry}
                 className="mt-2 rounded-lg border border-red-300 px-3 py-1 text-xs hover:bg-red-100"
               >
-                다시 시도
+                {t.retry}
               </button>
             )}
           </div>
@@ -301,18 +308,18 @@ export function ChatPanel({
       </div>
 
       {suggestedPrompts.length > 0 && (
-        <SuggestedPrompts prompts={suggestedPrompts} onSelect={handleSelectPrompt} />
+        <SuggestedPrompts prompts={suggestedPrompts} onSelect={handleSelectPrompt} t={t} />
       )}
 
       <form onSubmit={handleSubmit} className="flex gap-2 border-t border-gray-200 p-3">
         <textarea
           ref={questionRef}
-          aria-label="질문 입력"
+          aria-label={t.questionInputLabel}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={handleKeyDown}
           rows={2}
-          placeholder="지침에 대해 질문하세요 (예: 만성 요통에 침 치료가 효과적인가요?)"
+          placeholder={t.questionInputPlaceholder}
           className="flex-1 resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
         />
         <button
@@ -320,7 +327,7 @@ export function ChatPanel({
           disabled={inFlight || question.trim().length === 0}
           className="self-end rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
         >
-          전송
+          {t.send}
         </button>
       </form>
     </div>
@@ -339,14 +346,16 @@ export function ChatPanel({
 function SuggestedPrompts({
   prompts,
   onSelect,
+  t,
 }: {
   prompts: readonly string[];
   onSelect: (prompt: string) => void;
+  t: Record<MessageKey, string>;
 }): React.ReactElement {
   return (
     <div className="shrink-0 border-t border-gray-200 px-3 pt-3">
-      <p className="mb-1.5 text-xs font-medium text-gray-500">이렇게 질문해 보세요</p>
-      <ul aria-label="예시 질의문" className="max-h-[45vh] space-y-1 overflow-y-auto">
+      <p className="mb-1.5 text-xs font-medium text-gray-500">{t.suggestedPromptsHeading}</p>
+      <ul aria-label={t.suggestedPromptsListLabel} className="max-h-[45vh] space-y-1 overflow-y-auto">
         {prompts.map((prompt) => (
           <li key={prompt}>
             <button
@@ -363,24 +372,31 @@ function SuggestedPrompts({
   );
 }
 
-function AbstainedNotice(): React.ReactElement {
+/**
+ * 스트림이 종결 이벤트 없이 닫혔을 때의 폴백 문구.
+ *
+ * **BE가 보낸 기권 사유는 이 자리에 오지 않는다** — 사유별 문장은 BE가 `responseLang`에 맞춰
+ * 직송하고(spec 42 기준 26·27), 그 문장은 `state.message`에 실려 아래 MessageBubble이 그린다.
+ * 여기 있는 것은 사유를 받지 못한 경우의 일반 안내뿐이라 FE가 문구를 든다.
+ */
+function AbstainedNotice({ t }: { t: Record<MessageKey, string> }): React.ReactElement {
   return (
-    <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-      검색 조건에 해당하는 지침 근거를 찾지 못해 답변을 보류했습니다.
-    </p>
+    <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{t.abstainedNotice}</p>
   );
 }
 
 function MessageBubble({
   message,
   onCite,
+  t,
 }: {
   message: MessageDto;
   onCite?: (citations: AnswerCitation[], marker: number) => void;
+  t: Record<MessageKey, string>;
 }): React.ReactElement {
   // 보류 답변은 본문이 비어 있을 수 있다 — 대화를 다시 열어도 스트림 때와 같은 안내를 그린다
   if (message.status === 'ABSTAINED') {
-    return <AbstainedNotice />;
+    return <AbstainedNotice t={t} />;
   }
   const isUser = message.role === 'USER';
   return (

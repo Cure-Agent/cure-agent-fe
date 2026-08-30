@@ -31,6 +31,9 @@ const PAGE = { size: 50, hasNext: false, nextCursor: null };
 const CASE_001_PROMPT =
   '골다공증 환자에게 골밀도나 통증 개선을 목적으로 침 치료를 고려할 때, 유침 시간은 보통 어느 정도로 잡는 것이 적절한가요?';
 
+/** 이 스위트는 한국어 경로를 본다 — 언어 축은 spec 42 동결 테스트가 따로 다룬다 */
+const GENERAL_KO = GENERAL_SUGGESTED_PROMPTS.map((prompt) => prompt.ko);
+
 function mockMessages(items: MessageDto[]): void {
   server.use(
     http.get('/api/v1/conversations/conversation-1/messages', () =>
@@ -85,7 +88,7 @@ describe('ChatPanel 예시 질의문', () => {
 
     const list = await screen.findByRole('list', { name: '예시 질의문' });
     const items = within(list).getAllByRole('button');
-    expect(items.map((item) => item.textContent)).toEqual([...GENERAL_SUGGESTED_PROMPTS]);
+    expect(items.map((item) => item.textContent)).toEqual(GENERAL_KO);
   });
 
   it('환자 맞춤 대화에는 그 환자의 진단에 맞는 질의문이 뜬다', async () => {
@@ -97,7 +100,7 @@ describe('ChatPanel 예시 질의문', () => {
 
     expect(await screen.findByRole('button', { name: CASE_001_PROMPT })).toBeTruthy();
     // 환자 질의문이 떴다면 일반 질의문은 함께 뜨지 않는다
-    expect(screen.queryByRole('button', { name: GENERAL_SUGGESTED_PROMPTS[0] })).toBeNull();
+    expect(screen.queryByRole('button', { name: GENERAL_KO[0] })).toBeNull();
   });
 
   it('누르면 전송하지 않고 입력창을 채운다 — 고쳐 던질 수 있어야 한다', async () => {
@@ -141,7 +144,7 @@ describe('ChatPanel 예시 질의문', () => {
     const user = userEvent.setup();
     renderWithProviders(<ChatPanel conversationId="conversation-1" />);
 
-    await user.click(await screen.findByRole('button', { name: GENERAL_SUGGESTED_PROMPTS[0] }));
+    await user.click(await screen.findByRole('button', { name: GENERAL_KO[0] }));
     await user.click(screen.getByRole('button', { name: '전송' }));
 
     await waitFor(() =>

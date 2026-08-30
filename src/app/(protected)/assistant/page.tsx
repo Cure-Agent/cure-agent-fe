@@ -40,6 +40,10 @@ function AssistantScreen(): React.ReactElement {
           version: citation.guidelineVersion,
           sectionPath: citation.sectionPath,
           excerpt: citation.quote,
+          // 저장된 인용의 번역은 quote 쪽에 실려 온다 — 근거 카드는 스트림 경로의
+          // excerptTranslated와 같은 자리로 본다 (BE docs/specs/42)
+          excerptTranslated: citation.quoteTranslated,
+          titleTranslated: citation.titleTranslated,
         })),
       );
       setActiveMarker(marker);
