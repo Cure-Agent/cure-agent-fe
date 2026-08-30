@@ -20,8 +20,19 @@ export type ResponseLang = 'ko' | 'en';
  */
 const HANGUL_RATIO = 0.2;
 
-const HANGUL = /[가-힣ㄱ-ㅎㅏ-ㅣ]/g;
-const LETTER = /[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z]/g;
+/**
+ * 범위를 `\u` 이스케이프로 적는다 — `[가-힣ㄱ-ㅎㅏ-ㅣ]`가 아니라.
+ *
+ * 번들러는 **문자열 리터럴만** `\uXXXX`로 이스케이프하고 정규식 리터럴은 원문 바이트를 그대로
+ * 남긴다. 그래서 번들이 `charset=utf-8` 없이 서빙되면 브라우저가 Latin-1로 읽어 범위 양끝이
+ * 뒤집히고, `SyntaxError`가 **번들 평가를 통째로 죽인다** — 디자인 시스템 재동기화의
+ * `[BUNDLE_EXPORT]` 검사가 이 레포에서 실제로 그렇게 터졌다(2026-08-30, 14/14 export 소실).
+ * 이스케이프로 적으면 소스가 전부 ASCII라 어느 인코딩으로 읽혀도 같은 정규식이다.
+ *
+ * 범위는 BE `query-language.ts`와 같다: 완성형 가–힣 · 자음 ㄱ–ㅎ · 모음 ㅏ–ㅣ.
+ */
+const HANGUL = /[\uAC00-\uD7A3\u3131-\u314E\u314F-\u3163]/g;
+const LETTER = /[\uAC00-\uD7A3\u3131-\u314E\u314F-\u3163A-Za-z]/g;
 
 export function resolveResponseLang(text: string): ResponseLang {
   const letters = text.match(LETTER)?.length ?? 0;

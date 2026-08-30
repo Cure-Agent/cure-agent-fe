@@ -20,6 +20,7 @@ import {
   SearchParamsContext,
 } from 'next/dist/shared/lib/hooks-client-context.shared-runtime';
 import { type ReactNode, useState } from 'react';
+import { UI_LANG_STORAGE_KEY } from '@/shared/i18n/ui-lang';
 import { installFixtureFetch } from './fixtures';
 
 /**
@@ -43,6 +44,22 @@ export {
 
 const noop = (): void => undefined;
 
+/**
+ * 프리뷰의 표시 언어를 한국어로 고정한다 (BE docs/specs/42).
+ *
+ * 표시 언어는 저장된 선택이 없으면 `navigator.language`를 따르는데, 카드를 캡처하는 브라우저는
+ * 대개 `en-US`다 — 고정하지 않으면 **캡처 머신의 로케일에 따라 카드가 통째로 뒤집힌다.**
+ * 저장된 선택이 자동 판정을 이기는 성질을 그대로 써서 못박는다.
+ * (같은 이유로 유닛 테스트는 `shared/test/setup-dom.ts`, e2e는 `playwright.config.ts`가 고정한다.)
+ */
+function pinPreviewUiLang(): void {
+  try {
+    globalThis.localStorage?.setItem(UI_LANG_STORAGE_KEY, 'ko');
+  } catch {
+    // storage가 없는 렌더 환경이면 navigator.language를 그대로 따른다
+  }
+}
+
 /** 정적 렌더용 라우터 스텁 — 네비게이션은 일어나지 않는다. */
 const ROUTER_STUB = {
   push: noop,
@@ -65,6 +82,7 @@ export function DsPreviewProvider({
 }: DsPreviewProviderProps): React.ReactElement {
   // 렌더 시점(자식보다 먼저)에 fetch 를 교체한다 — 자식의 useQuery 가 발화하기 전이다.
   const [queryClient] = useState(() => {
+    pinPreviewUiLang();
     installFixtureFetch();
     return new QueryClient({
       defaultOptions: {
