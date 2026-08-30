@@ -375,11 +375,20 @@ function SuggestedPrompts({
 /**
  * 스트림이 종결 이벤트 없이 닫혔을 때의 폴백 문구.
  *
- * **BE가 보낸 기권 사유는 이 자리에 오지 않는다** — 사유별 문장은 BE가 `responseLang`에 맞춰
- * 직송하고(spec 42 기준 26·27), 그 문장은 `state.message`에 실려 아래 MessageBubble이 그린다.
- * 여기 있는 것은 사유를 받지 못한 경우의 일반 안내뿐이라 FE가 문구를 든다.
+ * **보류라는 사실은 이 컨테이너가 진다 — 문구가 아니라 프레이밍이다** (BE docs/specs/43).
+ * BE의 사유 문장은 「무엇을 찾지 못했나」만 말하고 「그래서 답을 보류했다」를 말하지 않는데,
+ * spec 42 기준 27이 그 자구를 잠갔으므로 덧붙일 수 없다. amber notice가 이미 프레이밍을
+ * 지고 있으므로 사유 문장을 **그 안에** 넣는다 — 프레이밍은 유지되고 내용만 사유별로 갈린다.
  */
-function AbstainedNotice({ t }: { t: Record<MessageKey, string> }): React.ReactElement {
+function AbstainedNotice({
+  t,
+  reason,
+}: {
+  t: Record<MessageKey, string>;
+  /** BE가 실어 보낸 사유별 문장. 사유가 기록되기 전에 만들어진 행에는 없다 */
+  reason?: string;
+}): React.ReactElement {
+  void reason;
   return (
     <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{t.abstainedNotice}</p>
   );
@@ -396,7 +405,7 @@ function MessageBubble({
 }): React.ReactElement {
   // 보류 답변은 본문이 비어 있을 수 있다 — 대화를 다시 열어도 스트림 때와 같은 안내를 그린다
   if (message.status === 'ABSTAINED') {
-    return <AbstainedNotice t={t} />;
+    return <AbstainedNotice t={t} reason={message.abstainReason} />;
   }
   const isUser = message.role === 'USER';
   return (
