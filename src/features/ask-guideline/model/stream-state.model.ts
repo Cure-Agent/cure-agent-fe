@@ -47,7 +47,6 @@ export interface StreamState {
   pendingUser: MessageDto | null;
   /** PATIENT_GUIDANCE completed의 임상 참고안 (spec 10 — additive) */
   guidance: GuidanceDto | null;
-  abstainReason: string | null;
   error: StreamError | null;
 }
 
@@ -62,7 +61,6 @@ export const initialStreamState: StreamState = {
   message: null,
   pendingUser: null,
   guidance: null,
-  abstainReason: null,
   error: null,
 };
 
@@ -151,11 +149,10 @@ function applyEvent(state: StreamState, event: StreamEvent): StreamState {
       return {
         ...state,
         phase: 'abstained',
+        // 이벤트의 `reason`은 읽지 않는다 — 같은 문장이 `message.abstainReason`에도
+        // 실려 오는데(BE spec 43 기준 11), 그쪽만이 재조회에서도 살아남는다. 반쪽만 채워지는
+        // 사본을 상태에 두면 나중에 그것을 그리는 순간 spec 43이 고친 갈라짐이 되살아난다.
         message: (event.message as MessageDto) ?? null,
-        // 이벤트의 reason은 spec 08 기준으로 보존한다. **화면은 읽지 않는다** —
-        // 표시 축은 `message.abstainReason` 하나뿐이어야 스트림과 재조회가 같은 문장을 낸다
-        // (spec 43 기준 16). 두 축을 두면 갈라지는 순간이 온다.
-        abstainReason: (event.reason as string) ?? null,
       };
     case 'error':
       return {
