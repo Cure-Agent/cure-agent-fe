@@ -56,6 +56,32 @@ const APPLICABILITY_STYLES: Record<string, string> = {
   NOT_APPLICABLE: 'bg-gray-100 text-gray-600',
 };
 
+/**
+ * 환자 프로필 필드명 — `patientFactors`와 `missingInformation`이 함께 쓰는 **닫힌 어휘**다
+ * (BE `guidance-profile-fields.ts`의 9개). 값이 있는 쪽과 없는 쪽이 같은 목록의 여집합이라,
+ * 한쪽만 번역하면 「무엇을 딛었는가」와 「무엇이 빠졌는가」가 다른 언어로 갈려 나란히 읽히지 않는다.
+ *
+ * BE 문구인데도 FE가 번역하는 이유는 이것이 **문장이 아니라 어휘**이기 때문이다 — 자유 문구인
+ * 기권 사유·오류 메시지와 달리 값이 유한하고, BE 검증기가 이 목록 밖의 값을 폐기한다.
+ */
+const PROFILE_FIELD_LABELS: Record<string, MessageKey> = {
+  출생연도: 'profileFieldBirthYear',
+  성별: 'profileFieldSex',
+  신장: 'profileFieldHeight',
+  체중: 'profileFieldWeight',
+  허리둘레: 'profileFieldWaist',
+  진단명: 'profileFieldDiagnoses',
+  '투약 목록': 'profileFieldMedications',
+  '알레르기 이력': 'profileFieldAllergies',
+  '임상 메모': 'profileFieldClinicalNotes',
+};
+
+/** 어휘가 넓어지면 모르는 값이 온다 — 지우지 않고 원문으로 남긴다 (배지 자리가 비면 안 된다) */
+function profileFieldLabel(field: string, t: Record<MessageKey, string>): string {
+  const key = PROFILE_FIELD_LABELS[field];
+  return key ? t[key] : field;
+}
+
 /** 인용 근거 칩 [n] — 클릭 시 해당 근거의 전문을 펼친다 (지침 상세와 동일 구성) */
 function CitationList({ citations }: { citations: GuidanceCitation[] }): ReactElement | null {
   const [openMarker, setOpenMarker] = useState<number | null>(null);
@@ -171,7 +197,7 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
                         key={factor}
                         className="rounded border border-gray-300 bg-gray-50 px-1.5 py-0.5 text-xs text-gray-700"
                       >
-                        {factor}
+                        {profileFieldLabel(factor, t)}
                       </span>
                     ))}
                   </div>
@@ -211,7 +237,7 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
           <h4 className="text-xs font-semibold text-gray-500">{t.guidanceMissingInformation}</h4>
           <ul className="mt-1 list-inside list-disc text-gray-600">
             {current.missingInformation.map((item) => (
-              <li key={item}>{item}</li>
+              <li key={item}>{profileFieldLabel(item, t)}</li>
             ))}
           </ul>
         </div>

@@ -332,6 +332,20 @@ const ko = {
   applicabilityApplicable: '적용',
   applicabilityCaution: '주의',
   applicabilityNotApplicable: '해당없음',
+
+  // 환자 프로필 필드명 — BE가 `patientFactors`·`missingInformation`에 싣는 닫힌 어휘 9개
+  // (BE `guidance-profile-fields.ts`). 한국어는 BE가 보내는 문자열과 **한 글자도 다르지 않게**
+  // 둔다 — 매핑이 어긋나 폴백으로 떨어져도 한국어 화면이 오늘과 같아야 한다.
+  profileFieldBirthYear: '출생연도',
+  profileFieldSex: '성별',
+  profileFieldHeight: '신장',
+  profileFieldWeight: '체중',
+  profileFieldWaist: '허리둘레',
+  profileFieldDiagnoses: '진단명',
+  profileFieldMedications: '투약 목록',
+  profileFieldAllergies: '알레르기 이력',
+  profileFieldClinicalNotes: '임상 메모',
+
   startPatientConversation: '환자 맞춤 대화 시작',
   startPatientConversationFailed: '환자 맞춤 대화 생성에 실패했습니다.',
   pickConversationOrStart: '왼쪽에서 대화를 선택하거나 새 대화를 시작하세요',
@@ -608,6 +622,17 @@ const en: Record<MessageKey, string> = {
   applicabilityApplicable: 'Applicable',
   applicabilityCaution: 'Caution',
   applicabilityNotApplicable: 'Not applicable',
+
+  profileFieldBirthYear: 'Year of birth',
+  profileFieldSex: 'Sex',
+  profileFieldHeight: 'Height',
+  profileFieldWeight: 'Weight',
+  profileFieldWaist: 'Waist circumference',
+  profileFieldDiagnoses: 'Diagnoses',
+  profileFieldMedications: 'Medications',
+  profileFieldAllergies: 'Allergy history',
+  profileFieldClinicalNotes: 'Clinical note',
+
   startPatientConversation: 'Start patient-specific conversation',
   startPatientConversationFailed: 'Could not start the patient-specific conversation.',
   pickConversationOrStart: 'Pick a conversation on the left, or start a new one',
