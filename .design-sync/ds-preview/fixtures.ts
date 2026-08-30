@@ -365,6 +365,17 @@ const ROUTES: Route[] = [
     pattern: /^\/api\/v1\/conversations\/[^/]+\/messages$/,
     body: () => envelope(MESSAGES, PAGE),
   },
+  /**
+   * 대화 단건 — `ChatPanel` 이 예시 질의문을 고르려고 읽는다 (대화 type·연결 환자).
+   * 이 라우트가 없던 동안은 404 봉투가 돌아가 `conversation.data` 가 비었고,
+   * **예시 질의문 상태를 카드에 담을 수 없었다.** 목록(`/conversations`)보다 더 구체적인
+   * 패턴이므로 그 항목보다 **뒤에 와도** `[^/]+` 가 슬래시를 먹지 않아 안전하다.
+   */
+  {
+    method: 'GET',
+    pattern: /^\/api\/v1\/conversations\/[^/]+$/,
+    body: () => envelope(CONVERSATIONS[0]),
+  },
   {
     method: 'GET',
     pattern: /^\/api\/v1\/guidelines$/,

@@ -30,6 +30,14 @@ const ko = {
   showFullText: '전문 보기',
   hideFullText: '접기',
 
+  // 근거 전문 (인용 패널·지침 상세·임상 참고안이 공유한다)
+  fullTextLoading: '전문 불러오는 중…',
+  fullTextError: '전문을 불러오지 못했습니다',
+  recommendationHeading: '권고문 원문',
+  excerptHeading: '본문 발췌',
+  sourcePagePrefix: '원문 p.',
+  viewSource: '원문 보기 (NCKM)',
+
   // 번역 경계 (스펙 판단표 「커버리지 밖 표시」)
   citationNotTranslated: '미번역',
   showKoreanOriginal: '한국어 원문 보기',
@@ -57,6 +65,13 @@ const en: Record<MessageKey, string> = {
   evidencePanelEmpty: 'Ask a question and the guideline evidence cited in the answer appears here.',
   showFullText: 'Show full text',
   hideFullText: 'Collapse',
+
+  fullTextLoading: 'Loading full text…',
+  fullTextError: 'Could not load the full text',
+  recommendationHeading: 'Recommendation',
+  excerptHeading: 'Excerpt',
+  sourcePagePrefix: 'Source p.',
+  viewSource: 'View source (NCKM)',
 
   citationNotTranslated: 'Not translated',
   showKoreanOriginal: 'Show Korean original',
