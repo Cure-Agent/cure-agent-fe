@@ -152,6 +152,9 @@ function applyEvent(state: StreamState, event: StreamEvent): StreamState {
         ...state,
         phase: 'abstained',
         message: (event.message as MessageDto) ?? null,
+        // 이벤트의 reason은 spec 08 기준으로 보존한다. **화면은 읽지 않는다** —
+        // 표시 축은 `message.abstainReason` 하나뿐이어야 스트림과 재조회가 같은 문장을 낸다
+        // (spec 43 기준 16). 두 축을 두면 갈라지는 순간이 온다.
         abstainReason: (event.reason as string) ?? null,
       };
     case 'error':

@@ -388,9 +388,10 @@ function AbstainedNotice({
   /** BE가 실어 보낸 사유별 문장. 사유가 기록되기 전에 만들어진 행에는 없다 */
   reason?: string;
 }): React.ReactElement {
-  void reason;
   return (
-    <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{t.abstainedNotice}</p>
+    <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+      {reason ?? t.abstainedNotice}
+    </p>
   );
 }
 
