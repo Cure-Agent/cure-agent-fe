@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { type ReactNode, useCallback, useState } from 'react';
 import { Clinician, useLogout } from '@/features/auth/api/auth.api';
+import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
+import { type UiLang, setUiLang, useUiLang } from '@/shared/i18n/ui-lang';
 import { LogoMark } from '@/shared/ui/logo-mark';
 
 type IconProps = { className?: string };
@@ -69,11 +71,13 @@ const LogoutIcon = iconSvg(
   </>,
 );
 
+// 라벨을 문자열이 아니라 **메시지 키**로 든다 — 표시 언어가 바뀌면 따라와야 하는데
+// 모듈 상수는 렌더 밖에서 한 번 만들어지므로 문자열을 박으면 첫 언어에 굳는다
 const NAV_ITEMS = [
-  { href: '/assistant', label: '어시스턴트', Icon: AssistantIcon },
-  { href: '/guidelines', label: '지침', Icon: GuidelineIcon },
-  { href: '/patients', label: '환자', Icon: PatientIcon },
-] as const;
+  { href: '/assistant', labelKey: 'navAssistant', Icon: AssistantIcon },
+  { href: '/guidelines', labelKey: 'navGuidelines', Icon: GuidelineIcon },
+  { href: '/patients', labelKey: 'navPatients', Icon: PatientIcon },
+] as const satisfies readonly { href: string; labelKey: MessageKey; Icon: unknown }[];
 
 // 사이드바를 접을지는 로그인 세션이 아니라 그 사람의 화면 크기·작업 습관에 딸린 취향이다 —
 // 계정으로 나누지 않은 단일 키에 남겨, 다시 로그인해도 마지막 배치가 그대로 이어지게 한다
@@ -88,6 +92,87 @@ function readSidebarOpen(): boolean {
   } catch {
     return true;
   }
+}
+
+/**
+ * 표시 언어 선택.
+ *
+ * **선택지 라벨을 번역하지 않는다** — 각 항목을 그 언어 자체로(`한국어`·`English`) 적는다.
+ * 데모의 실제 시나리오는 「한국어 로케일 노트북으로 영어권 방문자에게 시연」이고, 그때 화면은
+ * 전부 한국어다. 라벨을 현재 UI 언어로 번역하면 **한국어를 못 읽는 사람이 자기 항목을 찾을
+ * 수 없다.** 언어 이름을 그 언어로 적는 것이 이 컨트롤의 유일한 요건이다.
+ *
+ * 사이드바 하단 계정 블록에 두는 이유: 표시 언어는 화면이 아니라 **사람에 딸린 설정**이라
+ * 계정 동작(프로필·로그아웃)과 같은 자리에 있어야 하고, 어느 화면에서도 손이 닿는다.
+ */
+const LANG_OPTIONS = [
+  { value: 'ko', label: '한국어', code: 'KO', switchKey: 'switchToKorean' },
+  { value: 'en', label: 'English', code: 'EN', switchKey: 'switchToEnglish' },
+] as const satisfies readonly {
+  value: UiLang;
+  label: string;
+  code: string;
+  switchKey: MessageKey;
+}[];
+
+function LanguageSwitch({
+  lang,
+  t,
+}: {
+  lang: UiLang;
+  t: Record<MessageKey, string>;
+}): React.ReactElement {
+  return (
+    <div
+      role="group"
+      aria-label={t.displayLanguage}
+      className="mb-2 flex rounded-lg border border-gray-300 p-0.5"
+    >
+      {LANG_OPTIONS.map((option) => {
+        const active = option.value === lang;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setUiLang(option.value)}
+            aria-pressed={active}
+            className={`flex-1 rounded-md py-1 text-xs font-medium ${
+              active ? 'bg-emerald-50 text-emerald-800' : 'text-gray-500 hover:bg-gray-100'
+            }`}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * 접힘 레일용 — 폭이 56px뿐이라 두 항목을 나란히 둘 수 없다.
+ * 현재 언어 코드를 보여주고 누르면 다른 언어로 넘어간다. 접근성 이름은 **넘어갈 대상**을
+ * 말한다 — 코드만 읽으면 「지금 이것」인지 「눌러서 이것」인지 갈리지 않는다.
+ */
+function LanguageRailToggle({
+  lang,
+  t,
+}: {
+  lang: UiLang;
+  t: Record<MessageKey, string>;
+}): React.ReactElement {
+  const current = LANG_OPTIONS.find((option) => option.value === lang) ?? LANG_OPTIONS[0];
+  const next = LANG_OPTIONS.find((option) => option.value !== lang) ?? LANG_OPTIONS[1];
+  return (
+    <button
+      type="button"
+      onClick={() => setUiLang(next.value)}
+      aria-label={t[next.switchKey]}
+      title={t[next.switchKey]}
+      className={`${railIconClass(false)} text-xs font-semibold`}
+    >
+      {current.code}
+    </button>
+  );
 }
 
 // 레일 아이콘의 형태·색을 한곳에 묶는다 — 메뉴와 프로필이 따로 흘러가지 않게 한다
@@ -107,6 +192,8 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const logout = useLogout();
+  const lang = useUiLang();
+  const t = messagesFor(lang);
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
 
   // 접기·펼치기는 곧 사용자가 명시적으로 내린 선택이다 — 화면과 저장소를 한 번에 움직여 둘이 갈라지지 않게 한다
@@ -141,14 +228,14 @@ export function AppShell({
           <LogoMark className="h-7 w-auto shrink-0 text-emerald-700" />
           <div className="min-w-0">
             <p className="text-lg font-bold leading-tight text-emerald-800">Cure Agent</p>
-            <p className="truncate text-xs text-gray-500">한의 임상 지침 어시스턴트</p>
+            <p className="truncate text-xs text-gray-500">{t.appTagline}</p>
           </div>
           {/* 부제가 헤더 폭을 거의 다 쓰므로 플로우 밖에 띄운다 — 행에 넣으면 부제가 잘린다.
               세로는 접힘 레일의 토글과 같은 중앙 정렬 */}
           <button
             type="button"
             onClick={() => persistSidebarOpen(false)}
-            aria-label="사이드바 닫기"
+            aria-label={t.closeSidebar}
             className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
           >
             <PanelIcon className="h-5 w-5" />
@@ -167,18 +254,19 @@ export function AppShell({
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 }`}
               >
-                {item.label}
+                {t[item.labelKey]}
               </Link>
             );
           })}
         </nav>
         <div className="border-t border-gray-200 p-4">
+          <LanguageSwitch lang={lang} t={t} />
           {/* 계정 정보 블록이 프로필 진입점이다. -mx-2 px-2: 글자 위치는 그대로 두고 호버 영역만 넓힌다.
               되돌릴 수 없는 계정 동작(회원탈퇴)은 이 자리가 아니라 프로필 안에 둔다 — 로그아웃과
               나란히 두면 나가려다 지우는 오조작이 만들어진다 */}
           <Link
             href="/profile"
-            aria-label="내 프로필"
+            aria-label={t.myProfile}
             className="-mx-2 block rounded-lg px-2 py-1.5 hover:bg-gray-100"
           >
             <p className="truncate text-sm font-medium text-gray-900">{me.displayName}</p>
@@ -192,7 +280,7 @@ export function AppShell({
             disabled={logout.isPending}
             className="mt-1.5 w-full rounded-lg border border-gray-300 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
           >
-            로그아웃
+            {t.logout}
           </button>
         </div>
       </aside>
@@ -205,21 +293,21 @@ export function AppShell({
             <button
               type="button"
               onClick={() => persistSidebarOpen(true)}
-              aria-label="사이드바 열기"
+              aria-label={t.openSidebar}
               className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
             >
               <PanelIcon className="h-5 w-5" />
             </button>
           </div>
-          <nav aria-label="주요 메뉴" className="mt-3 flex flex-col items-center gap-1">
+          <nav aria-label={t.mainMenu} className="mt-3 flex flex-col items-center gap-1">
             {NAV_ITEMS.map((item) => {
               const active = pathname.startsWith(item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  aria-label={item.label}
-                  title={item.label}
+                  aria-label={t[item.labelKey]}
+                  title={t[item.labelKey]}
                   aria-current={active ? 'page' : undefined}
                   className={railIconClass(active)}
                 >
@@ -232,10 +320,11 @@ export function AppShell({
               둘 다 주요 메뉴가 아니라 계정 동작이므로 위 nav 밖에 두고,
               순서도 열림 상태와 같이 프로필 → 로그아웃이다 (두 상태가 다른 순서를 가르치지 않게) */}
           <div className="mt-auto flex w-full flex-col items-center gap-1 border-t border-gray-200 py-3">
+            <LanguageRailToggle lang={lang} t={t} />
             <Link
               href="/profile"
-              aria-label="내 프로필"
-              title="내 프로필"
+              aria-label={t.myProfile}
+              title={t.myProfile}
               aria-current={pathname.startsWith('/profile') ? 'page' : undefined}
               className={railIconClass(pathname.startsWith('/profile'))}
             >
@@ -246,8 +335,8 @@ export function AppShell({
               type="button"
               onClick={handleLogout}
               disabled={logout.isPending}
-              aria-label="로그아웃"
-              title="로그아웃"
+              aria-label={t.logout}
+              title={t.logout}
               className={`${railIconClass(false)} disabled:opacity-50`}
             >
               <LogoutIcon className="h-5 w-5" />
