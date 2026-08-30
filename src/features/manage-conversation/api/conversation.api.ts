@@ -190,6 +190,14 @@ export function useMessages(
   return useInfiniteQuery({
     queryKey: messagesKey(conversationId),
     enabled: conversationId !== null,
+    /**
+     * 이 목록만은 전역 기본값(30초 fresh)을 따르지 않는다. 대화의 메시지는 **화면을 떠나 있는
+     * 동안 서버에서 자라는** 유일한 목록이기 때문이다 — 답변 스트림은 화면이 없어도 끝까지
+     * 돌아 행을 커밋한다. 기본값을 그대로 두면 30초 안에 돌아온 사람은 떠날 때의 목록을 다시
+     * 보게 되고, 그 사이 도착한 답변은 다음 재조회까지 화면에 닿지 못한다.
+     * 대화를 열 때마다 한 번 더 읽는 값이라 비용은 첫 진입과 같다.
+     */
+    staleTime: 0,
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam }) => {
       const query: { order: 'desc'; cursor?: string } = { order: 'desc' };
