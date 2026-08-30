@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { EvidenceFullText } from '@/features/filter-guidelines/ui/evidence-full-text';
 import type { components } from '@/shared/api/generated/schema';
-import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
+import { type MessageKey, formatMessage, messagesFor } from '@/shared/i18n/messages';
 import { type UiLang, useUiLang } from '@/shared/i18n/ui-lang';
 
 /**
@@ -151,7 +151,10 @@ function EvidenceCard({
         <p className="mt-1 line-clamp-3 text-gray-600">{excerpt}</p>
         {item.recommendationGrade && (
           <p className="mt-1 text-xs text-gray-500">
-            권고등급 {item.recommendationGrade.code} ({item.recommendationGrade.label})
+            {formatMessage(t.recommendationGradeLine, {
+              code: item.recommendationGrade.code,
+              label: item.recommendationGrade.label,
+            })}
           </p>
         )}
       </button>

@@ -3,6 +3,8 @@
 import { useId } from 'react';
 import { GoogleLogo, KakaoLogo, NaverLogo } from '@/shared/ui/provider-logos';
 import { OAuthProvider, oauthLoginHref, useOAuthProviders } from '../api/auth.api';
+import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
+import { useUiLang } from '@/shared/i18n/ui-lang';
 
 /**
  * 제공자별 브랜드 표기 — 각 사의 로그인 버튼 가이드라인을 따른다 (docs/specs/17)
@@ -13,39 +15,45 @@ import { OAuthProvider, oauthLoginHref, useOAuthProviders } from '../api/auth.ap
  */
 const BRAND: Record<
   OAuthProvider,
-  { label: string; className: string; Logo: (props: { className?: string }) => React.ReactElement }
+  {
+    labelKey: MessageKey;
+    className: string;
+    Logo: (props: { className?: string }) => React.ReactElement;
+  }
 > = {
   GOOGLE: {
-    label: 'Google로 로그인',
+    labelKey: 'loginWithGoogle',
     /* 흰 컨테이너는 흰 카드 위에서 경계가 사라진다 — 테두리가 장식이 아니라 필수다 */
     className: 'border border-gray-300 bg-white hover:bg-gray-50',
     Logo: GoogleLogo,
   },
   KAKAO: {
     /* 카카오는 레이블을 완성형 '카카오 로그인' / 축약형 '로그인'으로만 규정한다 — 임의 문구 금지 */
-    label: '카카오 로그인',
+    labelKey: 'loginWithKakao',
     /* 색 규정 고정값 — 컨테이너 #FEE500 (레이블 색 규정은 아이콘형이라 걸리지 않는다) */
     className: 'bg-[#FEE500] hover:brightness-95',
     Logo: KakaoLogo,
   },
   NAVER: {
-    label: '네이버 로그인',
+    labelKey: 'loginWithNaver',
     className: 'bg-[#03C75A] hover:brightness-95',
     Logo: NaverLogo,
   },
 };
 
 /** 콜백이 로그인 페이지로 되돌려 보낼 때 붙이는 에러코드 → 사용자 문구 */
-const ERROR_MESSAGE: Record<string, string> = {
-  AUTH_OAUTH_DENIED: '소셜 로그인이 취소되었습니다.',
-  AUTH_OAUTH_STATE_MISMATCH: '로그인 요청이 만료되었습니다. 다시 시도해주세요.',
-  AUTH_OAUTH_EMAIL_MISSING: '가입에는 이메일이 필요합니다. 이메일 제공에 동의해주세요.',
-  AUTH_OAUTH_PROVIDER_UNSUPPORTED: '지원하지 않는 소셜 로그인입니다.',
-  AUTH_OAUTH_TICKET_INVALID: '가입 정보가 만료되었습니다. 다시 로그인해주세요.',
-  AUTH_OAUTH_FAILED: '소셜 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.',
+const ERROR_MESSAGE: Record<string, MessageKey> = {
+  AUTH_OAUTH_DENIED: 'authOauthDenied',
+  AUTH_OAUTH_STATE_MISMATCH: 'authOauthStateMismatch',
+  AUTH_OAUTH_EMAIL_MISSING: 'authOauthEmailMissing',
+  AUTH_OAUTH_PROVIDER_UNSUPPORTED: 'authOauthProviderUnsupported',
+  AUTH_OAUTH_TICKET_INVALID: 'authOauthTicketInvalid',
+  AUTH_OAUTH_FAILED: 'authOauthFailed',
 };
 
 export function SocialLoginButtons({ error }: { error?: string }): React.ReactElement {
+  const lang = useUiLang();
+  const t = messagesFor(lang);
   const providers = useOAuthProviders();
   const labelId = useId();
 
@@ -53,17 +61,17 @@ export function SocialLoginButtons({ error }: { error?: string }): React.ReactEl
     <div className="flex flex-col gap-4">
       {error && (
         <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-          {ERROR_MESSAGE[error] ?? '로그인에 실패했습니다. 다시 시도해주세요.'}
+          {t[ERROR_MESSAGE[error] ?? 'loginFailed']}
         </p>
       )}
 
       {providers.isPending && (
-        <p className="py-2 text-center text-sm text-gray-500">로그인 수단 확인 중…</p>
+        <p className="py-2 text-center text-sm text-gray-500">{t.socialLoginLoading}</p>
       )}
 
       {providers.isError && (
         <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-          로그인 수단을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.
+          {t.socialLoginLoadFailed}
         </p>
       )}
 
@@ -71,19 +79,19 @@ export function SocialLoginButtons({ error }: { error?: string }): React.ReactEl
         <>
           {/* 묶음 레이블이 "가입까지 포함" 의미를 진다 — 버튼 문구는 각 사 규정에 묶여 있어 못 쓴다 */}
           <p id={labelId} className="text-center text-sm text-gray-500">
-            간편 로그인으로 시작하기
+            {t.socialLoginStart}
           </p>
 
           <div role="group" aria-labelledby={labelId} className="flex justify-center gap-5">
             {/* next/link가 아닌 순수 <a>여야 한다 — 클라이언트 라우팅이 아니라 BE로의 전체 이동이다 */}
             {providers.data.map((provider) => {
-              const { label, className, Logo } = BRAND[provider];
+              const { labelKey, className, Logo } = BRAND[provider];
               return (
                 <a
                   key={provider}
                   href={oauthLoginHref(provider)}
                   /* 화면에 문구가 없으므로 이 aria-label이 버튼의 유일한 이름이다 */
-                  aria-label={label}
+                  aria-label={t[labelKey]}
                   /* 44px — 터치 타깃 하한이자 카카오 심볼:버튼 비(0.378)가 맞는 지름. 줄이지 말 것 */
                   className={`flex h-11 w-11 items-center justify-center rounded-full transition ${className}`}
                 >
@@ -98,7 +106,7 @@ export function SocialLoginButtons({ error }: { error?: string }): React.ReactEl
 
       {providers.data?.length === 0 && (
         <p role="alert" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          사용 가능한 소셜 로그인이 없습니다. 관리자에게 문의해주세요.
+          {t.socialLoginNone}
         </p>
       )}
     </div>

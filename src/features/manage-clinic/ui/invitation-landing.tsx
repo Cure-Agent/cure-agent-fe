@@ -6,6 +6,8 @@ import { SocialLoginButtons } from '@/features/auth/ui/social-login-buttons';
 import { LogoMark } from '@/shared/ui/logo-mark';
 import { useInvitationPreview } from '../api/clinic.api';
 import { stashInvitationToken } from '../lib/invitation-link';
+import { formatMessageNodes, messagesFor } from '@/shared/i18n/messages';
+import { useUiLang } from '@/shared/i18n/ui-lang';
 
 /**
  * 초대 링크 수락 진입 (BE docs/specs/35).
@@ -17,6 +19,8 @@ import { stashInvitationToken } from '../lib/invitation-link';
  * 전역 핸들러의 `/login` 리다이렉트로 튕겨 나가, 정작 초대받은 사람이 이 화면을 못 본다.
  */
 export function InvitationLanding({ token }: { token: string }): React.ReactElement {
+  const lang = useUiLang();
+  const t = messagesFor(lang);
   const preview = useInvitationPreview(token);
 
   // 소셜 왕복 동안 토큰을 맡겨 둔다 — 콜백은 `/signup?ticket=`만 들고 돌아온다.
@@ -32,12 +36,12 @@ export function InvitationLanding({ token }: { token: string }): React.ReactElem
           <LogoMark className="h-10 w-auto shrink-0 text-emerald-700" />
           <div>
             <h1 className="text-xl font-bold leading-tight text-emerald-800">Cure Agent</h1>
-            <p className="mt-0.5 text-sm text-gray-500">한의 임상 지침 어시스턴트</p>
+            <p className="mt-0.5 text-sm text-gray-500">{t.appTaglineShort}</p>
           </div>
         </div>
 
         {preview.isPending && (
-          <p className="py-6 text-center text-sm text-gray-500">초대 확인 중…</p>
+          <p className="py-6 text-center text-sm text-gray-500">{t.checkingInvitation}</p>
         )}
 
         {preview.isError && (
@@ -45,12 +49,12 @@ export function InvitationLanding({ token }: { token: string }): React.ReactElem
             {/* 만료·사용됨·취소됨·없음을 서버가 하나로 뭉쳐 내려준다(spec 35) —
                 구분해 알려주면 유출된 토큰의 실재 여부를 확인해주는 셈이다 */}
             <p role="alert" className="rounded-lg bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
-              유효하지 않거나 만료된 초대 링크입니다. 개설자에게 새 링크를 요청해주세요.
+              {t.invitationInvalid}
             </p>
             <p className="mt-6 text-center text-sm text-gray-500">
-              계정이 있으신가요?{' '}
+              {t.haveAccount}{' '}
               <Link href="/login" className="font-medium text-emerald-700 hover:underline">
-                로그인
+                {t.login}
               </Link>
             </p>
           </>
@@ -59,16 +63,19 @@ export function InvitationLanding({ token }: { token: string }): React.ReactElem
         {preview.isSuccess && (
           <>
             <p className="mb-6 text-center text-sm leading-relaxed text-gray-600">
-              <span className="font-medium text-gray-900">{preview.data.clinicName}</span>에서
-              함께 일하자고 초대했습니다.
+              {formatMessageNodes(t.invitedByClinic, {
+                clinic: (
+                  <span className="font-medium text-gray-900">{preview.data.clinicName}</span>
+                ),
+              })}
               <br />
-              로그인하면 가입 절차로 이어집니다.
+              {t.loginLeadsToSignup}
             </p>
             <SocialLoginButtons />
             <p className="mt-6 text-center text-xs leading-relaxed text-gray-400">
-              합류하면 한의원의 환자·대화 기록을 구성원과 함께 보게 됩니다.
+              {t.joinSharesRecords}
               <br />
-              이미 다른 한의원에 소속된 계정은 합류할 수 없습니다.
+              {t.joinBlockedIfInClinic}
             </p>
           </>
         )}

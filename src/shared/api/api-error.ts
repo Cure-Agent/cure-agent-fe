@@ -1,3 +1,6 @@
+import { messagesFor } from '@/shared/i18n/messages';
+import { resolveUiLang } from '@/shared/i18n/ui-lang';
+
 /** 공통 응답 봉투 (architecture.md §10.1) */
 export interface ApiEnvelope<T = unknown> {
   success: boolean;
@@ -38,7 +41,7 @@ export function unwrap<T>(result: FetchResult): T {
   if (!isEnvelope(payload)) {
     throw new ApiError(
       'INTERNAL_ERROR',
-      '응답 형식이 올바르지 않습니다.',
+      messagesFor(resolveUiLang()).malformedResponse,
       result.response.status,
       '',
     );
@@ -64,7 +67,7 @@ export function unwrapPage<T>(result: FetchResult): {
   if (!isEnvelope(payload)) {
     throw new ApiError(
       'INTERNAL_ERROR',
-      '응답 형식이 올바르지 않습니다.',
+      messagesFor(resolveUiLang()).malformedResponse,
       result.response.status,
       '',
     );

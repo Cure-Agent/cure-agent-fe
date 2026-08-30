@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { PatientDetailPanel } from '@/features/manage-patient/ui/patient-detail-panel';
+import { Message } from '@/shared/i18n/message';
 
 export default async function PatientDetailPage({
   params,
@@ -17,7 +18,7 @@ export default async function PatientDetailPage({
           href="/patients"
           className="-ml-2 inline-flex items-center gap-1 rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900"
         >
-          <span aria-hidden>←</span> 환자 목록
+          <span aria-hidden>←</span> <Message k="patientListBack" />
         </Link>
       </div>
       <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto">

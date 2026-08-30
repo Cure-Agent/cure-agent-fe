@@ -13,6 +13,8 @@ import {
   useUpdatePatient,
 } from '../api/patient.api';
 import { formatList, parseList } from '../lib/clinical-list';
+import { formatMessage, messagesFor } from '@/shared/i18n/messages';
+import { useUiLang } from '@/shared/i18n/ui-lang';
 
 export interface PatientDetailPanelProps {
   patientId: string;
@@ -32,6 +34,8 @@ const EMPTY_FORM = {
 };
 
 export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): React.ReactElement {
+  const lang = useUiLang();
+  const t = messagesFor(lang);
   const router = useRouter();
   const patient = usePatient(patientId);
   const updatePatient = useUpdatePatient(patientId);
@@ -63,10 +67,10 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
   }, [patient.data]);
 
   // 삭제 뒤 상세 조회는 404다 — 이동이 끝나기 전에 실패 화면을 그리지 않는다
-  if (isDeleted) return <p className="text-sm text-gray-400">삭제했습니다. 목록으로 이동합니다…</p>;
-  if (patient.isPending) return <p className="text-sm text-gray-400">불러오는 중…</p>;
+  if (isDeleted) return <p className="text-sm text-gray-400">{t.patientDeleted}</p>;
+  if (patient.isPending) return <p className="text-sm text-gray-400">{t.loading}</p>;
   if (patient.isError || !patient.data) {
-    return <p className="text-sm text-red-500">환자 정보를 불러오지 못했습니다</p>;
+    return <p className="text-sm text-red-500">{t.patientLoadFailed}</p>;
   }
 
   const detail = patient.data;
@@ -92,7 +96,7 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
         setErrorMessage(error.message); // 서버 message 그대로 (§10.1)
         void patient.refetch();
       } else {
-        setErrorMessage(error instanceof Error ? error.message : '저장에 실패했습니다.');
+        setErrorMessage(error instanceof Error ? error.message : t.saveFailed);
       }
     }
   };
@@ -113,7 +117,7 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
       if (isArchived) await unarchivePatient.mutateAsync();
       else await archivePatient.mutateAsync();
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : '요청에 실패했습니다.');
+      setErrorMessage(error instanceof Error ? error.message : t.requestFailed);
     }
   };
 
@@ -123,11 +127,11 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
         <div>
           <h1 className="text-xl font-bold text-gray-900">{detail.caseLabel}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {detail.age !== undefined && `${detail.age}세`}
+            {detail.age !== undefined && formatMessage(t.ageYears, { age: detail.age })}
             {detail.sex && ` · ${detail.sex}`}
             {detail.bmi !== undefined && ` · BMI ${detail.bmi}`}
             {` · v${detail.version}`}
-            {isArchived && ' · 보관됨'}
+            {isArchived && t.archivedSeparator}
           </p>
         </div>
         <div className="flex items-start gap-2">
@@ -140,7 +144,7 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
             disabled={archivePatient.isPending || unarchivePatient.isPending}
             className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
           >
-            {isArchived ? '보관 해제' : '보관'}
+            {isArchived ? t.unarchive : t.archive}
           </button>
           {/* 확인 배너의 '삭제'와 접근성 이름이 겹치지 않게 진입점은 '환자 삭제'다 */}
           <button
@@ -148,20 +152,22 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
             onClick={() => setIsConfirmingDelete(true)}
             className="rounded-lg border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
           >
-            환자 삭제
+            {t.deletePatient}
           </button>
         </div>
       </header>
 
       {isConfirmingDelete && (
         <div className="mt-4 rounded-xl border border-red-200 bg-red-50/60 p-4">
-          <p className="font-medium text-gray-900">{detail.caseLabel} 삭제</p>
+          <p className="font-medium text-gray-900">
+                      {formatMessage(t.deleteWithLabel, { label: detail.caseLabel })}
+                    </p>
           <p className="mt-1 text-sm text-red-700">
-            이 환자의 대화까지 영구 삭제됩니다. 되돌릴 수 없습니다.
+            {t.deletePatientWarning}
           </p>
           {deletePatient.isError && (
             <p role="alert" className="mt-1 text-sm text-red-600">
-              삭제하지 못했습니다. 다시 시도해 주세요.
+              {t.deleteFailed}
             </p>
           )}
           <div className="mt-3 flex justify-end gap-2">
@@ -170,7 +176,7 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
               onClick={() => setIsConfirmingDelete(false)}
               className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
             >
-              취소
+              {t.cancel}
             </button>
             <button
               type="button"
@@ -178,7 +184,7 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
               disabled={deletePatient.isPending}
               className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
             >
-              삭제
+              {t.delete}
             </button>
           </div>
         </div>
@@ -186,10 +192,10 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
 
       {/* 프로필 값은 이 폼이 유일한 표시 경로다 — 보관 상태에서는 비활성 칸으로 열람만 된다 */}
       <form onSubmit={handleSave} className="mt-6 grid grid-cols-2 gap-3">
-        <h2 className="col-span-2 text-sm font-semibold text-gray-900">프로필 수정</h2>
+        <h2 className="col-span-2 text-sm font-semibold text-gray-900">{t.editProfile}</h2>
         <div className="flex flex-col gap-1">
           <label htmlFor="pd-height" className="text-sm font-medium text-gray-700">
-            신장(cm)
+            {t.heightCm}
           </label>
           <input
             id="pd-height"
@@ -203,7 +209,7 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="pd-weight" className="text-sm font-medium text-gray-700">
-            체중(kg)
+            {t.weightKg}
           </label>
           <input
             id="pd-weight"
@@ -217,20 +223,20 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
         </div>
         <div className="col-span-2 flex flex-col gap-1">
           <label htmlFor="pd-diagnoses" className="text-sm font-medium text-gray-700">
-            진단(쉼표 구분)
+            {t.diagnosesCommaSeparated}
           </label>
           <input
             id="pd-diagnoses"
             value={form.diagnoses}
             onChange={(e) => set('diagnoses', e.target.value)}
-            placeholder="만성 요통, 고혈압"
+            placeholder={t.diagnosesPlaceholder}
             disabled={isArchived}
             className={FIELD}
           />
         </div>
         <div className="col-span-2 flex flex-col gap-1">
           <label htmlFor="pd-medications" className="text-sm font-medium text-gray-700">
-            복용약(쉼표 구분)
+            {t.medicationsCommaSeparated}
           </label>
           <input
             id="pd-medications"
@@ -242,7 +248,7 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
         </div>
         <div className="col-span-2 flex flex-col gap-1">
           <label htmlFor="pd-allergies" className="text-sm font-medium text-gray-700">
-            알레르기(쉼표 구분)
+            {t.allergiesCommaSeparated}
           </label>
           <input
             id="pd-allergies"
@@ -254,7 +260,7 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
         </div>
         <div className="col-span-2 flex flex-col gap-1">
           <label htmlFor="pd-notes" className="text-sm font-medium text-gray-700">
-            임상 메모
+            {t.clinicalNote}
           </label>
           <textarea
             id="pd-notes"
@@ -281,7 +287,7 @@ export function PatientDetailPanel({ patientId }: PatientDetailPanelProps): Reac
           disabled={updatePatient.isPending || isArchived}
           className="col-span-2 rounded-lg bg-emerald-700 py-2.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
         >
-          저장
+          {t.save}
         </button>
       </form>
     </section>

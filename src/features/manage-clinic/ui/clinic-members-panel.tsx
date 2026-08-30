@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { formatMessage, formatMessageNodes, messagesFor } from '@/shared/i18n/messages';
+import { useUiLang } from '@/shared/i18n/ui-lang';
 import {
   type ClinicMember,
   useClinicMembers,
@@ -26,6 +28,8 @@ const formatDate = (value: string): string => new Date(value).toLocaleDateString
  * 한 줄만 빠진 목록을 다시 읽히게 된다. 확인 절차의 문법만 이양과 같게 맞춘다.
  */
 export function ClinicMembersPanel({ meId }: { meId: string }): React.ReactElement {
+  const lang = useUiLang();
+  const t = messagesFor(lang);
   const members = useClinicMembers();
   const transferOwner = useTransferOwner();
   const removeMember = useRemoveMember();
@@ -77,7 +81,7 @@ export function ClinicMembersPanel({ meId }: { meId: string }): React.ReactEleme
       setIsChoosing(false);
       setSelectedId(null);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : '권한을 넘기지 못했습니다.');
+      setErrorMessage(error instanceof Error ? error.message : t.handOverFailed);
     }
   };
 
@@ -89,43 +93,42 @@ export function ClinicMembersPanel({ meId }: { meId: string }): React.ReactEleme
       setRemovedName(member.displayName);
       setRemovingId(null);
     } catch (error) {
-      setRemoveError(error instanceof Error ? error.message : '내보내지 못했습니다.');
+      setRemoveError(error instanceof Error ? error.message : t.removeFailed);
     }
   };
 
   return (
     <section className="mt-4 rounded-xl border border-gray-200 bg-white p-6">
       <div className="flex items-start justify-between gap-4">
-        <h2 className="text-sm font-semibold text-gray-900">함께 일하는 사람</h2>
+        <h2 className="text-sm font-semibold text-gray-900">{t.membersHeading}</h2>
         {canTransfer && !isChoosing && (
           <button
             type="button"
             onClick={startTransfer}
             className="shrink-0 rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
           >
-            개설자 권한 넘기기
+            {t.handOverOwnership}
           </button>
         )}
       </div>
 
-      {members.isPending && <p className="py-3 text-sm text-gray-400">불러오는 중…</p>}
+      {members.isPending && <p className="py-3 text-sm text-gray-400">{t.loading}</p>}
       {members.isError && (
         <p role="alert" className="py-3 text-sm text-red-500">
-          구성원을 불러오지 못했습니다.
+          {t.membersLoadFailed}
         </p>
       )}
 
       {handedOverTo && !isChoosing && (
         <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-          {handedOverTo}님에게 개설자 권한을 넘겼습니다. 이제 초대 발급과 다음 이양은 그 구성원의
-          몫입니다.
+          {formatMessage(t.handedOverNotice, { name: handedOverTo })}
         </p>
       )}
 
       {/* 축하할 일도 경고할 일도 아니다 — 색으로 무게를 얹지 않는다 */}
       {removedName && !removingId && (
         <p className="mt-3 rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-700">
-          {removedName}님을 내보냈습니다. 다시 초대하면 같은 계정으로 돌아옵니다.
+          {formatMessage(t.removedNotice, { name: removedName })}
         </p>
       )}
 
@@ -140,16 +143,16 @@ export function ClinicMembersPanel({ meId }: { meId: string }): React.ReactEleme
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="truncate text-sm text-gray-800">{member.displayName}</span>
-                  {member.id === meId && <span className="shrink-0 text-xs text-gray-400">나</span>}
+                  {member.id === meId && <span className="shrink-0 text-xs text-gray-400">{t.self}</span>}
                   {member.isOwner && (
                     <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
-                      개설자
+                      {t.owner}
                     </span>
                   )}
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <span className="text-xs text-gray-500">
-                    {formatDate(member.joinedAt)} 합류
+                    {formatMessage(t.joinedOn, { date: formatDate(member.joinedAt) })}
                   </span>
                   {/*
                     「권한 넘기기」보다 시선을 덜 끌어야 한다 — 되돌릴 수는 있어도 오조작이 남에게 간다.
@@ -163,7 +166,7 @@ export function ClinicMembersPanel({ meId }: { meId: string }): React.ReactEleme
                       onClick={() => startRemove(member.id)}
                       className="-mr-2 rounded-md px-2 py-1 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-700"
                     >
-                      내보내기
+                      {t.remove}
                     </button>
                   )}
                 </div>
@@ -173,15 +176,17 @@ export function ClinicMembersPanel({ meId }: { meId: string }): React.ReactEleme
                 // 확인을 그 행 아래 붙여 연다 — 대상이 눈에 붙어 있어야 잘못 눌러도 실행 전에 안다
                 <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
                   <p className="text-sm text-gray-800">
-                    <strong>{member.displayName}</strong>님을 내보냅니다.
+                    {formatMessageNodes(t.removeConfirm, {
+                    name: <strong>{member.displayName}</strong>,
+                  })}
                   </p>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-relaxed text-gray-600">
                     {/* 계정 삭제로 오해하기 딱 좋은 자리라 남는 것부터 적는다 */}
-                    <li>계정과 이름·이메일·면허번호는 그대로 남습니다 — 탈퇴와 다릅니다.</li>
-                    <li>이 구성원이 만든 환자·대화 기록은 한의원에 남습니다.</li>
+                    <li>{t.removeKeepsAccount}</li>
+                    <li>{t.removeKeepsRecords}</li>
                     {/* 고지하지 않으면 놀라는 부수효과다 — 이양 후 전임자를 내보내는 경로에서 실재한다 */}
-                    <li>이 구성원이 발급한 미사용 초대 링크가 함께 취소됩니다.</li>
-                    <li>모든 기기에서 로그아웃되며, 다시 초대하면 같은 계정으로 돌아옵니다.</li>
+                    <li>{t.removeRevokesInvites}</li>
+                    <li>{t.removeLogsOut}</li>
                   </ul>
                   {removeError && (
                     <p role="alert" className="mt-2 text-sm text-red-600">
@@ -195,7 +200,7 @@ export function ClinicMembersPanel({ meId }: { meId: string }): React.ReactEleme
                       disabled={removeMember.isPending}
                       className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
                     >
-                      취소
+                      {t.cancel}
                     </button>
                     {/* 빨강은 「계정 삭제」에 남겨 둔다 — 같은 색을 쓰면 같은 무게로 읽힌다 */}
                     <button
@@ -204,7 +209,7 @@ export function ClinicMembersPanel({ meId }: { meId: string }): React.ReactEleme
                       disabled={removeMember.isPending}
                       className="rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900 disabled:opacity-50"
                     >
-                      {member.displayName}님 내보내기
+                      {formatMessage(t.removeWithName, { name: member.displayName })}
                     </button>
                   </div>
                 </div>
@@ -218,7 +223,7 @@ export function ClinicMembersPanel({ meId }: { meId: string }): React.ReactEleme
         <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
           <fieldset>
             <legend className="text-xs font-medium text-gray-700">
-              개설자 권한을 넘길 구성원
+              {t.handOverTarget}
             </legend>
             <div className="mt-2">
               {others.map((member) => (
@@ -237,15 +242,14 @@ export function ClinicMembersPanel({ meId }: { meId: string }): React.ReactEleme
                     {member.displayName}
                   </span>
                   <span className="ml-auto shrink-0 text-xs text-gray-500">
-                    {formatDate(member.joinedAt)} 합류
+                    {formatMessage(t.joinedOn, { date: formatDate(member.joinedAt) })}
                   </span>
                 </label>
               ))}
             </div>
           </fieldset>
           <p className="mt-3 text-xs leading-relaxed text-gray-500">
-            넘기고 나면 초대 발급과 다음 이양은 그 구성원만 할 수 있습니다. 되돌리려면 새 개설자가
-            다시 넘겨줘야 합니다.
+            {t.handOverWarning}
           </p>
           {errorMessage && (
             <p role="alert" className="mt-2 text-sm text-red-600">
@@ -259,7 +263,7 @@ export function ClinicMembersPanel({ meId }: { meId: string }): React.ReactEleme
               disabled={transferOwner.isPending}
               className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
             >
-              취소
+              {t.cancel}
             </button>
             <button
               type="button"
@@ -267,7 +271,7 @@ export function ClinicMembersPanel({ meId }: { meId: string }): React.ReactEleme
               disabled={transferOwner.isPending || !selectedId}
               className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
             >
-              권한 넘기기
+              {t.handOver}
             </button>
           </div>
         </div>

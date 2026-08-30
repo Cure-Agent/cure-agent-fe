@@ -3,12 +3,16 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { useInfiniteListScroll } from '@/shared/lib/use-infinite-list-scroll';
 import { type GuidelineSummary, useGuidelines } from '../api/guideline.api';
+import { formatMessage, messagesFor } from '@/shared/i18n/messages';
+import { useUiLang } from '@/shared/i18n/ui-lang';
 
 export interface GuidelineListPanelProps {
   onSelect: (guideline: GuidelineSummary) => void;
 }
 
 export function GuidelineListPanel({ onSelect }: GuidelineListPanelProps): React.ReactElement {
+  const lang = useUiLang();
+  const t = messagesFor(lang);
   const [input, setInput] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState<string | undefined>(undefined);
   const guidelines = useGuidelines({ query: submittedQuery });
@@ -33,22 +37,22 @@ export function GuidelineListPanel({ onSelect }: GuidelineListPanelProps): React
     <div className="flex h-full flex-col">
       <form onSubmit={handleSubmit} className="mb-4 flex gap-2">
         <input
-          aria-label="지침 검색"
+          aria-label={t.searchGuidelines}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="지침 제목 검색 (예: 요통)"
+          placeholder={t.searchGuidelinesPlaceholder}
           className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
         />
         <button
           type="submit"
           className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
         >
-          검색
+          {t.search}
         </button>
       </form>
 
-      {guidelines.isPending && <p className="text-sm text-gray-400">불러오는 중…</p>}
-      {guidelines.isError && <p className="text-sm text-red-500">목록을 불러오지 못했습니다</p>}
+      {guidelines.isPending && <p className="text-sm text-gray-400">{t.loading}</p>}
+      {guidelines.isError && <p className="text-sm text-red-500">{t.loadFailed}</p>}
 
       <div
         ref={listScroll.containerRef}
@@ -75,7 +79,7 @@ export function GuidelineListPanel({ onSelect }: GuidelineListPanelProps): React
         {/* 하단 sentinel — 보이면 다음 페이지를 당긴다 (무한 스크롤) */}
         <div ref={listScroll.bottomSentinelRef} aria-hidden="true" />
         {guidelines.isFetchingNextPage && (
-          <p className="py-2 text-center text-xs text-gray-400">불러오는 중…</p>
+          <p className="py-2 text-center text-xs text-gray-400">{t.loading}</p>
         )}
       </div>
     </div>

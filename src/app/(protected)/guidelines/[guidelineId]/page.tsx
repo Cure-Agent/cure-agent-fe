@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { GuidelineDetailPanel } from '@/features/filter-guidelines/ui/guideline-detail-panel';
+import { Message } from '@/shared/i18n/message';
 
 export default async function GuidelineDetailPage({
   params,
@@ -17,7 +18,7 @@ export default async function GuidelineDetailPage({
           href="/guidelines"
           className="-ml-2 inline-flex items-center gap-1 rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900"
         >
-          <span aria-hidden>←</span> 지침 목록
+          <span aria-hidden>←</span> <Message k="guidelineListBack" />
         </Link>
       </div>
       {/* 스크롤 컨테이너는 패널이 소유한다 — 권고문 무한 스크롤 sentinel이 그 안에 붙는다 */}
