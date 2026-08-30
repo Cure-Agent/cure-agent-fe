@@ -1185,6 +1185,8 @@ export interface components {
             answerKind?: "GUIDELINE_ANSWER" | "CLINICAL_GUIDANCE";
             /** @description CLINICAL_GUIDANCE 답변의 임상 참고안 id — GET /clinical-guidance/{id}로 조회 */
             guidanceId?: string;
+            /** @description 기권 사유 안내 문장 — ABSTAINED 메시지에만 실린다. 사유가 기록되지 않은 과거 메시지는 이 키가 빠진다 */
+            abstainReason?: string;
             citations: components["schemas"]["AnswerCitationResponseDto"][];
             /** @description ISO 8601 */
             createdAt: string;
