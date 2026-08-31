@@ -5,7 +5,11 @@
  * 검색·이름 변경·보관을 이 목록에 통합한다 — 전용 /history 화면은 폐지됨.
  */
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { completeTourStep, useTourHighlight } from '@/features/onboarding-tour/model/tour-state';
+import {
+  TOUR_HIGHLIGHT_ON_SOLID,
+  completeTourStep,
+  useTourHighlight,
+} from '@/features/onboarding-tour/model/tour-state';
 import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
 import { useUiLang } from '@/shared/i18n/ui-lang';
 import { useInfiniteListScroll } from '@/shared/lib/use-infinite-list-scroll';
@@ -223,7 +227,7 @@ export function ConversationList({
         type="button"
         onClick={handleCreate}
         disabled={createConversation.isPending}
-        className={`mb-3 shrink-0 rounded-lg bg-emerald-700 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 ${newConversationHighlight}`}
+        className={`mb-3 shrink-0 rounded-lg bg-emerald-700 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 ${TOUR_HIGHLIGHT_ON_SOLID} ${newConversationHighlight}`}
       >
         {t.newConversation}
       </button>

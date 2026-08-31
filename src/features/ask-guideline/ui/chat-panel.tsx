@@ -19,7 +19,11 @@ import {
   useMessages,
 } from '@/features/manage-conversation/api/conversation.api';
 import { usePatient } from '@/features/manage-patient/api/patient.api';
-import { completeTourStep, useTourHighlight } from '@/features/onboarding-tour/model/tour-state';
+import {
+  TOUR_HIGHLIGHT_ON_SOLID,
+  completeTourStep,
+  useTourHighlight,
+} from '@/features/onboarding-tour/model/tour-state';
 import { useChatAutoScroll } from '@/shared/lib/use-chat-auto-scroll';
 import { GuidanceCard } from '@/features/review-clinical-guidance/ui/guidance-card';
 import { GuidanceCardLoader } from '@/features/review-clinical-guidance/ui/guidance-card-loader';
@@ -456,7 +460,7 @@ export function ChatPanel({
         <button
           type="submit"
           disabled={inFlight || question.trim().length === 0}
-          className={`self-end rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 ${sendHighlight}`}
+          className={`self-end rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 ${TOUR_HIGHLIGHT_ON_SOLID} ${sendHighlight}`}
         >
           {t.send}
         </button>
