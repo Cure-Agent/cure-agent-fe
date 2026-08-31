@@ -19,6 +19,7 @@ import {
   useMessages,
 } from '@/features/manage-conversation/api/conversation.api';
 import { usePatient } from '@/features/manage-patient/api/patient.api';
+import { completeTourStep, useTourHighlight } from '@/features/onboarding-tour/model/tour-state';
 import { useChatAutoScroll } from '@/shared/lib/use-chat-auto-scroll';
 import { GuidanceCard } from '@/features/review-clinical-guidance/ui/guidance-card';
 import { GuidanceCardLoader } from '@/features/review-clinical-guidance/ui/guidance-card-loader';
@@ -86,6 +87,9 @@ export function ChatPanel({
    */
   const conversation = useConversation(conversationId);
   const patient = usePatient(conversation.data?.patientId ?? null);
+
+  const suggestedPromptsHighlight = useTourHighlight('suggested-prompt');
+  const sendHighlight = useTourHighlight('send-question');
 
   /**
    * 아직 쓰이는 중인 답변 행은 목록에서 걷어낸다. 질문이 수락되면(아래 재조회 effect) 서버
@@ -168,6 +172,15 @@ export function ChatPanel({
     if (state.phase === 'completed' || state.phase === 'abstained' || state.phase === 'error') {
       void queryClient.invalidateQueries({ queryKey: messagesKey(conversationId) });
     }
+    /**
+     * 둘러보기의 마지막 단계는 **답변을 기다리는 것**이라 사용자가 끝낼 수 없다 — 종결이
+     * 곧 완료다. 기권(`abstained`)도 완료로 친다: 보류 안내까지가 이 앱이 답하는 방식이고,
+     * 그 화면을 보고도 「아직 1단계 남음」이 떠 있으면 안내가 사실과 어긋난다.
+     * 오류는 제외한다 — 그때 사용자가 할 일은 다음 단계가 아니라 「다시 시도」다.
+     */
+    if (state.phase === 'completed' || state.phase === 'abstained') {
+      completeTourStep('answer');
+    }
   }, [state.phase, conversationId, queryClient]);
 
   /**
@@ -238,6 +251,7 @@ export function ChatPanel({
     if (!content || inFlight) return;
     setQuestion('');
     scroll.scrollToBottom(); // 위를 보던 중이라도 내 질문·답변은 따라가도록 하단 고정 재개
+    completeTourStep('send-question');
     void send(content, crypto.randomUUID());
   };
 
@@ -258,6 +272,7 @@ export function ChatPanel({
    */
   const handleSelectPrompt = (prompt: string): void => {
     setQuestion(prompt);
+    completeTourStep('suggested-prompt');
     const textarea = questionRef.current;
     if (!textarea) return;
     textarea.focus();
@@ -378,7 +393,12 @@ export function ChatPanel({
       </div>
 
       {suggestedPrompts.length > 0 && (
-        <SuggestedPrompts prompts={suggestedPrompts} onSelect={handleSelectPrompt} t={t} />
+        <SuggestedPrompts
+          prompts={suggestedPrompts}
+          onSelect={handleSelectPrompt}
+          highlight={suggestedPromptsHighlight}
+          t={t}
+        />
       )}
 
       <form onSubmit={handleSubmit} className="flex gap-2 border-t border-gray-200 p-3">
@@ -395,7 +415,7 @@ export function ChatPanel({
         <button
           type="submit"
           disabled={inFlight || question.trim().length === 0}
-          className="self-end rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+          className={`self-end rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 ${sendHighlight}`}
         >
           {t.send}
         </button>
@@ -416,16 +436,24 @@ export function ChatPanel({
 function SuggestedPrompts({
   prompts,
   onSelect,
+  highlight,
   t,
 }: {
   prompts: readonly string[];
   onSelect: (prompt: string) => void;
+  /** 둘러보기가 이 자리를 짚고 있을 때의 강조 클래스 — 아니면 빈 문자열 */
+  highlight: string;
   t: Record<MessageKey, string>;
 }): React.ReactElement {
   return (
     <div className="shrink-0 border-t border-gray-200 px-3 pt-3">
       <p className="mb-1.5 text-xs font-medium text-gray-500">{t.suggestedPromptsHeading}</p>
-      <ul aria-label={t.suggestedPromptsListLabel} className="max-h-[45vh] space-y-1 overflow-y-auto">
+      {/* 강조는 항목 하나가 아니라 목록 전체에 준다 — 어느 것을 골라도 되는 자리라
+          한 항목만 두르면 그것만 정답인 것처럼 읽힌다 */}
+      <ul
+        aria-label={t.suggestedPromptsListLabel}
+        className={`max-h-[45vh] space-y-1 overflow-y-auto rounded-lg ${highlight}`}
+      >
         {prompts.map((prompt) => (
           <li key={prompt}>
             <button

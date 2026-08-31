@@ -2,8 +2,9 @@
 
 /** 환자 상세 → PATIENT_GUIDANCE 대화 시작 버튼 (docs/specs/10 기준 9) */
 import type { ReactElement } from 'react';
+import { completeTourStep, useTourHighlight } from '@/features/onboarding-tour/model/tour-state';
 import { useRequestClinicalGuidance } from '../api/request-clinical-guidance';
-import { formatMessage, messagesFor } from '@/shared/i18n/messages';
+import { messagesFor } from '@/shared/i18n/messages';
 import { useUiLang } from '@/shared/i18n/ui-lang';
 
 export interface RequestGuidanceButtonProps {
@@ -22,6 +23,7 @@ export function RequestGuidanceButton({
   const lang = useUiLang();
   const t = messagesFor(lang);
   const requestGuidance = useRequestClinicalGuidance();
+  const highlight = useTourHighlight('start-patient-conversation');
 
   const handleClick = (): void => {
     if (requestGuidance.isPending) return;
@@ -29,6 +31,12 @@ export function RequestGuidanceButton({
       { patientId, caseLabel },
       {
         onSuccess: (conversation) => {
+          /**
+           * 이동보다 **먼저** 단계를 넘긴다 — 아래 `window.location.assign`은 페이지를 통째로
+           * 다시 띄우므로 그 뒤의 코드는 실행되지 않는다. `completeTourStep`은 저장소에
+           * 동기로 쓰므로, 새로 뜬 화면이 다음 단계(예시 질의문)부터 이어받는다.
+           */
+          completeTourStep('start-patient-conversation');
           if (onStarted) onStarted(conversation.id);
           else window.location.assign(`/assistant?conversation=${conversation.id}`);
         },
@@ -42,7 +50,7 @@ export function RequestGuidanceButton({
         type="button"
         onClick={handleClick}
         disabled={requestGuidance.isPending}
-        className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+        className={`rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 ${highlight}`}
       >
         {t.startPatientConversation}
       </button>

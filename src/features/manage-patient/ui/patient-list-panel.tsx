@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { completeTourStep, useTourHighlight } from '@/features/onboarding-tour/model/tour-state';
 import { useInfiniteListScroll } from '@/shared/lib/use-infinite-list-scroll';
 import {
   type MessageKey,
@@ -236,6 +237,12 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
     query: submittedQuery,
     status: statusFilter === 'ALL' ? undefined : statusFilter,
   });
+  /**
+   * 둘러보기는 **첫 행 하나만** 짚는다. 목록 전체를 두르면 어느 것을 눌러야 할지가 오히려
+   * 흐려지고, 행마다 두르면 화면이 링으로 가득 찬다. 아무 환자나 되는 자리이므로 맨 위를
+   * 「예시로」 가리키는 것으로 충분하다.
+   */
+  const patientRowHighlight = useTourHighlight('patient-row');
 
   const items = useMemo(
     () => (patients.data?.pages ?? []).flatMap((page) => page.items),
@@ -316,7 +323,7 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
         className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto"
       >
         <ul className="space-y-2">
-          {items.map((patient) => (
+          {items.map((patient, index) => (
             <li key={patient.id}>
               {pendingDeleteId === patient.id ? (
                 <PatientDeleteConfirm
@@ -331,11 +338,18 @@ export function PatientListPanel({ onSelect }: PatientListPanelProps): React.Rea
                 />
               ) : (
                 /* 카드 버튼 안에 액션 버튼을 넣을 수 없다(중첩 인터랙티브) — 형제로 나란히 둔다 */
-                <div className="flex items-center rounded-xl border border-gray-200 bg-white hover:border-emerald-300">
+                <div
+                  className={`flex items-center rounded-xl border border-gray-200 bg-white hover:border-emerald-300 ${
+                    index === 0 ? patientRowHighlight : ''
+                  }`}
+                >
                   <button
                     type="button"
                     aria-label={patient.caseLabel}
-                    onClick={() => onSelect(patient)}
+                    onClick={() => {
+                      completeTourStep('patient-row');
+                      onSelect(patient);
+                    }}
                     className="min-w-0 flex-1 p-4 text-left"
                   >
                     <div className="flex items-center gap-2">

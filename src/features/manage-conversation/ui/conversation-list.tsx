@@ -5,6 +5,7 @@
  * 검색·이름 변경·보관을 이 목록에 통합한다 — 전용 /history 화면은 폐지됨.
  */
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { completeTourStep, useTourHighlight } from '@/features/onboarding-tour/model/tour-state';
 import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
 import { useUiLang } from '@/shared/i18n/ui-lang';
 import { useInfiniteListScroll } from '@/shared/lib/use-infinite-list-scroll';
@@ -119,6 +120,7 @@ export function ConversationList({
   const unarchiveConversation = useUnarchiveConversation(selectedId);
   const deleteConversation = useDeleteConversation(pendingDeleteId);
   const confirmRef = useRef<HTMLDivElement | null>(null);
+  const newConversationHighlight = useTourHighlight('new-conversation');
 
   /**
    * 확인 블록은 행보다 훨씬 높아, 목록 하단에서 열면 늘어난 만큼 스크롤 밖으로 나가
@@ -145,6 +147,9 @@ export function ConversationList({
     setRenamingId(null);
     setJustArchived(null);
     setPendingDeleteId(null);
+    // 둘러보기는 **만들어진 뒤에** 넘어간다 — 생성이 실패하면 다음 단계의 예시 질의문이
+    // 뜰 대화 자체가 없어, 눌러도 아무 일이 없는 안내가 남는다
+    completeTourStep('new-conversation');
     onSelect(created);
   };
 
@@ -218,7 +223,7 @@ export function ConversationList({
         type="button"
         onClick={handleCreate}
         disabled={createConversation.isPending}
-        className="mb-3 shrink-0 rounded-lg bg-emerald-700 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+        className={`mb-3 shrink-0 rounded-lg bg-emerald-700 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 ${newConversationHighlight}`}
       >
         {t.newConversation}
       </button>

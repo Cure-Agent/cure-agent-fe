@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { type ReactNode, useCallback, useState } from 'react';
 import { Clinician, useLogout } from '@/features/auth/api/auth.api';
+import { completeTourStep, useTourHighlight } from '@/features/onboarding-tour/model/tour-state';
+import type { TourAnchor } from '@/features/onboarding-tour/model/tour-steps';
+import { OnboardingTour } from '@/features/onboarding-tour/ui/onboarding-tour';
 import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
 import { type UiLang, setUiLang, useUiLang } from '@/shared/i18n/ui-lang';
 import { LogoMark } from '@/shared/ui/logo-mark';
@@ -73,11 +76,23 @@ const LogoutIcon = iconSvg(
 
 // 라벨을 문자열이 아니라 **메시지 키**로 든다 — 표시 언어가 바뀌면 따라와야 하는데
 // 모듈 상수는 렌더 밖에서 한 번 만들어지므로 문자열을 박으면 첫 언어에 굳는다
+//
+// `tourAnchor`는 온보딩 둘러보기가 짚는 항목 — 환자 맞춤 경로의 첫 단계가 이 메뉴다
 const NAV_ITEMS = [
-  { href: '/assistant', labelKey: 'navAssistant', Icon: AssistantIcon },
-  { href: '/guidelines', labelKey: 'navGuidelines', Icon: GuidelineIcon },
-  { href: '/patients', labelKey: 'navPatients', Icon: PatientIcon },
-] as const satisfies readonly { href: string; labelKey: MessageKey; Icon: unknown }[];
+  { href: '/assistant', labelKey: 'navAssistant', Icon: AssistantIcon, tourAnchor: null },
+  { href: '/guidelines', labelKey: 'navGuidelines', Icon: GuidelineIcon, tourAnchor: null },
+  {
+    href: '/patients',
+    labelKey: 'navPatients',
+    Icon: PatientIcon,
+    tourAnchor: 'nav-patients',
+  },
+] as const satisfies readonly {
+  href: string;
+  labelKey: MessageKey;
+  Icon: unknown;
+  tourAnchor: TourAnchor | null;
+}[];
 
 // 사이드바를 접을지는 로그인 세션이 아니라 그 사람의 화면 크기·작업 습관에 딸린 취향이다 —
 // 계정으로 나누지 않은 단일 키에 남겨, 다시 로그인해도 마지막 배치가 그대로 이어지게 한다
@@ -195,6 +210,8 @@ export function AppShell({
   const lang = useUiLang();
   const t = messagesFor(lang);
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
+  // 훅은 map 안에서 부를 수 없다 — 강조 여부를 미리 읽어 두고 해당 항목에서만 쓴다
+  const patientsHighlight = useTourHighlight('nav-patients');
 
   // 접기·펼치기는 곧 사용자가 명시적으로 내린 선택이다 — 화면과 저장소를 한 번에 움직여 둘이 갈라지지 않게 한다
   const persistSidebarOpen = useCallback((open: boolean): void => {
@@ -248,11 +265,12 @@ export function AppShell({
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => item.tourAnchor && completeTourStep(item.tourAnchor)}
                 className={`block rounded-lg px-3 py-2 text-sm font-medium ${
                   active
                     ? 'bg-emerald-50 text-emerald-800'
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`}
+                } ${item.tourAnchor === 'nav-patients' ? patientsHighlight : ''}`}
               >
                 {t[item.labelKey]}
               </Link>
@@ -306,10 +324,13 @@ export function AppShell({
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => item.tourAnchor && completeTourStep(item.tourAnchor)}
                   aria-label={t[item.labelKey]}
                   title={t[item.labelKey]}
                   aria-current={active ? 'page' : undefined}
-                  className={railIconClass(active)}
+                  className={`${railIconClass(active)} ${
+                    item.tourAnchor === 'nav-patients' ? patientsHighlight : ''
+                  }`}
                 >
                   <item.Icon className="h-5 w-5" />
                 </Link>
@@ -346,6 +367,9 @@ export function AppShell({
       )}
       {/* 스크롤 금지 — 각 페이지가 h-full 안에서 자체 스크롤 영역을 만든다 */}
       <main className="flex-1 overflow-hidden p-8">{children}</main>
+      {/* 둘러보기는 화면이 아니라 셸에 붙는다 — 환자 맞춤 경로가 세 화면을 건너다니므로
+          페이지마다 두면 그 이동 중에 안내가 끊긴다. 꺼져 있으면 아무것도 그리지 않는다 */}
+      <OnboardingTour />
     </div>
   );
 }

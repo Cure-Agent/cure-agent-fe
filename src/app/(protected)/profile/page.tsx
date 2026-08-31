@@ -6,6 +6,7 @@ import { WithdrawSection } from '@/features/auth/ui/withdraw-section';
 import { useClinicMembers } from '@/features/manage-clinic/api/clinic.api';
 import { ClinicInvitationsPanel } from '@/features/manage-clinic/ui/clinic-invitations-panel';
 import { ClinicMembersPanel } from '@/features/manage-clinic/ui/clinic-members-panel';
+import { TourRestartButton } from '@/features/onboarding-tour/ui/tour-restart-button';
 import { messagesFor } from '@/shared/i18n/messages';
 import { useUiLang } from '@/shared/i18n/ui-lang';
 
@@ -26,6 +27,9 @@ export default function ProfilePage(): React.ReactElement | null {
       <h1 className="mb-4 shrink-0 text-2xl font-bold text-gray-900">{t.profileHeading}</h1>
       <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto pb-8">
         <ProfilePanel me={me.data} />
+        {/* 가입 직후 자동으로 뜨는 것은 한 번뿐이므로(features/onboarding-tour) 되돌릴 길을
+            여기에 둔다 — 사이드바에 두면 신규가 아닌 사람에게도 모든 화면에서 계속 보인다 */}
+        <TourRestartButton />
         <ClinicMembersPanel meId={meId} />
         {/* 초대 발급·취소는 개설자 전용이다 — 아닌 사람에게는 403이 될 자리를 아예 열지 않는다 */}
         {isOwner && <ClinicInvitationsPanel />}

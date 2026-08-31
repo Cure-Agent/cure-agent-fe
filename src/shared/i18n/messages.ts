@@ -358,6 +358,62 @@ const ko = {
   startPatientConversation: '환자 맞춤 대화 시작',
   startPatientConversationFailed: '환자 맞춤 대화 생성에 실패했습니다.',
   pickConversationOrStart: '왼쪽에서 대화를 선택하거나 새 대화를 시작하세요',
+
+  // 온보딩 둘러보기 (features/onboarding-tour)
+  // 단계 문구는 「무엇을 누르는지」와 「그래서 무엇이 일어나는지」를 한 문장씩 나눠 든다 —
+  // 앞만 있으면 시키는 대로 누르기만 하고, 뒤만 있으면 어디를 눌러야 할지 모른다
+  tourWelcomeHeading: 'Cure Agent 시작하기',
+  tourWelcomeLead: '두 가지 경로를 먼저 둘러보세요. 각 단계에서 누를 곳을 화면에서 짚어 드립니다.',
+  tourWelcomeDismiss: '나중에 하기',
+  tourClose: '둘러보기 닫기',
+  tourSkip: '건너뛰기',
+  tourDone: '닫기',
+  tourStepCount: '{count}단계',
+  tourProgress: '{current}/{total}',
+  tourGoToAssistant: '어시스턴트로 이동',
+  tourGoToPatients: '환자 화면으로 이동',
+
+  tourPathGeneralTitle: '지침에 바로 질문하기',
+  tourPathGeneralLead: '새 대화를 만들고 예시 질의문으로 첫 답변을 받아 봅니다.',
+  tourPathGeneralName: '일반 질의',
+  tourPathPatientTitle: '가상 환자로 맞춤 답변 받기',
+  tourPathPatientLead: '등록된 환자를 골라 그 환자의 프로필이 실린 임상 참고안까지 받아 봅니다.',
+  tourPathPatientName: '환자 맞춤 질의',
+
+  tourGeneralStep1Title: '새 대화 만들기',
+  tourGeneralStep1Body: '왼쪽 목록 맨 위의 「새 대화」를 누르세요.',
+  tourGeneralStep2Title: '예시 질의문 고르기',
+  tourGeneralStep2Body:
+    '입력창 위에 뜬 예시를 누르면 문장이 입력창에 담깁니다. 그대로 두어도 되고 고쳐 써도 됩니다.',
+  tourGeneralStep3Title: '질문 보내기',
+  tourGeneralStep3Body: '「전송」을 누르면 지침에서 근거를 찾아 답변합니다.',
+  tourGeneralStep4Title: '답변과 근거 확인',
+  tourGeneralStep4Body:
+    '답변 아래의 [1] 같은 인용 번호를 누르면 오른쪽 패널이 그 지침 원문을 펴서 보여줍니다.',
+
+  tourPatientStep1Title: '환자 화면 열기',
+  tourPatientStep1Body: '왼쪽 사이드바의 「환자」를 누르세요.',
+  tourPatientStep2Title: '환자 고르기',
+  tourPatientStep2Body: '목록에서 환자를 하나 누르면 진단·투약이 담긴 상세가 열립니다.',
+  tourPatientStep3Title: '환자 맞춤 대화 시작',
+  tourPatientStep3Body:
+    '상세 오른쪽 위의 「환자 맞춤 대화 시작」을 누르면 이 환자 전용 대화가 만들어집니다.',
+  tourPatientStep4Title: '예시 질의문 고르기',
+  tourPatientStep4Body: '이 환자의 진단에 맞춘 예시가 뜹니다. 눌러서 입력창에 담으세요.',
+  tourPatientStep5Title: '질문 보내기',
+  tourPatientStep5Body:
+    '「전송」을 누르면 이 환자의 진단·투약·알레르기가 질문에 함께 실려 나갑니다.',
+  tourPatientStep6Title: '환자 맞춤 답변 확인',
+  tourPatientStep6Body:
+    '답변과 함께 「임상 참고안」 카드가 뜹니다 — 검토 항목·안전 경고·누락 정보를 확인하세요.',
+
+  tourFinishedHeading: '둘러보기를 마쳤습니다',
+  tourFinishedGeneralNext: '이번엔 가상 환자로 맞춤 답변을 받아 볼까요?',
+  tourFinishedPatientNext: '이번엔 지침에 바로 질문해 볼까요?',
+  tourStartOtherPath: '이어서 해보기',
+  tourRestartHeading: '시작 가이드',
+  tourRestartHint: '두 가지 사용 경로를 화면에서 처음부터 다시 안내합니다.',
+  tourRestart: '시작 가이드 다시 보기',
 } as const;
 
 export type MessageKey = keyof typeof ko;
@@ -648,6 +704,63 @@ const en: Record<MessageKey, string> = {
   startPatientConversation: 'Start patient-specific conversation',
   startPatientConversationFailed: 'Could not start the patient-specific conversation.',
   pickConversationOrStart: 'Pick a conversation on the left, or start a new one',
+
+  tourWelcomeHeading: 'Get started with Cure Agent',
+  tourWelcomeLead: 'Take one of the two walkthroughs — each step points at what to click.',
+  tourWelcomeDismiss: 'Maybe later',
+  tourClose: 'Close the walkthrough',
+  tourSkip: 'Skip',
+  tourDone: 'Close',
+  tourStepCount: '{count} steps',
+  tourProgress: '{current}/{total}',
+  tourGoToAssistant: 'Go to Assistant',
+  tourGoToPatients: 'Go to Patients',
+
+  tourPathGeneralTitle: 'Ask the guidelines directly',
+  tourPathGeneralLead:
+    'Start a conversation and get your first answer from one of the example questions.',
+  tourPathGeneralName: 'Guideline Q&A',
+  tourPathPatientTitle: 'Get patient-specific answers',
+  tourPathPatientLead:
+    'Pick a registered patient and get clinical guidance built on that patient’s profile.',
+  tourPathPatientName: 'Patient-specific',
+
+  tourGeneralStep1Title: 'Start a new conversation',
+  tourGeneralStep1Body: 'Click “New conversation” at the top of the list on the left.',
+  tourGeneralStep2Title: 'Pick an example question',
+  tourGeneralStep2Body:
+    'Click one of the examples above the input box — it fills the box, and you can edit it before sending.',
+  tourGeneralStep3Title: 'Send the question',
+  tourGeneralStep3Body: 'Click “Send” and the assistant searches the guidelines for evidence.',
+  tourGeneralStep4Title: 'Read the answer and its evidence',
+  tourGeneralStep4Body:
+    'Click a citation number like [1] under the answer and the right-hand panel opens that guideline passage.',
+
+  tourPatientStep1Title: 'Open the Patients screen',
+  tourPatientStep1Body: 'Click “Patients” in the left sidebar.',
+  tourPatientStep2Title: 'Pick a patient',
+  tourPatientStep2Body:
+    'Click a patient in the list to open the record with diagnoses and medications.',
+  tourPatientStep3Title: 'Start a patient-specific conversation',
+  tourPatientStep3Body:
+    'Click “Start patient-specific conversation” at the top right of the record to create a conversation for this patient.',
+  tourPatientStep4Title: 'Pick an example question',
+  tourPatientStep4Body:
+    'The examples are matched to this patient’s diagnosis. Click one to fill the input box.',
+  tourPatientStep5Title: 'Send the question',
+  tourPatientStep5Body:
+    'Click “Send” — this patient’s diagnoses, medications and allergies go out with the question.',
+  tourPatientStep6Title: 'Read the patient-specific answer',
+  tourPatientStep6Body:
+    'A “Clinical guidance” card appears with the answer — check the review items, safety alerts and missing information.',
+
+  tourFinishedHeading: 'Walkthrough complete',
+  tourFinishedGeneralNext: 'Want to try patient-specific answers next?',
+  tourFinishedPatientNext: 'Want to try asking the guidelines directly next?',
+  tourStartOtherPath: 'Try that next',
+  tourRestartHeading: 'Getting-started walkthrough',
+  tourRestartHint: 'Walks you through both paths on screen again, from the start.',
+  tourRestart: 'Replay the walkthrough',
 };
 
 export const UI_MESSAGES: Record<UiLang, Record<MessageKey, string>> = { ko, en };
