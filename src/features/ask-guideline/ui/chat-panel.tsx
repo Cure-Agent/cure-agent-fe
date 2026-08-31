@@ -4,14 +4,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   FormEvent,
   KeyboardEvent,
+  useCallback,
   useEffect,
   useMemo,
-  useReducer,
   useRef,
   useState,
 } from 'react';
 import {
   CONVERSATIONS_KEY,
+  findUnfinishedAnswer,
   flatMessagesChronological,
   messagesKey,
   useConversation,
@@ -30,9 +31,15 @@ import {
   type AnswerCitation,
   type EvidenceDetail,
   type MessageDto,
-  initialStreamState,
-  streamReducer,
+  type StreamAction,
 } from '../model/stream-state.model';
+import {
+  dispatchStream,
+  isStreamLive,
+  releaseStream,
+  rememberRequest,
+  useConversationStream,
+} from '../model/stream-store';
 
 export interface ChatPanelProps {
   conversationId: string;
@@ -44,11 +51,6 @@ export interface ChatPanelProps {
   onShowCitations?: (citations: AnswerCitation[], marker: number) => void;
 }
 
-interface LastRequest {
-  content: string;
-  clientRequestId: string;
-}
-
 export function ChatPanel({
   conversationId,
   onEvidenceChange,
@@ -58,11 +60,24 @@ export function ChatPanel({
   const queryClient = useQueryClient();
   const lang = useUiLang();
   const t = messagesFor(lang);
-  const messages = useMessages(conversationId);
-  const [state, dispatch] = useReducer(streamReducer, initialStreamState);
+  /**
+   * 스트림 상태는 이 컴포넌트가 아니라 대화별 스토어에 있다 — 화면을 떠나도 SSE는 끊기지
+   * 않으므로(abort signal을 넘기지 않는다) 이벤트가 계속 도착하는데, 상태가 여기 있으면
+   * 언마운트와 함께 사라져 돌아온 화면에 진행 중이라는 흔적조차 남지 않는다 (stream-store).
+   */
+  const { state, lastRequest } = useConversationStream(conversationId);
+  const dispatch = useCallback(
+    (action: StreamAction) => dispatchStream(conversationId, action),
+    [conversationId],
+  );
   const [question, setQuestion] = useState('');
-  const [lastRequest, setLastRequest] = useState<LastRequest | null>(null);
   const questionRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const inFlight = isStreamLive(state);
+  const messages = useMessages(conversationId, {
+    // 이 화면이 스트림을 들고 있으면 SSE가 끝을 알려준다 — 폴링은 그때만 필요 없다
+    pollUnfinishedAnswer: !inFlight,
+  });
 
   /**
    * 예시 질의문에 필요한 두 가지 — 대화의 성격과, 환자 맞춤이라면 그 환자의 진단.
@@ -72,19 +87,27 @@ export function ChatPanel({
   const conversation = useConversation(conversationId);
   const patient = usePatient(conversation.data?.patientId ?? null);
 
-  const inFlight =
-    state.phase === 'accepted' || state.phase === 'retrieving' || state.phase === 'streaming';
-
   /**
    * 아직 쓰이는 중인 답변 행은 목록에서 걷어낸다. 질문이 수락되면(아래 재조회 effect) 서버
    * 목록에는 그때 함께 만들어진 `status: 'STREAMING'` 답변 행이 **본문 없이** 실려 오는데,
    * `MessageBubble`은 상태를 보지 않으므로 그대로 두면 빈 말풍선이 생긴다. 그 자리는 종결까지
    * 아래 스트리밍 영역(재진입 뒤라면 아무것도)이 맡고, 본문은 종결 재조회가 채워 온다.
    */
-  const persisted = useMemo(
-    () => flatMessagesChronological(messages.data).filter((m) => m.status !== 'STREAMING'),
+  const chronological = useMemo(
+    () => flatMessagesChronological(messages.data),
     [messages.data],
   );
+  const persisted = useMemo(
+    () => chronological.filter((m) => m.status !== 'STREAMING'),
+    [chronological],
+  );
+
+  /**
+   * 걷어낸 그 행을, 이어받을 스트림이 없을 때만 안내로 되살린다 — 새로고침·다른 탭에서 연
+   * 화면은 답변이 오는 중이라는 사실을 서버 목록으로만 알 수 있다. `idle`이 아니면 이 화면이
+   * 이미 그 답변을 말하고 있다(스트리밍 영역·최종 메시지·보류 안내·오류 상자).
+   */
+  const unfinishedAnswer = state.phase === 'idle' ? findUnfinishedAnswer(chronological) : null;
   // 스트림 종결 후 invalidate가 반영되기 전까지는 로컬 최종 메시지를 보여준다
   const localFinal =
     state.message && !persisted.some((m) => m.id === state.message?.id) ? state.message : null;
@@ -128,11 +151,12 @@ export function ChatPanel({
     scrollToBottomIfSticky();
   }, [state.content, state.phase, localUser, localFinal, scrollToBottomIfSticky]);
 
-  // 대화 전환 시 스트림 상태 초기화
-  useEffect(() => {
-    dispatch({ type: 'reset' });
-    setLastRequest(null);
-  }, [conversationId]);
+  /**
+   * 화면을 떠날 때(대화 전환 포함) **진행 중이 아닌** 상태는 버린다 — 예전의 대화 전환 리셋과
+   * 같은 자리다. 진행 중이면 그대로 두는 것이 이 스토어의 존재 이유고, 그래야 돌아왔을 때
+   * 답변이 이어진다.
+   */
+  useEffect(() => () => releaseStream(conversationId), [conversationId]);
 
   useEffect(() => {
     onEvidenceChange?.(state.evidence);
@@ -172,7 +196,7 @@ export function ChatPanel({
   }, [state.userMessageId, conversationId, queryClient]);
 
   const send = async (content: string, clientRequestId: string): Promise<void> => {
-    setLastRequest({ content, clientRequestId });
+    rememberRequest(conversationId, { content, clientRequestId });
     // 내 질문은 서버 왕복을 기다리지 않고 즉시 그린다 — 본문은 이미 여기 있고, 서버는 id만 돌려준다
     dispatch({
       type: 'send',
@@ -245,6 +269,14 @@ export function ChatPanel({
     void send(lastRequest.content, crypto.randomUUID()); // 새 clientRequestId (§8)
   };
 
+  /**
+   * 기다림을 접은 답변을 사람이 한 번 더 확인하는 길. **재전송이 아니라 재조회다** —
+   * 서버가 그 사이 답변을 마쳤을 수 있고, 다시 물으면 같은 질문이 두 번 답해진다.
+   */
+  const handleCheckAgain = (): void => {
+    void queryClient.invalidateQueries({ queryKey: messagesKey(conversationId) });
+  };
+
   // 인용 클릭 = 그 메시지의 인용 목록으로 근거 패널 복원 + 마커 선택
   const handleCite = (citations: AnswerCitation[], marker: number): void => {
     onShowCitations?.(citations, marker);
@@ -295,6 +327,27 @@ export function ChatPanel({
                 </span>
               </p>
             )}
+          </div>
+        )}
+
+        {/* 이어받을 스트림 없이 연 화면이 만난 진행 중 답변 — 같은 자리, 같은 생김새로 */}
+        {unfinishedAnswer && !unfinishedAnswer.abandoned && (
+          <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-800">
+            <p className="text-xs text-gray-400">{t.answerInProgress}</p>
+          </div>
+        )}
+
+        {/* 상한을 넘긴 답변 — 실패라고 단정하지 않고 사실만 말한 뒤 사람에게 재조회를 넘긴다 */}
+        {unfinishedAnswer?.abandoned && (
+          <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-800">
+            <p className="text-xs text-gray-500">{t.answerNotArrived}</p>
+            <button
+              type="button"
+              onClick={handleCheckAgain}
+              className="mt-2 rounded-lg border border-gray-300 px-3 py-1 text-xs hover:bg-gray-100"
+            >
+              {t.checkAgain}
+            </button>
           </div>
         )}
 
