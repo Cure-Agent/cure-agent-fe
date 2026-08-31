@@ -841,6 +841,8 @@ export interface components {
             publishedAt: string;
             /** @enum {string} */
             status: "ACTIVE" | "SUPERSEDED";
+            /** @description 지침 제목의 번역 (기계 번역) */
+            titleTranslated?: string;
         };
         GuidelineDetailResponseDto: {
             id: string;
@@ -854,6 +856,8 @@ export interface components {
             publishedAt: string;
             /** @enum {string} */
             status: "ACTIVE" | "SUPERSEDED";
+            /** @description 지침 제목의 번역 (기계 번역) */
+            titleTranslated?: string;
             /** @description NCKM 원문 링크 — PDF는 재배포하지 않는다 (§5.4) */
             sourceUrl: string;
         };
@@ -904,6 +908,10 @@ export interface components {
             excerptTranslated?: string;
             /** @description 지침 제목의 번역 (기계 번역) */
             titleTranslated?: string;
+            /** @description 권고문 원문의 번역 (기계 번역) */
+            recommendationTextTranslated?: string;
+            /** @description 섹션 경로의 번역 (기계 번역) */
+            sectionPathTranslated?: string[];
             /** @description 번역을 만든 모델 — provenance */
             translationModel?: string;
         };
@@ -1173,6 +1181,8 @@ export interface components {
             quoteTranslated?: string;
             /** @description 지침 제목의 번역 (기계 번역) */
             titleTranslated?: string;
+            /** @description 섹션 경로의 번역 (기계 번역) */
+            sectionPathTranslated?: string[];
         };
         MessageResponseDto: {
             id: string;
@@ -1187,6 +1197,11 @@ export interface components {
             guidanceId?: string;
             /** @description 기권 사유 안내 문장 — ABSTAINED 메시지에만 실린다. 사유가 기록되지 않은 과거 메시지는 이 키가 빠진다 */
             abstainReason?: string;
+            /**
+             * @description 이 메시지가 답한 언어
+             * @enum {string}
+             */
+            responseLang?: "ko" | "en";
             citations: components["schemas"]["AnswerCitationResponseDto"][];
             /** @description ISO 8601 */
             createdAt: string;
@@ -1677,6 +1692,7 @@ export interface operations {
                 /** @description 불투명 커서 (§10.4) */
                 cursor?: string;
                 size?: number;
+                lang?: "ko" | "en";
             };
             header?: never;
             path?: never;
@@ -1750,7 +1766,9 @@ export interface operations {
     };
     EvidenceController_detail: {
         parameters: {
-            query?: never;
+            query?: {
+                lang?: "ko" | "en";
+            };
             header?: never;
             path: {
                 evidenceId: string;
