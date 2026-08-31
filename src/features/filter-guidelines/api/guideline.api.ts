@@ -32,10 +32,11 @@ export function useGuidelines(params: {
   lang: UiLang;
 }): UseInfiniteQueryResult<InfiniteData<GuidelinePage>> {
   return useInfiniteQuery({
-    queryKey: ['guidelines', { query: params.query ?? null }],
+    // lang이 키에 없으면 언어를 바꿔도 이전 언어의 제목이 캐시에 남는다 (§44 기준 33과 같은 이유)
+    queryKey: ['guidelines', { query: params.query ?? null, lang: params.lang }],
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam }) => {
-      const query: Record<string, string> = {};
+      const query: Record<string, string> = { lang: params.lang };
       if (params.query) query.query = params.query;
       if (pageParam) query.cursor = pageParam;
       const result = await api.GET('/api/v1/guidelines', { params: { query } });
@@ -93,12 +94,13 @@ export function useEvidenceDetail(
   options?: { enabled?: boolean },
 ): UseQueryResult<EvidenceDetail> {
   return useQuery({
-    queryKey: ['evidence', evidenceId],
+    // 키에 lang이 없으면 언어가 달라져도 이전 응답이 그대로 남는다 (§44 기준 33)
+    queryKey: ['evidence', evidenceId, lang],
     enabled: options?.enabled ?? true,
     queryFn: async () =>
       unwrap<EvidenceDetail>(
         await api.GET('/api/v1/evidence/{evidenceId}', {
-          params: { path: { evidenceId } },
+          params: { path: { evidenceId }, query: { lang } },
         }),
       ),
   });

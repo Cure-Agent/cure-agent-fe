@@ -93,9 +93,8 @@ const ko = {
   viewSource: '원문 보기 (NCKM)',
 
   // 번역 경계 (스펙 판단표 「커버리지 밖 표시」)
+  // 「한국어 원문 보기」 토글은 §44가 없앴다 — 정본 도달은 `viewSource` 링크가 진다
   citationNotTranslated: '미번역',
-  showKoreanOriginal: '한국어 원문 보기',
-  hideKoreanOriginal: '한국어 원문 접기',
 
   // 앱 셸
   appTagline: '한의 임상 지침 어시스턴트',
@@ -449,8 +448,6 @@ const en: Record<MessageKey, string> = {
   viewSource: 'View source (NCKM)',
 
   citationNotTranslated: 'Not translated',
-  showKoreanOriginal: 'Show Korean original',
-  hideKoreanOriginal: 'Hide Korean original',
 
   appTagline: 'Korean medicine clinical guideline assistant',
   navAssistant: 'Assistant',

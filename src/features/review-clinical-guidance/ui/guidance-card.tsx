@@ -87,12 +87,29 @@ function profileFieldLabel(field: string, t: Record<MessageKey, string>): string
   return key ? t[key] : field;
 }
 
-/** 인용 근거 칩 [n] — 클릭 시 해당 근거의 전문을 펼친다 (지침 상세와 동일 구성) */
-function CitationList({ citations }: { citations: GuidanceCitation[] }): ReactElement | null {
+/**
+ * 인용 근거 칩 [n] — 클릭 시 해당 근거의 전문을 펼친다 (지침 상세와 동일 구성).
+ *
+ * 펼침 헤더가 `제목 · v버전 · 섹션경로` 한 줄이라, 앞 둘만 영어가 되면 **한 줄 안에서 언어가
+ * 갈린다** (§44). 셋을 같은 축으로 묶는다.
+ */
+function CitationList({
+  citations,
+  lang,
+}: {
+  citations: GuidanceCitation[];
+  lang: UiLang;
+}): ReactElement | null {
   const [openMarker, setOpenMarker] = useState<number | null>(null);
   if (citations.length === 0) return null;
 
   const open = citations.find((citation) => citation.marker === openMarker) ?? null;
+  const openTitle =
+    open && lang === 'en' && open.titleTranslated ? open.titleTranslated : open?.guidelineTitle;
+  const openSectionPath =
+    open && lang === 'en' && open.sectionPathTranslated
+      ? open.sectionPathTranslated
+      : open?.sectionPath;
   return (
     <div className="mt-1.5">
       <div className="flex flex-wrap gap-1">
@@ -118,10 +135,10 @@ function CitationList({ citations }: { citations: GuidanceCitation[] }): ReactEl
       {open && (
         <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
           <p className="text-xs text-gray-500">
-            {open.guidelineTitle} · v{open.guidelineVersion} · {open.sectionPath.join(' > ')}
+            {openTitle} · v{open.guidelineVersion} · {openSectionPath?.join(' > ')}
           </p>
           <div className="mt-2">
-            <EvidenceFullText evidenceId={open.evidenceId} />
+            <EvidenceFullText evidenceId={open.evidenceId} lang={lang} />
           </div>
         </div>
       )}
@@ -129,9 +146,22 @@ function CitationList({ citations }: { citations: GuidanceCitation[] }): ReactEl
   );
 }
 
-export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
-  const lang = useUiLang();
+/**
+ * **한 카드 안에 두 축이 선다** (BE docs/specs/44 판단표).
+ *
+ * 참고안의 내용물 — 본문·검토 항목·인용·환자 근거 라벨·누락 정보 — 은 그것이 **생성된 언어**
+ * (그 메시지의 `responseLang`)를 따른다. 참고안은 화면 전체가 판단물이라, 영문 질의에 한국어
+ * 카드가 서면 「검토」 자체가 성립하지 않는다.
+ *
+ * 반면 **검토 폼은 앱 크롬**이라 UI 토글을 따른다 — 한국어 UI 사용자가 영문 질의 한 번에
+ * 자기가 누를 버튼까지 영어가 되는 것은 과하다.
+ */
+export function GuidanceCard({ guidance, lang: contentLang }: GuidanceCardProps): ReactElement {
+  const uiLang = useUiLang();
+  // 참고안 단건 화면 등 대화 맥락 없이 열리는 자리는 UI 토글로 떨어진다
+  const lang = contentLang ?? uiLang;
   const t = messagesFor(lang);
+  const tUi = messagesFor(uiLang);
   const review = useReviewClinicalGuidance(guidance.id);
   const [current, setCurrent] = useState(guidance);
   const [decision, setDecision] = useState<ReviewDecision | null>(null);
@@ -149,8 +179,9 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
       {
         onSuccess: (updated) => setCurrent(updated),
         onError: (error) => {
+          // 폼이 낸 오류는 폼과 같은 축에 선다 — 검토 폼은 UI 토글을 따른다
           setErrorMessage(
-            error instanceof ApiError ? error.message : t.guidanceReviewFailed,
+            error instanceof ApiError ? error.message : tUi.guidanceReviewFailed,
           );
         },
       },
@@ -207,7 +238,7 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
                     ))}
                   </div>
                 )}
-                <CitationList citations={consideration.citations} />
+                <CitationList citations={consideration.citations} lang={lang} />
               </li>
             ))}
           </ul>
@@ -229,7 +260,7 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
                 </span>
                 <div className="flex-1">
                   <span className="text-gray-800">{alert.description}</span>
-                  <CitationList citations={alert.citations} />
+                  <CitationList citations={alert.citations} lang={lang} />
                 </div>
               </li>
             ))}
@@ -257,9 +288,13 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
       {isDraft && (
         <form onSubmit={handleSubmit} className="mt-4 border-t border-emerald-200 pt-3">
           <fieldset className="flex items-center gap-4">
-            <legend className="mb-1.5 text-xs font-semibold text-gray-500">{t.guidanceClinicianReview}</legend>
+            <legend className="mb-1.5 text-xs font-semibold text-gray-500">{tUi.guidanceClinicianReview}</legend>
             {DECISIONS.map(({ value, labelKey }) => (
               <label key={value} className="flex items-center gap-1.5 text-gray-800">
+                {/*
+                  `aria-label`은 **결정 코드**다 — 언어와 무관한 고정 식별자로, 보이는 라벨이
+                  번역돼도 이 핸들은 움직이지 않는다. 사람이 읽는 문구는 아래 `tUi[labelKey]`다.
+                */}
                 <input
                   type="radio"
                   name="review-decision"
@@ -267,13 +302,13 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
                   checked={decision === value}
                   onChange={() => setDecision(value)}
                 />
-                {t[labelKey]}
+                {tUi[labelKey]}
               </label>
             ))}
           </fieldset>
           <div className="mt-2 flex flex-col gap-2">
             <label htmlFor="guidance-review-note" className="text-xs font-semibold text-gray-500">
-              {t.guidanceReviewComment}
+              {tUi.guidanceReviewComment}
             </label>
             <textarea
               id="guidance-review-note"
@@ -287,7 +322,7 @@ export function GuidanceCard({ guidance }: GuidanceCardProps): ReactElement {
               disabled={!decision || review.isPending}
               className="self-end rounded-lg bg-emerald-700 px-4 py-2 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
             >
-              {t.guidanceReviewSubmit}
+              {tUi.guidanceReviewSubmit}
             </button>
           </div>
         </form>

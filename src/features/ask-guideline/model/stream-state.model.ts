@@ -86,7 +86,14 @@ export function streamReducer(state: StreamState, action: StreamAction): StreamS
     case 'send':
       // 이전 스트림의 잔여(본문·오류)를 지우고 내 질문부터 띄운다.
       // 서버 accept 전이지만 phase를 올려 전송 버튼도 이때부터 잠근다(연타 방지).
-      return { ...initialStreamState, phase: 'accepted', pendingUser: action.message };
+      // `responseLang`은 초기화에 쓸려 나가면 안 된다 — 종결 메시지가 오기 전까지 스트리밍
+      // 근거가 딛고 설 유일한 언어값이다 (§44).
+      return {
+        ...initialStreamState,
+        phase: 'accepted',
+        pendingUser: action.message,
+        responseLang: action.responseLang,
+      };
     case 'streamFailed':
       // 이미 종결된 스트림의 사후 실패(네트워크 정리 등)는 무시.
       // idle은 대화 전환 reset 뒤 도착한 옛 스트림의 실패 — 새 대화에 오류를 남기지 않는다.
@@ -128,6 +135,8 @@ function applyEvent(state: StreamState, event: StreamEvent): StreamState {
           state.pendingUser && userMessageId
             ? { ...state.pendingUser, id: userMessageId }
             : state.pendingUser,
+        // 이 초기화는 재시도 대비다 — 방금 보낸 질의의 언어까지 되돌리면 안 된다
+        responseLang: state.responseLang,
       };
     }
     case 'retrieval.started':

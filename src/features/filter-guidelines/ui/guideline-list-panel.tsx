@@ -4,10 +4,15 @@ import { FormEvent, useMemo, useState } from 'react';
 import { useInfiniteListScroll } from '@/shared/lib/use-infinite-list-scroll';
 import { type GuidelineSummary, useGuidelines } from '../api/guideline.api';
 import { formatMessage, messagesFor } from '@/shared/i18n/messages';
-import { useUiLang } from '@/shared/i18n/ui-lang';
+import { type UiLang, useUiLang } from '@/shared/i18n/ui-lang';
 
 export interface GuidelineListPanelProps {
   onSelect: (guideline: GuidelineSummary) => void;
+}
+
+/** 번역이 없는 지침은 키가 아예 빠진다 — 오류가 아니라 범위이므로 원문으로 닫는다 (§44) */
+function displayTitle(guideline: GuidelineSummary, lang: UiLang): string {
+  return lang === 'en' && guideline.titleTranslated ? guideline.titleTranslated : guideline.title;
 }
 
 export function GuidelineListPanel({ onSelect }: GuidelineListPanelProps): React.ReactElement {
@@ -63,13 +68,17 @@ export function GuidelineListPanel({ onSelect }: GuidelineListPanelProps): React
         <ul className="space-y-2">
           {items.map((guideline) => (
             <li key={guideline.id}>
+              {/*
+                목록 제목은 UI 토글의 언어로 선다 — 이 화면에는 대화 맥락이 없다 (§44 기준 30).
+                청크 번역이 없는 지침은 키 부재로 닫혀 원문 제목이 그대로 보인다.
+              */}
               <button
                 type="button"
-                aria-label={guideline.title}
+                aria-label={displayTitle(guideline, lang)}
                 onClick={() => onSelect(guideline)}
                 className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left hover:border-emerald-300"
               >
-                <p className="font-medium text-gray-900">{guideline.title}</p>
+                <p className="font-medium text-gray-900">{displayTitle(guideline, lang)}</p>
                 <p className="mt-1 text-xs text-gray-500">
                   {guideline.publisher} · v{guideline.currentVersion} · {guideline.status}
                 </p>

@@ -13,6 +13,7 @@ const ORIGINAL_EXCERPT = '만성 요통 환자에게 침 치료를 고려할 수
 const TRANSLATED_TITLE = 'Korean Medicine Clinical Practice Guideline for Low Back Pain';
 const TRANSLATED_EXCERPT =
   'Acupuncture treatment may be considered for patients with chronic low back pain.';
+const SOURCE_URL = 'https://example.test/nckm/low-back-pain#page=31';
 
 const untranslatedEvidence: EvidenceItem = {
   id: 'evidence-untranslated',
@@ -32,6 +33,7 @@ const translatedEvidence: EvidenceItem = {
   sectionPath: ['치료', '침치료'],
   excerpt: ORIGINAL_EXCERPT,
   excerptTranslated: TRANSLATED_EXCERPT,
+  sourceUrl: SOURCE_URL,
   translationModel: 'batch-translation-model',
 };
 
@@ -99,14 +101,19 @@ describe('EvidenceInspector 번역 경계 (수용 기준 33~35)', () => {
     expect(screen.getByText('Not translated')).toBeTruthy();
   });
 
-  it('기준 35-b: 번역 카드에서도 한국어 원문을 열 수 있고 열면 정본 발췌가 나타난다', async () => {
+  /**
+   * §42는 정본 도달을 **인라인 토글**로 충족했고, §44가 그 수단을 **원문 링크**로 옮겼다
+   * (판단표 「한국어 원문에 어떻게 도달하는가」). 요구는 그대로이고 이 단언만 자리를 옮긴다 —
+   * 회귀가 아니라 의도된 전환이다(spec 44 위험 ⑷).
+   */
+  it('기준 35-b: 번역 카드에서도 원문 링크로 한국어 정본에 도달할 수 있다', () => {
     setLanguageInputs('en-US', null);
-    const user = userEvent.setup();
     renderInspector([translatedEvidence]);
 
-    await user.click(screen.getByRole('button', { name: 'Show Korean original' }));
-
-    expect(screen.getByText(ORIGINAL_EXCERPT)).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Hide Korean original' })).toBeTruthy();
+    expect(screen.getByText(TRANSLATED_EXCERPT)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'View source (NCKM)' })).toHaveAttribute(
+      'href',
+      SOURCE_URL,
+    );
   });
 });

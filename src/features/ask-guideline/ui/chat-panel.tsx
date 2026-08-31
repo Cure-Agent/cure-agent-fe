@@ -44,8 +44,11 @@ import {
 
 export interface ChatPanelProps {
   conversationId: string;
-  /** retrieval.completed 시 근거 패널(evidence-inspector)로 전달 */
-  onEvidenceChange?: (evidence: EvidenceDetail[]) => void;
+  /**
+   * retrieval.completed 시 근거 패널(evidence-inspector)로 전달.
+   * `lang`은 지금 답해지고 있는 언어다 — 스트리밍 근거도 답변과 같은 언어로 서야 한다 (§44).
+   */
+  onEvidenceChange?: (evidence: EvidenceDetail[], lang: UiLang) => void;
   /** answer.completed의 citation marker 선택 시 */
   onSelectMarker?: (marker: number) => void;
   /**
@@ -165,9 +168,19 @@ export function ChatPanel({
    */
   useEffect(() => () => releaseStream(conversationId), [conversationId]);
 
+  /**
+   * 이 화면의 **콘텐츠 언어 축** (BE docs/specs/44).
+   *
+   * 스트림 중에는 방금 보낸 질의에서 유도한 `state.responseLang`이, 종결·재조회에서는 저장된
+   * `message.responseLang`이 그 자리를 잇는다. `responseLang`이 없는 과거 메시지는 `ko`로
+   * 읽는다 — BE가 기본값으로 백필하는 축과 같다(§42 기준 3 계승).
+   */
+  const messageLang = (message: MessageDto): UiLang => message.responseLang ?? 'ko';
+  const streamLang: UiLang = state.message?.responseLang ?? state.responseLang;
+
   useEffect(() => {
-    onEvidenceChange?.(state.evidence);
-  }, [state.evidence, onEvidenceChange]);
+    onEvidenceChange?.(state.evidence, streamLang);
+  }, [state.evidence, streamLang, onEvidenceChange]);
 
   // 종결 시 서버 상태로 동기화 (§8 복구 폴백: GET messages가 최종 진실).
   // error도 포함한다 — 비정상 종료 뒤 서버가 이미 COMPLETED로 확정했을 수 있다.
@@ -318,22 +331,40 @@ export function ChatPanel({
         )}
         {persisted.map((message) => (
           <div key={message.id} className="space-y-4">
-            <MessageBubble message={message} onCite={handleCite} t={t} lang={lang} />
+            <MessageBubble
+              message={message}
+              onCite={handleCite}
+              t={messagesFor(messageLang(message))}
+              lang={messageLang(message)}
+            />
             {/* 새로고침 복원 경로 — 방금 스트림으로 받은 카드(아래)가 있으면 중복 표시하지 않는다 */}
             {message.guidanceId && message.id !== state.message?.id && (
-              <GuidanceCardLoader guidanceId={message.guidanceId} />
+              <GuidanceCardLoader guidanceId={message.guidanceId} lang={messageLang(message)} />
             )}
           </div>
         ))}
 
-        {localUser && <MessageBubble message={localUser} onCite={handleCite} t={t} lang={lang} />}
+        {/* 내 질문은 내가 쓴 그대로다 — 유도한 응답 언어가 이 블록의 축이다 */}
+        {localUser && (
+          <MessageBubble
+            message={localUser}
+            onCite={handleCite}
+            t={messagesFor(streamLang)}
+            lang={streamLang}
+          />
+        )}
 
         {localFinal && (
-          <MessageBubble message={localFinal} onCite={handleCite} t={t} lang={lang} />
+          <MessageBubble
+            message={localFinal}
+            onCite={handleCite}
+            t={messagesFor(messageLang(localFinal))}
+            lang={messageLang(localFinal)}
+          />
         )}
 
         {state.phase === 'completed' && state.guidance && (
-          <GuidanceCard key={state.guidance.id} guidance={state.guidance} />
+          <GuidanceCard key={state.guidance.id} guidance={state.guidance} lang={streamLang} />
         )}
 
         {inFlight && (
@@ -373,8 +404,11 @@ export function ChatPanel({
           </div>
         )}
 
-        {/* message가 실려 있으면 위 localFinal(MessageBubble)이 같은 안내를 그린다 — 없을 때만 폴백 */}
-        {state.phase === 'abstained' && !state.message && <AbstainedNotice t={t} />}
+        {/* message가 실려 있으면 위 localFinal(MessageBubble)이 같은 안내를 그린다 — 없을 때만 폴백.
+            보류 안내는 답변이 서야 할 자리를 대신하므로 내용물 축을 따른다 (§44) */}
+        {state.phase === 'abstained' && !state.message && (
+          <AbstainedNotice t={messagesFor(streamLang)} />
+        )}
 
         {/* 중단 시점까지 받은 본문은 버리지 않는다 — 사용자가 읽던 답변이다 */}
         {state.phase === 'error' && state.content && (
