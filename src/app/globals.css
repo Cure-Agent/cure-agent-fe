@@ -7,3 +7,60 @@
     display: none;
   }
 }
+
+/*
+ * 온보딩 둘러보기가 지금 짚고 있는 요소.
+ *
+ * `animate-pulse`를 쓰지 않는 이유는 그것이 **요소 자신의 불투명도**를 흔들기 때문이다 —
+ * 글자가 함께 흐려져 로딩 스켈레톤처럼 읽힌다. 여기서는 요소 바깥의 링만 퍼지게 한다.
+ *
+ * `ring-*` 유틸리티와 겹쳐 쓸 수 없다 — 둘 다 box-shadow를 쓰고 애니메이션 쪽이 통째로
+ * 덮는다. 그래서 링(흰 간격 + emerald 테두리)까지 keyframe 안에 함께 그린다.
+ * emerald-500을 값으로 적는 것도 같은 이유다: keyframe 안에서는 유틸리티를 부를 수 없다.
+ *
+ * z-index를 올려 두는 이유는 퍼지는 링이 뒤따르는 형제 요소에 덮이지 않게 하기 위해서다.
+ */
+@utility tour-highlight {
+  position: relative;
+  z-index: 1;
+  animation: tour-ring 1.8s ease-in-out infinite;
+
+  /* 맥동을 끈 사람에게는 링만 남긴다 — 강조는 유지하되 움직임은 없앤다 */
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    box-shadow:
+      inset 0 0 0 2px rgb(16 185 129),
+      0 0 0 2px #fff,
+      0 0 0 4px rgb(16 185 129);
+  }
+}
+
+/*
+ * 안쪽 링이 먼저 오는 이유: **바깥 링은 잘린다.** 강조 대상 중 여럿이 내부 스크롤 영역
+ * (환자 목록·예시 질의문) 맨 위에 있고, box-shadow는 조상의 `overflow`에 잘려 나간다.
+ * 목록 첫 행을 짚으면 위쪽 테두리만 사라져 렌더 오류처럼 보인다. 안쪽 링은 요소 안에
+ * 그려지므로 어디서도 잘리지 않고, 바깥의 흰 간격·맥동은 자리가 있을 때만 더해진다.
+ */
+@keyframes tour-ring {
+  0% {
+    box-shadow:
+      inset 0 0 0 2px rgb(16 185 129),
+      0 0 0 2px #fff,
+      0 0 0 4px rgb(16 185 129),
+      0 0 0 4px rgb(16 185 129 / 0.5);
+  }
+  70% {
+    box-shadow:
+      inset 0 0 0 2px rgb(16 185 129),
+      0 0 0 2px #fff,
+      0 0 0 4px rgb(16 185 129),
+      0 0 0 12px rgb(16 185 129 / 0);
+  }
+  100% {
+    box-shadow:
+      inset 0 0 0 2px rgb(16 185 129),
+      0 0 0 2px #fff,
+      0 0 0 4px rgb(16 185 129),
+      0 0 0 12px rgb(16 185 129 / 0);
+  }
+}

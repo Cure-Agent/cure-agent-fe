@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { scheduleWelcomeTour } from '@/features/onboarding-tour/model/tour-state';
 import { api } from '@/shared/api/api-client';
 import { unwrap } from '@/shared/api/api-error';
 import { buildUrl } from '@/shared/api/http';
@@ -58,6 +59,14 @@ export function useCompleteSignUp() {
       unwrap<AuthSession>(await api.POST('/api/v1/auth/signup', { body: input })),
     onSuccess: (session) => {
       queryClient.setQueryData(ME_QUERY_KEY, session.clinician);
+      /**
+       * 온보딩 둘러보기를 예약하는 **유일한 지점**이다 (features/onboarding-tour).
+       *
+       * 「신규 회원」을 서버에 물어볼 수 없어서다 — `ClinicianResponseDto`에는 가입 시각도
+       * 온보딩 완료 여부도 없다. 가입을 실제로 통과하는 이 순간이 FE가 신규를 아는 유일한
+       * 시점이라, 여기가 아니면 로그인한 모든 사람에게 뜨거나 아무에게도 뜨지 않는다.
+       */
+      scheduleWelcomeTour();
     },
   });
 }
