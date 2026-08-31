@@ -220,12 +220,17 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 
 ## 재동기화 위험 (다음 실행이 지켜볼 것)
 
-- **드리프트 게이트는 `componentSrcMap` 에 등록된 소스만 본다.** 등록 컴포넌트가 *가져다 쓰는*
-  파일 — helper 모듈, `src/app/utilities.css` — 을 고치면 게이트가 `CLEAN` 을 내는데도 번들은
-  드리프트한다. 2026-08-31 의 `utilities.css` 분리가 실제로 그랬다(게이트 CLEAN, `styleSha`
-  변경). **등록 컴포넌트가 import 하는 것을 고친 배포에서는 게이트 결과와 무관하게
-  재동기화할 것.** 근본 해결은 게이트를 의존성 추적으로 넓히거나 그 파일들을
-  `componentSrcMap` 에 얹는 것인데 아직 안 했다.
+- **드리프트 게이트의 감시 범위는 `config.json` 의 `driftWatch` 가 정한다** (2026-08-31 추가).
+  그 전까지는 `componentSrcMap` 만 봤고, 등록 컴포넌트가 *가져다 쓰는* 것(helper 모듈,
+  `src/app/utilities.css`)을 고친 배포가 전부 새어 나갔다 — 실측으로 번들에 실리는 src 파일
+  47개 중 14개만 감시(커버리지 30%). `utilities.css` 분리 배포(#94)가 실제로 게이트 CLEAN
+  인데 `styleSha` 가 움직인 사례다. 지금은 `src/features`·`src/shared`·`src/widgets`·
+  `src/app/utilities.css`·`ds-preview` 를 포함 나열해 그 47개를 덮는다.
+  **`componentSrcMap` 에 helper 를 얹어 해결하지 말 것** — 그 키가 카드 목록을 정하므로
+  카드가 생긴다(위 `LogoMark` 절). 감시 목록과 카드 목록은 갈라 둔 상태다.
+  남은 한계: Tailwind 출력은 `@source` 가 훑는 **src 전체**의 클래스 사용에 의존하므로,
+  감시 밖인 `src/app` 라우트에서 새 클래스를 처음 쓰면 번들 CSS 변경이 잡히지 않는다.
+  라우트는 프리뷰에 실리지 않아 카드가 어긋날 경로가 좁고, 다음 재동기화가 따라잡는다.
 
 - **`dtsPropsFor` 는 OpenAPI 스키마를 손으로 베낀 것이다.** `pnpm api:sync` 로
   `src/shared/api/generated/schema.ts` 가 갱신되면 여기 적힌 DTO 형태가 조용히 낡는다.
