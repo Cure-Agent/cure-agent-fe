@@ -97,9 +97,36 @@ check "design-drift: 등록 소스 삭제 → DRIFT (앵커가 최신이어도 �
   1 "DESIGN_DRIFT result=DRIFT changed=1" "$DRIFT" HEAD
 
 git checkout -q -- src/btn.tsx
+
+# --- driftWatch: 카드가 아닌 의존 파일도 감시 대상에 넣는다 (componentSrcMap 은 카드 목록이라 못 쓴다)
+mkdir -p src/shared
+echo 'export const token = 1' > src/shared/helper.ts
+printf '{"componentSrcMap":{"Btn":"src/btn.tsx"},"driftWatch":["src/shared",":!src/**/*.test.*"]}' \
+  > .design-sync/config.json
+git add -f src/shared/helper.ts .design-sync/config.json
+git -c user.email=smoke@test -c user.name=smoke commit -qm watch
+touch -t 203001010000 .design-sync/.cache/remote-sync.json
+check "design-drift: driftWatch 대상 변경 없음 → CLEAN" \
+  0 "DESIGN_DRIFT result=CLEAN" "$DRIFT" HEAD
+
+touch -t 200001010000 .design-sync/.cache/remote-sync.json
+echo '// touched' >> src/shared/helper.ts
+check "design-drift: driftWatch 의 helper 변경 → DRIFT (componentSrcMap 만 봤다면 놓쳤을 자리)" \
+  1 "DESIGN_DRIFT result=DRIFT changed=1 reason=stale-sources" "$DRIFT" HEAD
+
+git checkout -q -- src/shared/helper.ts
+echo 'export const x = 1' > src/shared/helper.test.ts
+check "design-drift: driftWatch 의 ':!' 제외가 먹는다 → CLEAN (테스트 파일은 번들에 안 실린다)" \
+  0 "DESIGN_DRIFT result=CLEAN" "$DRIFT" HEAD
+rm src/shared/helper.test.ts
+
+printf '{"componentSrcMap":{},"driftWatch":[":!src/**/*.test.*"]}' > .design-sync/config.json
+check "design-drift: 제외 pathspec만 남음 → SKIP (git의 '제외 외 전부' 매칭 방지)" \
+  0 "DESIGN_DRIFT result=SKIP reason=exclude-only" "$DRIFT" HEAD
+
 printf '{"componentSrcMap":{}}' > .design-sync/config.json
-check "design-drift: componentSrcMap 비어 있음 → SKIP (빈 pathspec으로 전체 매칭 방지)" \
-  0 "DESIGN_DRIFT result=SKIP reason=empty-map" "$DRIFT" HEAD
+check "design-drift: 감시 대상 비어 있음 → SKIP (빈 pathspec으로 전체 매칭 방지)" \
+  0 "DESIGN_DRIFT result=SKIP reason=empty-watch" "$DRIFT" HEAD
 
 git checkout -q -- .design-sync/config.json
 check "design-drift: 없는 기준 ref → ERROR (fail-closed)" \
