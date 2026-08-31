@@ -2,12 +2,18 @@
 
 import { useState } from 'react';
 import { messagesFor } from '@/shared/i18n/messages';
-import { useUiLang } from '@/shared/i18n/ui-lang';
+import { type UiLang, useUiLang } from '@/shared/i18n/ui-lang';
 import { useEvidenceDetail } from '../api/guideline.api';
 
 export interface EvidenceFullTextProps {
   /** EvidenceChunk id — GET /evidence/{id} */
   evidenceId: string;
+  /**
+   * 이 근거가 딛고 선 **콘텐츠 언어** (BE docs/specs/44).
+   * 채팅 안에서는 그 메시지의 `responseLang`, 지침 탐색기에서는 대화 맥락이 없으므로 생략한다 —
+   * 없으면 `useUiLang()`으로 떨어진다.
+   */
+  lang?: UiLang;
 }
 
 /**
@@ -23,7 +29,7 @@ export interface EvidenceFullTextProps {
 export function EvidenceFullText({ evidenceId }: EvidenceFullTextProps): React.ReactElement {
   const lang = useUiLang();
   const t = messagesFor(lang);
-  const detail = useEvidenceDetail(evidenceId);
+  const detail = useEvidenceDetail(evidenceId, lang);
   const [originalShown, setOriginalShown] = useState(false);
 
   if (detail.isPending) return <p className="text-sm text-gray-400">{t.fullTextLoading}</p>;

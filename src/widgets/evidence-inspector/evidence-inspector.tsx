@@ -29,11 +29,17 @@ export interface EvidenceItem {
    */
   excerptTranslated?: string;
   titleTranslated?: string;
+  /**
+   * 섹션 경로의 번역 (BE docs/specs/44) — 펼침 헤더가 `제목 · v… · 섹션경로`라, 앞 둘만
+   * 영어가 되면 **한 줄 안에서 언어가 갈린다**. 원문과 같은 길이의 배열로 온다.
+   */
+  sectionPathTranslated?: string[];
   /** 이하 EvidenceDetailResponseDto 통과 필드 — 리터럴 대입 호환용, 렌더에는 쓰지 않는다 */
   guidelineId?: string;
   guidelineVersionId?: string;
   recommendationNumber?: string;
   recommendationText?: string;
+  recommendationTextTranslated?: string;
   evidenceLevel?: components['schemas']['RatingResponseDto'];
   pageStart?: number;
   pageEnd?: number;
@@ -46,6 +52,12 @@ export interface EvidenceInspectorProps {
   evidence: EvidenceItem[];
   activeMarker: number | null;
   onSelectMarker: (marker: number) => void;
+  /**
+   * 이 근거들이 딛고 선 **콘텐츠 언어** — 클릭한 메시지의 `responseLang`이다 (BE docs/specs/44).
+   * 패널 제목 같은 앱 크롬은 이 값이 아니라 `useUiLang()`을 따른다.
+   * 아직 아무 메시지도 고르지 않았으면 없다.
+   */
+  lang?: UiLang;
 }
 
 /** 근거 패널 (assistant·guidelines 공용 widget) */

@@ -11,6 +11,7 @@ import {
 import { api } from '@/shared/api/api-client';
 import { unwrap, unwrapPage } from '@/shared/api/api-error';
 import type { components } from '@/shared/api/generated/schema';
+import type { UiLang } from '@/shared/i18n/ui-lang';
 
 export type GuidelineSummary = components['schemas']['GuidelineSummaryResponseDto'];
 export type GuidelineDetail = components['schemas']['GuidelineDetailResponseDto'];
@@ -27,6 +28,8 @@ type GuidelinePage = { items: GuidelineSummary[]; page: PageInfo };
 
 export function useGuidelines(params: {
   query?: string;
+  /** 목록 제목의 번역 언어 — 대화 맥락이 없는 탐색 화면이므로 UI 토글이 채운다 (§44) */
+  lang: UiLang;
 }): UseInfiniteQueryResult<InfiniteData<GuidelinePage>> {
   return useInfiniteQuery({
     queryKey: ['guidelines', { query: params.query ?? null }],
@@ -77,8 +80,16 @@ export function useGuidelineEvidence(
   });
 }
 
+/**
+ * 근거 전문 — `lang`은 **선택이 아니라 필수**다 (BE docs/specs/44).
+ *
+ * 근거는 대화에 매이지 않은 코퍼스 리소스라 「저장된 언어」가 없다. 그래서 요청이 말해야 하고,
+ * 안 넘기면 조용히 한국어가 되는 것이 이 결함의 구조적 원인이었다 — 호출자마다 언어를 정하게
+ * 강제한다(채팅은 그 메시지의 `responseLang`, 지침 탐색기는 UI 토글).
+ */
 export function useEvidenceDetail(
   evidenceId: string,
+  lang: UiLang,
   options?: { enabled?: boolean },
 ): UseQueryResult<EvidenceDetail> {
   return useQuery({

@@ -8,7 +8,7 @@ import { FormEvent, useState, type ReactElement } from 'react';
 import { EvidenceFullText } from '@/features/filter-guidelines/ui/evidence-full-text';
 import { ApiError } from '@/shared/api/api-error';
 import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
-import { useUiLang } from '@/shared/i18n/ui-lang';
+import { type UiLang, useUiLang } from '@/shared/i18n/ui-lang';
 import {
   type ClinicalGuidance,
   type ReviewDecision,
@@ -19,6 +19,11 @@ type GuidanceCitation = ClinicalGuidance['considerations'][number]['citations'][
 
 export interface GuidanceCardProps {
   guidance: ClinicalGuidance;
+  /**
+   * 이 참고안이 **생성된 언어** — 그 메시지의 `responseLang`이다 (BE docs/specs/44).
+   * 본문·인용·필드 라벨이 이 값을 따르고, 검토 폼은 앱 크롬이라 `useUiLang()`을 따른다.
+   */
+  lang?: UiLang;
 }
 
 const STATUS_LABELS: Record<ClinicalGuidance['reviewStatus'], MessageKey> = {

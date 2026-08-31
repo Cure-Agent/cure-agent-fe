@@ -5,10 +5,12 @@ import type { ReactElement } from 'react';
 import { useClinicalGuidance } from '../api/review-clinical-guidance';
 import { GuidanceCard } from './guidance-card';
 import { formatMessage, messagesFor } from '@/shared/i18n/messages';
-import { useUiLang } from '@/shared/i18n/ui-lang';
+import { type UiLang, useUiLang } from '@/shared/i18n/ui-lang';
 
 export interface GuidanceCardLoaderProps {
   guidanceId: string;
+  /** 이 참고안을 낳은 메시지의 `responseLang` — 카드 내용물의 언어 (BE docs/specs/44) */
+  lang?: UiLang;
 }
 
 export function GuidanceCardLoader({ guidanceId }: GuidanceCardLoaderProps): ReactElement | null {

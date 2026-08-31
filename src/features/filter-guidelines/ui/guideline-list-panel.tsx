@@ -15,7 +15,8 @@ export function GuidelineListPanel({ onSelect }: GuidelineListPanelProps): React
   const t = messagesFor(lang);
   const [input, setInput] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState<string | undefined>(undefined);
-  const guidelines = useGuidelines({ query: submittedQuery });
+  // 지침 탐색기에는 대화 맥락이 없다 — 목록 제목의 언어는 UI 토글이 정한다 (§44 기준 30)
+  const guidelines = useGuidelines({ query: submittedQuery, lang });
 
   const items = useMemo(
     () => (guidelines.data?.pages ?? []).flatMap((page) => page.items),

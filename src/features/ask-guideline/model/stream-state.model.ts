@@ -11,6 +11,8 @@ export type EvidenceDetail = components['schemas']['EvidenceDetailResponseDto'];
 export type MessageDto = components['schemas']['MessageResponseDto'];
 export type GuidanceDto = components['schemas']['ClinicalGuidanceResponseDto'];
 export type AnswerCitation = components['schemas']['AnswerCitationResponseDto'];
+/** 메시지가 자기 언어를 말하는 축 (§44) — 계약의 `MessageResponseDto.responseLang`과 같은 값 */
+export type MessageLang = NonNullable<MessageDto['responseLang']>;
 
 export type StreamPhase =
   | 'idle'
@@ -47,6 +49,12 @@ export interface StreamState {
   pendingUser: MessageDto | null;
   /** PATIENT_GUIDANCE completed의 임상 참고안 (spec 10 — additive) */
   guidance: GuidanceDto | null;
+  /**
+   * 이번 스트림의 **응답 언어** — 방금 보낸 질의에서 유도한 값이다 (BE docs/specs/44).
+   * 종결 메시지가 도착하기 전까지 화면이 딛는 값이고, 도착한 뒤에는 `message.responseLang`이
+   * 같은 자리를 잇는다. 재조회 경로에는 저장된 메시지가 자기 언어를 말한다.
+   */
+  responseLang: MessageLang;
   error: StreamError | null;
 }
 
@@ -61,12 +69,13 @@ export const initialStreamState: StreamState = {
   message: null,
   pendingUser: null,
   guidance: null,
+  responseLang: 'ko',
   error: null,
 };
 
 export type StreamAction =
   | { type: 'event'; event: StreamEvent }
-  | { type: 'send'; message: MessageDto }
+  | { type: 'send'; message: MessageDto; responseLang: MessageLang }
   | { type: 'streamFailed'; message: string }
   | { type: 'reset' };
 
