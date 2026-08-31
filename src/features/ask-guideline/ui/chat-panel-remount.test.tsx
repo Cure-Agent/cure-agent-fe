@@ -5,12 +5,14 @@
 // 서버는 SSE를 열기 **전에** USER 메시지를 커밋하므로(§8 message.accepted), 그 신호가 오는
 // 즉시 메시지 목록 캐시가 서버를 따라잡아야 화면을 떠난 뒤에도 질문이 남는다.
 import { type InfiniteData, QueryClient } from '@tanstack/react-query';
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SendMessageArgs } from '../api/send-message';
+import type { StreamEvent } from '@/shared/api/stream-client';
 import type { MessageDto } from '../model/stream-state.model';
+import { resetAllStreams } from '../model/stream-store';
 import { type MessagePage, messagesKey } from '@/features/manage-conversation/api/conversation.api';
 import { createQueryClient } from '@/shared/api/query-client';
 import { envelope, server, useMswServer } from '@/shared/test/msw';
@@ -30,6 +32,8 @@ useMswServer();
 
 beforeEach(() => {
   sendMessageStreamMock.mockReset();
+  // 스트림 상태는 모듈 전역이라 테스트끼리 새지 않게 비운다
+  resetAllStreams();
 });
 
 const PAGE = { size: 50, hasNext: false, nextCursor: null };
@@ -182,6 +186,55 @@ describe('ChatPanel 화면 이탈 후 복귀', () => {
     expect(screen.queryByText(streamingAnswer.content)).toBeNull();
     // 내 질문은 그대로 하나만 — 로컬 낙관 렌더와 서버 목록이 겹쳐 보이지 않는다
     expect(screen.getAllByText(QUESTION)).toHaveLength(1);
+  });
+
+  it('돌아오면 진행 중이던 답변이 그대로 이어진다', async () => {
+    let persisted: MessageDto[] = [];
+    server.use(
+      http.get('/api/v1/conversations/conversation-4/messages', () =>
+        HttpResponse.json(envelope(persisted, PAGE)),
+      ),
+    );
+    // 화면을 떠나도 SSE는 끊기지 않는다(abort signal을 넘기지 않는다) — 이벤트는 계속 도착한다
+    let emit: ((event: StreamEvent) => void) | null = null;
+    sendMessageStreamMock.mockImplementation((args) => {
+      emit = args.onEvent;
+      args.onEvent({
+        eventType: 'message.accepted',
+        requestId: 'request-1',
+        userMessageId: userMessage.id,
+        assistantMessageId: streamingAnswer.id,
+      });
+      persisted = [streamingAnswer, userMessage];
+      args.onEvent({ eventType: 'retrieval.started' });
+      return new Promise<void>(() => {});
+    });
+
+    const queryClient = appQueryClient();
+    const user = userEvent.setup();
+    const first = renderWithProviders(<ChatPanel conversationId="conversation-4" />, {
+      queryClient,
+    });
+
+    await sendQuestion(user);
+    await screen.findByText('지침 근거를 검색하는 중…');
+
+    first.unmount();
+    renderWithProviders(<ChatPanel conversationId="conversation-4" />, { queryClient });
+
+    // 진행 중이라는 사실이 그대로 돌아온다 — 답변 자리가 비지 않는다
+    expect(await screen.findByText('지침 근거를 검색하는 중…')).toBeTruthy();
+
+    // 떠나 있는 동안에도 도착하던 이벤트를 돌아온 화면이 이어받는다
+    act(() => {
+      emit?.({
+        eventType: 'answer.delta',
+        messageId: streamingAnswer.id,
+        seq: 0,
+        delta: '침 치료를 ',
+      });
+    });
+    expect(await screen.findByText('침 치료를')).toBeTruthy();
   });
 });
 

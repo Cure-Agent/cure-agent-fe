@@ -65,6 +65,15 @@ const ko = {
   retry: '다시 시도',
   loadingOlderMessages: '이전 대화를 불러오는 중…',
   retrievingEvidence: '지침 근거를 검색하는 중…',
+  /**
+   * 이어받을 스트림 없이 연 화면(새로고침·다른 탭)이 진행 중인 답변을 만났을 때.
+   * 어느 단계인지 알 수 없으므로 `retrievingEvidence`를 재사용하지 않는다 — 근거 검색이
+   * 이미 끝난 답변에도 「검색하는 중」이라 쓰면 틀린 말이 된다.
+   */
+  answerInProgress: '답변을 생성하는 중…',
+  /** 위 상태로 너무 오래된 답변 — 실패라고 단정하지 않는다(서버는 방금 끝냈을 수도 있다) */
+  answerNotArrived: '답변이 아직 도착하지 않았습니다.',
+  checkAgain: '다시 확인',
   abstainedNotice: '검색 조건에 해당하는 지침 근거를 찾지 못해 답변을 보류했습니다.',
   streamDisconnected: '답변이 완료되기 전에 연결이 끊겼습니다.',
   streamAborted: '스트림이 중단되었습니다.',
@@ -363,6 +372,9 @@ const en: Record<MessageKey, string> = {
   retry: 'Try again',
   loadingOlderMessages: 'Loading earlier messages…',
   retrievingEvidence: 'Searching the guidelines for evidence…',
+  answerInProgress: 'Generating the answer…',
+  answerNotArrived: 'The answer has not arrived yet.',
+  checkAgain: 'Check again',
   abstainedNotice:
     'No guideline evidence matched this question, so the answer was withheld.',
   streamDisconnected: 'The connection dropped before the answer finished.',

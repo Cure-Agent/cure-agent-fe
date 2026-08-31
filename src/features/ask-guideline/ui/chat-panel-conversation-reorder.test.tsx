@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SendMessageArgs } from '../api/send-message';
 import type { MessageDto } from '../model/stream-state.model';
+import { resetAllStreams } from '../model/stream-store';
 import { CONVERSATIONS_KEY } from '@/features/manage-conversation/api/conversation.api';
 import { envelope, server, useMswServer } from '@/shared/test/msw';
 import { renderWithProviders } from '@/shared/test/render';
@@ -24,6 +25,9 @@ useMswServer();
 
 beforeEach(() => {
   sendMessageStreamMock.mockReset();
+  // 두 테스트가 같은 대화 id를 쓴다 — 스트림 상태는 모듈 전역이라 앞 테스트의 진행 중
+  // 스트림이 남아 있으면 다음 테스트가 그것을 이어받는다 (stream-store)
+  resetAllStreams();
 });
 
 const PAGE = { size: 50, hasNext: false, nextCursor: null };
