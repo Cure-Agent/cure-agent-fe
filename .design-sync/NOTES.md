@@ -40,6 +40,18 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 - **`@source "./previews/*.tsx"`** (`tailwind-entry.css`) — `.design-sync` 는 dot 디렉터리라
   Tailwind 자동 소스 탐지가 건너뛴다. **프리뷰를 새로 쓰거나 고치면 Tailwind 를 다시 컴파일해야**
   거기서 처음 쓴 클래스가 CSS 에 들어간다.
+- **`@import '../src/app/utilities.css'`** (`tailwind-entry.css`, 2026-08-31 추가) — 앱이 직접
+  정의한 `@utility`·`@keyframes` 를 번들 CSS 에도 싣는다. 그 전까지 이 엔트리는
+  `@import 'tailwindcss'` 만 해서 **커스텀 유틸리티가 번들에 하나도 없었다**
+  (`tour-highlight`·`scrollbar-hidden`·`@keyframes tour-ring` 전부 0건). `@source` 는
+  클래스 *사용처* 만 훑을 뿐 유틸리티 *정의* 를 가져오지 않는다 — 정의가 없으면 그 클래스는
+  출력에서 조용히 빠진다. **`globals.css` 를 통째로 import 하지 말 것**: 그 파일의
+  `@import 'tailwindcss'` 가 자동 소스 탐지를 켜서 여기 `source(none)` + 명시적 `@source`
+  조합과 충돌한다. 그래서 공유 조각만 `src/app/utilities.css` 로 갈라 두고 양쪽이 그것만
+  가져간다. **새 유틸리티는 `globals.css` 가 아니라 그 파일에 넣어야** 양쪽이 함께 받는다.
+  (당시 실제 영향은 없었다 — `scrollbar-hidden` 은 픽스처가 넘치지 않아 카드에서 스크롤바가
+  애초에 안 그려졌고, `tour-highlight` 는 둘러보기가 켜져 있을 때만 붙는다. 5개 컴포넌트를
+  강제 재캡처해 확인함.)
 - **`.design-sync/tsconfig.json` + `ds-preview/preview-module.ts`** — 에디터와 CI 검사용이고
   빌드에는 관여하지 않는다. 프리뷰는 패키지 이름 `cure-agent-fe` 로 import 하는데 (번들에서 `entry.ts` 와
   `extraEntries` 의 export 가 한 전역으로 합쳐지므로 옳다) 레포에 `node_modules/cure-agent-fe` 가
@@ -207,6 +219,13 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 **mtime 이 판정 기준**이므로 파일이 이미 같은 내용이어도 복사는 해야 한다.
 
 ## 재동기화 위험 (다음 실행이 지켜볼 것)
+
+- **드리프트 게이트는 `componentSrcMap` 에 등록된 소스만 본다.** 등록 컴포넌트가 *가져다 쓰는*
+  파일 — helper 모듈, `src/app/utilities.css` — 을 고치면 게이트가 `CLEAN` 을 내는데도 번들은
+  드리프트한다. 2026-08-31 의 `utilities.css` 분리가 실제로 그랬다(게이트 CLEAN, `styleSha`
+  변경). **등록 컴포넌트가 import 하는 것을 고친 배포에서는 게이트 결과와 무관하게
+  재동기화할 것.** 근본 해결은 게이트를 의존성 추적으로 넓히거나 그 파일들을
+  `componentSrcMap` 에 얹는 것인데 아직 안 했다.
 
 - **`dtsPropsFor` 는 OpenAPI 스키마를 손으로 베낀 것이다.** `pnpm api:sync` 로
   `src/shared/api/generated/schema.ts` 가 갱신되면 여기 적힌 DTO 형태가 조용히 낡는다.
