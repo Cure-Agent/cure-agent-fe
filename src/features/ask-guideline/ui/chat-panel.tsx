@@ -75,7 +75,16 @@ export function ChatPanel({
   const inFlight =
     state.phase === 'accepted' || state.phase === 'retrieving' || state.phase === 'streaming';
 
-  const persisted = useMemo(() => flatMessagesChronological(messages.data), [messages.data]);
+  /**
+   * 아직 쓰이는 중인 답변 행은 목록에서 걷어낸다. 질문이 수락되면(아래 재조회 effect) 서버
+   * 목록에는 그때 함께 만들어진 `status: 'STREAMING'` 답변 행이 **본문 없이** 실려 오는데,
+   * `MessageBubble`은 상태를 보지 않으므로 그대로 두면 빈 말풍선이 생긴다. 그 자리는 종결까지
+   * 아래 스트리밍 영역(재진입 뒤라면 아무것도)이 맡고, 본문은 종결 재조회가 채워 온다.
+   */
+  const persisted = useMemo(
+    () => flatMessagesChronological(messages.data).filter((m) => m.status !== 'STREAMING'),
+    [messages.data],
+  );
   // 스트림 종결 후 invalidate가 반영되기 전까지는 로컬 최종 메시지를 보여준다
   const localFinal =
     state.message && !persisted.some((m) => m.id === state.message?.id) ? state.message : null;
@@ -138,21 +147,29 @@ export function ChatPanel({
   }, [state.phase, conversationId, queryClient]);
 
   /**
-   * 대화 목록은 답변 종결이 아니라 질문 수락 시점에 갱신한다 — 목록이 보여주는 두 가지가
-   * 서버에서 이미 그때 확정되기 때문이다. 수락 tx가 lastMessageAt을 올려 정렬을 정하고,
-   * 기본 제목인 대화라면 첫 질문으로 제목까지 같은 tx에서 확정한다. 답변을 기다릴 이유가 없다.
+   * 대화 목록도, 메시지 목록도 답변 종결이 아니라 **질문 수락 시점**에 갱신한다 — 둘이
+   * 보여주는 것이 서버에서 이미 그때 확정되기 때문이다. 수락 tx가 lastMessageAt을 올려 정렬을
+   * 정하고, 기본 제목인 대화라면 첫 질문으로 제목까지 같은 tx에서 확정한다.
    * (목록은 lastMessagePreview를 그리지 않는다 — 그리게 되면 종결 시점 재조회가 다시 필요하다.)
+   *
+   * 메시지 목록이 여기 함께 있는 이유가 이 버그의 핵심이다. **내 질문은 전송 직후 로컬
+   * state(`pendingUser`)에만 산다** — 서버는 본문을 되돌려주지 않으므로 화면이 그것을 들고 있는
+   * 것인데, 다른 화면으로 가 이 컴포넌트가 언마운트되면 그대로 증발한다. 종결까지 기다렸다
+   * 재조회하면 스트리밍 도중 떠난 사람에게는 그 시점이 영영 오지 않아, 돌아왔을 때 질문만
+   * 사라진 대화가 남는다. USER 메시지는 SSE를 열기 전에 이미 커밋되므로(§8) 이 신호가 오면
+   * 목록 조회는 반드시 그 질문을 돌려준다 — 답변을 기다릴 이유가 없다.
    *
    * phase로 판정하지 않는 이유: 'send' 액션이 전송 버튼을 잠그려고 서버 응답 전에 이미
    * phase를 'accepted'로 올린다(stream-state.model). 그 시점에 재조회하면 커밋 전 목록을
-   * 받아 제목도 순서도 그대로다. userMessageId는 서버 message.accepted만 채우므로
+   * 받아 제목도 순서도 그대로고 질문도 없다. userMessageId는 서버 message.accepted만 채우므로
    * 「서버가 실제로 수락했다」의 유일한 신호다.
    */
   useEffect(() => {
     if (state.userMessageId) {
       void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
+      void queryClient.invalidateQueries({ queryKey: messagesKey(conversationId) });
     }
-  }, [state.userMessageId, queryClient]);
+  }, [state.userMessageId, conversationId, queryClient]);
 
   const send = async (content: string, clientRequestId: string): Promise<void> => {
     setLastRequest({ content, clientRequestId });
