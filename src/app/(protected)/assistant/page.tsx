@@ -10,7 +10,7 @@ import { ChatPanel } from '@/features/ask-guideline/ui/chat-panel';
 import type { ConversationSummary } from '@/features/manage-conversation/api/conversation.api';
 import { ConversationList } from '@/features/manage-conversation/ui/conversation-list';
 import { messagesFor } from '@/shared/i18n/messages';
-import { useUiLang } from '@/shared/i18n/ui-lang';
+import { type UiLang, useUiLang } from '@/shared/i18n/ui-lang';
 import {
   type EvidenceItem,
   EvidenceInspector,
@@ -27,15 +27,22 @@ function AssistantScreen(): React.ReactElement {
   );
   const [evidence, setEvidence] = useState<EvidenceItem[]>([]);
   const [activeMarker, setActiveMarker] = useState<number | null>(null);
+  /**
+   * 근거 패널이 딛고 설 **콘텐츠 언어** — 이 스텝이 표시 언어의 원천을 바꾸는 자리다
+   * (BE docs/specs/44). 지금 담긴 근거를 넘겨준 메시지의 `responseLang`이며, 아직 아무
+   * 메시지도 고르지 않았으면 없다(패널이 UI 토글로 떨어진다).
+   */
+  const [evidenceLang, setEvidenceLang] = useState<UiLang | undefined>(undefined);
 
-  const handleEvidenceChange = useCallback((items: EvidenceDetail[]) => {
+  const handleEvidenceChange = useCallback((items: EvidenceDetail[], lang: UiLang) => {
     setEvidence(items);
+    setEvidenceLang(lang);
     setActiveMarker(null);
   }, []);
 
   // 과거 저장 메시지의 인용 마커 클릭 — 그 메시지의 인용 목록으로 근거 패널을 복원한다
   const handleShowCitations = useCallback(
-    (citations: AnswerCitation[], marker: number) => {
+    (citations: AnswerCitation[], marker: number, lang: UiLang) => {
       setEvidence(
         citations.map((citation) => ({
           id: citation.evidenceId,
@@ -48,8 +55,13 @@ function AssistantScreen(): React.ReactElement {
           // excerptTranslated와 같은 자리로 본다 (BE docs/specs/42)
           excerptTranslated: citation.quoteTranslated,
           titleTranslated: citation.titleTranslated,
+          // 헤더가 `제목 · v… · 섹션경로` 한 줄이라 셋이 같은 축에 서야 한다 (§44)
+          sectionPathTranslated: citation.sectionPathTranslated,
+          // 정본 도달 경로 — 「한국어 원문 보기」 토글을 대신한다 (§44)
+          sourceUrl: citation.sourceUrl,
         })),
       );
+      setEvidenceLang(lang);
       setActiveMarker(marker);
     },
     [],
@@ -58,6 +70,7 @@ function AssistantScreen(): React.ReactElement {
   const handleSelectConversation = useCallback((conversation: ConversationSummary) => {
     setSelectedId(conversation.id);
     setEvidence([]);
+    setEvidenceLang(undefined);
     setActiveMarker(null);
   }, []);
 
@@ -65,6 +78,7 @@ function AssistantScreen(): React.ReactElement {
   const handleDeleteConversation = useCallback(() => {
     setSelectedId(null);
     setEvidence([]);
+    setEvidenceLang(undefined);
     setActiveMarker(null);
   }, []);
 
@@ -96,6 +110,7 @@ function AssistantScreen(): React.ReactElement {
         evidence={evidence}
         activeMarker={activeMarker}
         onSelectMarker={setActiveMarker}
+        lang={evidenceLang}
       />
     </div>
   );

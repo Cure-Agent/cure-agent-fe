@@ -9,7 +9,8 @@ import {
 } from '../api/guideline.api';
 import { EvidenceFullText } from './evidence-full-text';
 import { type MessageKey, formatMessage, messagesFor } from '@/shared/i18n/messages';
-import { useUiLang } from '@/shared/i18n/ui-lang';
+import { ratingLabel } from '@/shared/i18n/rating-label';
+import { type UiLang, useUiLang } from '@/shared/i18n/ui-lang';
 
 export interface GuidelineDetailPanelProps {
   guidelineId: string;
@@ -74,7 +75,7 @@ export function GuidelineDetailPanel({
       {evidence.isPending && <p className="mt-2 text-sm text-gray-400">{t.loading}</p>}
       <ul className="mt-2 space-y-2">
         {evidenceItems.map((item) => (
-          <EvidenceListItem key={item.id} item={item} t={t} />
+          <EvidenceListItem key={item.id} item={item} t={t} lang={lang} />
         ))}
       </ul>
 
@@ -91,9 +92,11 @@ export function GuidelineDetailPanel({
 function EvidenceListItem({
   item,
   t,
+  lang,
 }: {
   item: EvidenceSummary;
   t: Record<MessageKey, string>;
+  lang: UiLang;
 }): React.ReactElement {
   const [expanded, setExpanded] = useState(false);
 
@@ -113,7 +116,8 @@ function EvidenceListItem({
           {item.recommendationGrade &&
             formatMessage(t.gradeSuffix, {
                       code: item.recommendationGrade.code,
-                      label: item.recommendationGrade.label,
+                      // 대화 맥락이 없는 화면이라 등급 라벨도 UI 토글을 따른다 (§44 기준 30)
+                      label: ratingLabel(item.recommendationGrade.label, lang),
                     })}
           {item.evidenceLevel &&
                     formatMessage(t.evidenceLevelSuffix, { code: item.evidenceLevel.code })}

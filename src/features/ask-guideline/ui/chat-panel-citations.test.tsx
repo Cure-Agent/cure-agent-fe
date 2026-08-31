@@ -79,7 +79,9 @@ describe('ChatPanel 저장 메시지 인용', () => {
     await user.click(await screen.findByRole('button', { name: '[2]' }));
 
     expect(onShowCitations).toHaveBeenCalledTimes(1);
-    expect(onShowCitations).toHaveBeenCalledWith(citations, 2);
+    // 세 번째 인자(콘텐츠 언어)는 §44가 정하는 축이라 여기서 값을 단언하지 않는다 —
+    // 이 테스트가 지키는 것은 「어느 인용 목록과 마커가 넘어가는가」다
+    expect(onShowCitations).toHaveBeenCalledWith(citations, 2, expect.anything());
     expect(onSelectMarker).toHaveBeenCalledWith(2);
   });
 });

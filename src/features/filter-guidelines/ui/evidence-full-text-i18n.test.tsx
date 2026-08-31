@@ -60,21 +60,25 @@ describe('EvidenceFullText 번역 표시', () => {
     expect(screen.queryByRole('button', { name: '한국어 원문 보기' })).toBeNull();
   });
 
-  it('영문 화면에서 번역이 있으면 번역을 그리고, 한국어 원문에 도달할 수 있다', async () => {
+  /**
+   * §42는 정본 도달을 **인라인 토글**로 충족했고, §44가 그 수단을 **원문 링크**로 옮겼다
+   * (판단표 「한국어 원문에 어떻게 도달하는가」). 요구는 그대로이고 이 단언만 자리를 옮긴다 —
+   * 회귀가 아니라 의도된 전환이다(spec 44 위험 ⑷).
+   */
+  it('영문 화면에서 번역이 있으면 번역을 그리고, 원문 링크로 한국어 정본에 도달할 수 있다', async () => {
     setLanguageInputs('en-US', null);
     mockEvidence({ excerptTranslated: EN_EXCERPT });
 
-    const user = userEvent.setup();
     renderWithProviders(<EvidenceFullText evidenceId="ev-1" />);
 
     expect(await screen.findByText('Excerpt')).toBeTruthy();
     expect(screen.getByText(EN_EXCERPT)).toBeTruthy();
     expect(screen.queryByText(KO_EXCERPT)).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: 'Show Korean original' }));
-
-    expect(screen.getByText(KO_EXCERPT)).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Hide Korean original' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'View source (NCKM)' })).toHaveAttribute(
+      'href',
+      'https://example.test/guidelines/g-1',
+    );
   });
 
   it('영문 화면에서 번역이 없으면 원문을 그대로 두고 발췌에 미번역 배지를 붙인다', async () => {

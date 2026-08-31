@@ -24,7 +24,7 @@ import { useChatAutoScroll } from '@/shared/lib/use-chat-auto-scroll';
 import { GuidanceCard } from '@/features/review-clinical-guidance/ui/guidance-card';
 import { GuidanceCardLoader } from '@/features/review-clinical-guidance/ui/guidance-card-loader';
 import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
-import { useUiLang } from '@/shared/i18n/ui-lang';
+import { type UiLang, useUiLang } from '@/shared/i18n/ui-lang';
 import { sendMessageStream } from '../api/send-message';
 import { resolveResponseLang } from '../lib/response-lang';
 import { resolveSuggestedPrompts } from '../lib/suggested-prompts';
@@ -44,12 +44,18 @@ import {
 
 export interface ChatPanelProps {
   conversationId: string;
-  /** retrieval.completed 시 근거 패널(evidence-inspector)로 전달 */
-  onEvidenceChange?: (evidence: EvidenceDetail[]) => void;
+  /**
+   * retrieval.completed 시 근거 패널(evidence-inspector)로 전달.
+   * `lang`은 지금 답해지고 있는 언어다 — 스트리밍 근거도 답변과 같은 언어로 서야 한다 (§44).
+   */
+  onEvidenceChange?: (evidence: EvidenceDetail[], lang: UiLang) => void;
   /** answer.completed의 citation marker 선택 시 */
   onSelectMarker?: (marker: number) => void;
-  /** 인용 마커 클릭 시 해당 메시지의 인용 목록 전달 — 과거 저장분도 근거 패널이 복원한다 */
-  onShowCitations?: (citations: AnswerCitation[], marker: number) => void;
+  /**
+   * 인용 마커 클릭 시 해당 메시지의 인용 목록 전달 — 과거 저장분도 근거 패널이 복원한다.
+   * `lang`은 **그 메시지의 응답 언어**다 — 근거 패널이 어느 언어로 설지를 여기서 정한다 (§44).
+   */
+  onShowCitations?: (citations: AnswerCitation[], marker: number, lang: UiLang) => void;
 }
 
 export function ChatPanel({
@@ -162,9 +168,19 @@ export function ChatPanel({
    */
   useEffect(() => () => releaseStream(conversationId), [conversationId]);
 
+  /**
+   * 이 화면의 **콘텐츠 언어 축** (BE docs/specs/44).
+   *
+   * 스트림 중에는 방금 보낸 질의에서 유도한 `state.responseLang`이, 종결·재조회에서는 저장된
+   * `message.responseLang`이 그 자리를 잇는다. `responseLang`이 없는 과거 메시지는 `ko`로
+   * 읽는다 — BE가 기본값으로 백필하는 축과 같다(§42 기준 3 계승).
+   */
+  const messageLang = (message: MessageDto): UiLang => message.responseLang ?? 'ko';
+  const streamLang: UiLang = state.message?.responseLang ?? state.responseLang;
+
   useEffect(() => {
-    onEvidenceChange?.(state.evidence);
-  }, [state.evidence, onEvidenceChange]);
+    onEvidenceChange?.(state.evidence, streamLang);
+  }, [state.evidence, streamLang, onEvidenceChange]);
 
   // 종결 시 서버 상태로 동기화 (§8 복구 폴백: GET messages가 최종 진실).
   // error도 포함한다 — 비정상 종료 뒤 서버가 이미 COMPLETED로 확정했을 수 있다.
@@ -210,9 +226,14 @@ export function ChatPanel({
 
   const send = async (content: string, clientRequestId: string): Promise<void> => {
     rememberRequest(conversationId, { content, clientRequestId });
+    // 답변 언어는 **화면 언어가 아니라 방금 쓴 문장**이 정한다 — 예시를 누르면 보이던
+    // 문장이 그대로 전송되므로(spec 41 기준 27), 이 유도가 질의 언어와 답변 언어를
+    // 저절로 일치시킨다. 한국어 화면에 영문을 붙여넣어 던져도 답은 영어로 온다.
+    const responseLang = resolveResponseLang(content);
     // 내 질문은 서버 왕복을 기다리지 않고 즉시 그린다 — 본문은 이미 여기 있고, 서버는 id만 돌려준다
     dispatch({
       type: 'send',
+      responseLang,
       message: {
         id: clientRequestId,
         role: 'USER',
@@ -227,10 +248,7 @@ export function ChatPanel({
         conversationId,
         content,
         clientRequestId,
-        // 답변 언어는 **화면 언어가 아니라 방금 쓴 문장**이 정한다 — 예시를 누르면 보이던
-        // 문장이 그대로 전송되므로(spec 41 기준 27), 이 유도가 질의 언어와 답변 언어를
-        // 저절로 일치시킨다. 한국어 화면에 영문을 붙여넣어 던져도 답은 영어로 온다.
-        responseLang: resolveResponseLang(content),
+        responseLang,
         onEvent: (event) => dispatch({ type: 'event', event }),
       });
       // 종결 이벤트 없이 연결이 닫힌 경우(예: 스트리밍 도중 토큰 만료)도 실패로 확정한다.
@@ -293,8 +311,8 @@ export function ChatPanel({
   };
 
   // 인용 클릭 = 그 메시지의 인용 목록으로 근거 패널 복원 + 마커 선택
-  const handleCite = (citations: AnswerCitation[], marker: number): void => {
-    onShowCitations?.(citations, marker);
+  const handleCite = (citations: AnswerCitation[], marker: number, citeLang: UiLang): void => {
+    onShowCitations?.(citations, marker, citeLang);
     onSelectMarker?.(marker);
   };
 
@@ -313,20 +331,40 @@ export function ChatPanel({
         )}
         {persisted.map((message) => (
           <div key={message.id} className="space-y-4">
-            <MessageBubble message={message} onCite={handleCite} t={t} />
+            <MessageBubble
+              message={message}
+              onCite={handleCite}
+              t={messagesFor(messageLang(message))}
+              lang={messageLang(message)}
+            />
             {/* 새로고침 복원 경로 — 방금 스트림으로 받은 카드(아래)가 있으면 중복 표시하지 않는다 */}
             {message.guidanceId && message.id !== state.message?.id && (
-              <GuidanceCardLoader guidanceId={message.guidanceId} />
+              <GuidanceCardLoader guidanceId={message.guidanceId} lang={messageLang(message)} />
             )}
           </div>
         ))}
 
-        {localUser && <MessageBubble message={localUser} onCite={handleCite} t={t} />}
+        {/* 내 질문은 내가 쓴 그대로다 — 유도한 응답 언어가 이 블록의 축이다 */}
+        {localUser && (
+          <MessageBubble
+            message={localUser}
+            onCite={handleCite}
+            t={messagesFor(streamLang)}
+            lang={streamLang}
+          />
+        )}
 
-        {localFinal && <MessageBubble message={localFinal} onCite={handleCite} t={t} />}
+        {localFinal && (
+          <MessageBubble
+            message={localFinal}
+            onCite={handleCite}
+            t={messagesFor(messageLang(localFinal))}
+            lang={messageLang(localFinal)}
+          />
+        )}
 
         {state.phase === 'completed' && state.guidance && (
-          <GuidanceCard key={state.guidance.id} guidance={state.guidance} />
+          <GuidanceCard key={state.guidance.id} guidance={state.guidance} lang={streamLang} />
         )}
 
         {inFlight && (
@@ -366,8 +404,11 @@ export function ChatPanel({
           </div>
         )}
 
-        {/* message가 실려 있으면 위 localFinal(MessageBubble)이 같은 안내를 그린다 — 없을 때만 폴백 */}
-        {state.phase === 'abstained' && !state.message && <AbstainedNotice t={t} />}
+        {/* message가 실려 있으면 위 localFinal(MessageBubble)이 같은 안내를 그린다 — 없을 때만 폴백.
+            보류 안내는 답변이 서야 할 자리를 대신하므로 내용물 축을 따른다 (§44) */}
+        {state.phase === 'abstained' && !state.message && (
+          <AbstainedNotice t={messagesFor(streamLang)} />
+        )}
 
         {/* 중단 시점까지 받은 본문은 버리지 않는다 — 사용자가 읽던 답변이다 */}
         {state.phase === 'error' && state.content && (
@@ -497,10 +538,13 @@ function MessageBubble({
   message,
   onCite,
   t,
+  lang,
 }: {
   message: MessageDto;
-  onCite?: (citations: AnswerCitation[], marker: number) => void;
+  onCite?: (citations: AnswerCitation[], marker: number, lang: UiLang) => void;
   t: Record<MessageKey, string>;
+  /** 이 메시지 블록의 콘텐츠 언어 — 인용을 넘길 때 함께 실린다 (§44) */
+  lang: UiLang;
 }): React.ReactElement {
   // 보류 답변은 본문이 비어 있을 수 있다 — 대화를 다시 열어도 스트림 때와 같은 안내를 그린다
   if (message.status === 'ABSTAINED') {
@@ -521,7 +565,7 @@ function MessageBubble({
               <button
                 key={citation.marker}
                 type="button"
-                onClick={() => onCite?.(message.citations, citation.marker)}
+                onClick={() => onCite?.(message.citations, citation.marker, lang)}
                 className="rounded border border-emerald-300 bg-white px-1.5 py-0.5 font-mono text-xs text-emerald-700 hover:bg-emerald-50"
                 title={citation.guidelineTitle}
               >

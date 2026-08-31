@@ -5,15 +5,21 @@ import type { ReactElement } from 'react';
 import { useClinicalGuidance } from '../api/review-clinical-guidance';
 import { GuidanceCard } from './guidance-card';
 import { formatMessage, messagesFor } from '@/shared/i18n/messages';
-import { useUiLang } from '@/shared/i18n/ui-lang';
+import { type UiLang, useUiLang } from '@/shared/i18n/ui-lang';
 
 export interface GuidanceCardLoaderProps {
   guidanceId: string;
+  /** 이 참고안을 낳은 메시지의 `responseLang` — 카드 내용물의 언어 (BE docs/specs/44) */
+  lang?: UiLang;
 }
 
-export function GuidanceCardLoader({ guidanceId }: GuidanceCardLoaderProps): ReactElement | null {
-  const lang = useUiLang();
-  const t = messagesFor(lang);
+export function GuidanceCardLoader({
+  guidanceId,
+  lang,
+}: GuidanceCardLoaderProps): ReactElement | null {
+  const uiLang = useUiLang();
+  // 조회 중·실패 안내는 카드가 아직 없는 자리라 앱 크롬이다 — UI 토글을 따른다
+  const t = messagesFor(uiLang);
   const guidance = useClinicalGuidance(guidanceId);
 
   if (guidance.isPending) {
@@ -22,5 +28,5 @@ export function GuidanceCardLoader({ guidanceId }: GuidanceCardLoaderProps): Rea
   if (guidance.isError || !guidance.data) {
     return <p className="text-sm text-red-500">{t.guidanceLoadFailed}</p>;
   }
-  return <GuidanceCard key={guidance.data.id} guidance={guidance.data} />;
+  return <GuidanceCard key={guidance.data.id} guidance={guidance.data} lang={lang} />;
 }
