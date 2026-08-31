@@ -2,7 +2,11 @@
 
 /** 환자 상세 → PATIENT_GUIDANCE 대화 시작 버튼 (docs/specs/10 기준 9) */
 import type { ReactElement } from 'react';
-import { completeTourStep, useTourHighlight } from '@/features/onboarding-tour/model/tour-state';
+import {
+  TOUR_HIGHLIGHT_ON_SOLID,
+  completeTourStep,
+  useTourHighlight,
+} from '@/features/onboarding-tour/model/tour-state';
 import { useRequestClinicalGuidance } from '../api/request-clinical-guidance';
 import { messagesFor } from '@/shared/i18n/messages';
 import { useUiLang } from '@/shared/i18n/ui-lang';
@@ -50,7 +54,7 @@ export function RequestGuidanceButton({
         type="button"
         onClick={handleClick}
         disabled={requestGuidance.isPending}
-        className={`rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 ${highlight}`}
+        className={`rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 ${TOUR_HIGHLIGHT_ON_SOLID} ${highlight}`}
       >
         {t.startPatientConversation}
       </button>

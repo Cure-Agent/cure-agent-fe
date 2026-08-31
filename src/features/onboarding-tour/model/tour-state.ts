@@ -164,5 +164,16 @@ export function useTourHighlight(anchor: TourAnchor): string {
   return active ? TOUR_HIGHLIGHT_CLASS : '';
 }
 
-/** `globals.css`의 `tour-highlight` — 링과 바깥으로 퍼지는 맥동을 함께 그린다 */
+/** `globals.css`의 `tour-highlight` — 요소 안쪽에 링을 두르고 그 안으로 맥동을 번지게 한다 */
 export const TOUR_HIGHLIGHT_CLASS = 'tour-highlight';
+
+/**
+ * 진한 emerald 버튼에 함께 붙이는 링 색 뒤집기.
+ *
+ * 링을 요소 **안쪽에** 그리기 때문에 필요하다 — 밖에 그리던 시절에는 흰 간격이 배경과 링을
+ * 갈라 줬지만, 안쪽에서는 emerald-700 버튼 위의 emerald-500 링이 그대로 묻힌다. 강조 대상
+ * 중 「새 대화」·「전송」·「환자 맞춤 대화 시작」 셋이 그런 버튼이라 그 셋만 흰 링으로 바꾼다.
+ *
+ * 둘러보기가 꺼져 있으면 변수만 선언될 뿐 아무것도 그리지 않으므로 늘 붙여 두어도 된다.
+ */
+export const TOUR_HIGHLIGHT_ON_SOLID = '[--tour-ring:#fff]';
