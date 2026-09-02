@@ -10,11 +10,12 @@
  * - BE가 봉투에 실어 보내는 오류 문구 — 소유자가 BE다. FE는 봉투에 문구가 없을 때의
  *   폴백만 든다
  *
- * **`guidance-title.ts`는 여기서 빠져나갔다.** 「서버에 저장되는 제목이라 화면 언어로 바꾸면
- * 방문자마다 갈린다」가 원래 근거였는데, 그건 **렌더 시점에 번역할 때** 성립하는 말이다.
- * 그 제목은 생성 시점에 한 번 확정돼 저장되므로 방문자마다 갈릴 수가 없다 — 첫 질문의 언어로
- * 굳는 서버 자동 제목과 같은 성질이고, 그래서 `guidanceTitleTemplate`으로 들어왔다.
- * 저장되는 문자열이 언어를 갖는 것과, 저장된 문자열을 보는 쪽에서 번역하는 것은 다른 문제다.
+ * **`guidanceTitleTemplate`은 양방향으로 쓰인다.** 생성 시점에 제목을 조립해 서버에 저장하고,
+ * 목록이 그 제목을 되읽어 화면 언어로 다시 그린다. 「저장되는 제목이라 손대지 않는다」가
+ * 한때의 근거였는데, 그 말이 지키는 건 **사람이 고른 이름**이지 우리가 케이스 라벨과 시각
+ * 사이에 기계적으로 끼워 넣은 라벨이 아니다. 라벨은 「새 대화」와 같은 UI 문구라 화면 언어를
+ * 따르고, 그 사람의 데이터인 케이스 라벨·시각은 그대로 실려 나간다
+ * (`manage-conversation/lib/conversation-title.ts`).
  */
 import { Fragment, type ReactNode, createElement } from 'react';
 import type { UiLang } from './ui-lang';
@@ -368,8 +369,11 @@ const ko = {
   startPatientConversationFailed: '환자 맞춤 대화 생성에 실패했습니다.',
   /**
    * 환자 맞춤 대화의 기본 제목 틀. `{case}`는 케이스 라벨, `{when}`은 월/일 시:분.
-   * 자리표시자가 아니라 **서버에 저장되는 진짜 이름**이라 생성 시점의 언어로 굳는다 —
-   * `untitledConversation`과 성격이 반대다.
+   *
+   * **쓰는 자리가 둘이고 방향이 반대다** — `buildGuidanceTitle`이 생성 시점에 이 틀로 제목을
+   * 조립해 저장하고, `resolveConversationTitle`이 저장된 제목을 이 틀로 되읽어 화면 언어로
+   * 다시 그린다. 되읽는 쪽이 틀을 **정규식으로 파생**하므로, 문구를 고치면 알아보는 쪽도
+   * 같이 따라간다. 자리 이름(`{case}`·`{when}`)은 그 계약이라 언어끼리 어긋나면 안 된다.
    */
   guidanceTitleTemplate: '{case} 임상 참고 ({when})',
   pickConversationOrStart: '왼쪽에서 대화를 선택하거나 새 대화를 시작하세요',
