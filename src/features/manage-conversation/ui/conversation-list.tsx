@@ -13,6 +13,7 @@ import {
 import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
 import { useUiLang } from '@/shared/i18n/ui-lang';
 import { useInfiniteListScroll } from '@/shared/lib/use-infinite-list-scroll';
+import { resolveConversationTitle } from '../lib/conversation-title';
 import {
   type ConversationSummary,
   useArchiveConversation,
@@ -126,6 +127,10 @@ export function ConversationList({
   const confirmRef = useRef<HTMLDivElement | null>(null);
   const newConversationHighlight = useTourHighlight('new-conversation');
 
+  /** 서버 제목을 화면에 그릴 문자열로 — 기본 제목만 표시 언어를 따른다 */
+  const displayTitle = (title: string): string =>
+    resolveConversationTitle(title, t.untitledConversation);
+
   /**
    * 확인 블록은 행보다 훨씬 높아, 목록 하단에서 열면 늘어난 만큼 스크롤 밖으로 나가
    * 취소·삭제 버튼이 가린다. 'nearest'는 이미 다 보이면 움직이지 않고 넘칠 때만
@@ -206,7 +211,7 @@ export function ConversationList({
   };
 
   const startRename = (conversation: ConversationSummary): void => {
-    setTitleInput(conversation.title);
+    setTitleInput(displayTitle(conversation.title));
     setPendingDeleteId(null);
     setRenamingId(conversation.id);
   };
@@ -273,7 +278,7 @@ export function ConversationList({
       {justArchived?.id === selectedId && (
         <div className="mb-3 flex shrink-0 items-center gap-2 rounded-lg bg-gray-100 px-2.5 py-2">
           <p className="min-w-0 flex-1 truncate text-xs text-gray-600">
-            <span className="font-medium text-gray-800">{justArchived.title}</span> {t.archivedSuffix}
+            <span className="font-medium text-gray-800">{displayTitle(justArchived.title)}</span> {t.archivedSuffix}
           </p>
           <button
             type="button"
@@ -337,7 +342,7 @@ export function ConversationList({
                   /* 되돌리기 배너가 없는 대신 여기서 막는다 — 서버에 restore가 없다(spec 34) */
                   <div ref={confirmRef} className="rounded-lg border border-red-200 bg-red-50/60 p-2">
                     <p className="truncate text-sm font-medium text-gray-800">
-                      {conversation.title}
+                      {displayTitle(conversation.title)}
                     </p>
                     <p className="mt-0.5 text-xs text-red-700">
                       {t.deletePermanentWarning}
@@ -378,7 +383,7 @@ export function ConversationList({
                         isSelected ? 'font-medium text-emerald-800' : 'text-gray-700'
                       }`}
                     >
-                      {conversation.title}
+                      {displayTitle(conversation.title)}
                       {conversation.status === 'ARCHIVED' && (
                         <span className="ml-1.5 text-xs text-gray-400">{t.archivedParenthetical}</span>
                       )}

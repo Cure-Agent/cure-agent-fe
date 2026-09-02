@@ -10,6 +10,7 @@ import { CONVERSATIONS_KEY } from '@/features/manage-conversation/api/conversati
 import { api } from '@/shared/api/api-client';
 import { unwrap } from '@/shared/api/api-error';
 import type { components } from '@/shared/api/generated/schema';
+import { resolveUiLang } from '@/shared/i18n/ui-lang';
 import { buildGuidanceTitle } from '../lib/guidance-title';
 
 export type ConversationSummary = components['schemas']['ConversationSummaryResponseDto'];
@@ -32,7 +33,8 @@ export function useRequestClinicalGuidance(): UseMutationResult<
         body: {
           type: 'PATIENT_GUIDANCE',
           patientId,
-          title: buildGuidanceTitle(caseLabel),
+          // 표시 언어는 **호출 시점에** 읽는다 — 모듈 로드 시점에 굳히면 토글이 반영되지 않는다
+          title: buildGuidanceTitle(caseLabel, resolveUiLang()),
         },
       });
       return unwrap<ConversationSummary>(result);
