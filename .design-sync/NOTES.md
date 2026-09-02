@@ -218,6 +218,14 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 게이트가 계속 `result=DRIFT` 를 내고, ship 이 같은 자리에서 다시 멈춘다. 내용이 아니라
 **mtime 이 판정 기준**이므로 파일이 이미 같은 내용이어도 복사는 해야 한다.
 
+**받아 올 때는 같은 규칙이 반대로 문다** (2026-09-02 실측). 위 문단의 "새로 받아 덮어쓸 것" 을
+재동기화 **전에** 그대로 실행하면 앵커가 방금 만들어진 파일이 되어, 손도 대기 전에 게이트가
+`CLEAN` 으로 뒤집힌다 — 그 상태로 ship 을 다시 돌리면 **재동기화 없이 통과한다.** 받아서
+**대조**는 매번 하되(동시 동기화 확인이 그 목적이다), 내용이 같으면 덮어쓰지 말고 그대로
+`--remote` 에 넘긴다. 다르면 캐시를 덮어쓰지 말고 **받은 것을 다른 경로에 저장해 `--remote` 에
+넘길 것** — `--remote` 는 `resolve()` 로 임의 경로를 받으므로(`resync.mjs:80,164`) 게이트를
+건드리지 않고 diff 기준만 바로잡을 수 있다. 캐시 파일은 **업로드 후 갱신에만** 쓴다.
+
 ## 재동기화 위험 (다음 실행이 지켜볼 것)
 
 - **감시 목록을 `config.json` 에 두면 재동기화가 죽는다** (2026-09-02 실측 — 실제로 막혔다).
@@ -289,7 +297,7 @@ cp -r <skill>/package-build.mjs <skill>/package-validate.mjs <skill>/package-cap
 (cd .ds-sync && npm i esbuild ts-morph @types/react @tailwindcss/cli@4.3.3 && \
  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright)                 # 새 클론일 때만
 eval "$(python3 -c "import json;print(json.load(open('.design-sync/config.json'))['buildCmd'])")"
-# 원격 앵커 내려받기 → .design-sync/.cache/remote-sync.json
+# 원격 앵커 내려받기 → 로컬 캐시와 **대조** (같으면 덮어쓰지 말 것 — 아래 「받아 올 때는」 함정)
 DS_CHROMIUM_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
 node .ds-sync/resync.mjs --config .design-sync/config.json --node-modules ./node_modules \
   --entry ./.design-sync/ds-preview/entry.ts --out ./ds-bundle \
