@@ -8,14 +8,6 @@
   "buildCmd": "node .ds-sync/node_modules/@tailwindcss/cli/dist/index.mjs -i .design-sync/tailwind-entry.css -o .design-sync/.cache/tailwind.css && node_modules/.bin/tsc -p .design-sync/tsconfig.dts.json",
   "cssEntry": ".design-sync/.cache/tailwind.css",
   "readmeHeader": ".design-sync/conventions.md",
-  "driftWatch": [
-    "src/features",
-    "src/shared",
-    "src/widgets",
-    "src/app/utilities.css",
-    ".design-sync/ds-preview",
-    ":!src/**/*.test.*"
-  ],
   "extraEntries": [
     "./.design-sync/ds-preview/process-shim.ts",
     "./.design-sync/ds-preview/provider.tsx"

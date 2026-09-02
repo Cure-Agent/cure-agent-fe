@@ -1,0 +1,8 @@
+[
+  "src/features",
+  "src/shared",
+  "src/widgets",
+  "src/app/utilities.css",
+  ".design-sync/ds-preview",
+  ":!src/**/*.test.*"
+]

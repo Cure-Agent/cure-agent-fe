@@ -345,7 +345,7 @@ Phase 1에서 수집한 목록.
 BE판의 「파괴적 DB 마이그레이션 2단계 배포」가 차지하던 자리를 이 레포에서는 이 게이트가 차지한다 —
 **배포보다 먼저 와야 하는 외부 절차**라는 점에서 성격이 같다.
 
-`.design-sync/config.json`의 `componentSrcMap`(및 `driftWatch`)에 등록된 컴포넌트를 고치면
+`.design-sync/config.json`의 `componentSrcMap`(및 `.design-sync/drift-watch.json`)에 등록된 컴포넌트를 고치면
 claude.ai/design 재동기화를 마쳐야 배포할 수 있다. 재동기화가 고치는 `config.json`·`previews/`가
 커밋 대상이라 같은 배포 커밋에 실려야 한다 (`automation/ship.md` 「워크플로우 전제」).
 

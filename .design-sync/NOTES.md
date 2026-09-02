@@ -220,7 +220,17 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 
 ## 재동기화 위험 (다음 실행이 지켜볼 것)
 
-- **드리프트 게이트의 감시 범위는 `config.json` 의 `driftWatch` 가 정한다** (2026-08-31 추가).
+- **감시 목록을 `config.json` 에 두면 재동기화가 죽는다** (2026-09-02 실측 — 실제로 막혔다).
+  `config.json` 은 컨버터의 스키마다. `lib/common.mjs` 의 `validateConfig` 가 `CONFIG_KEYS` 에
+  없는 키를 보면 `✗ config: unknown key "driftWatch"` 로 **아무것도 빌드하지 않고 죽고**,
+  통과 키가 없어 레포 로컬 키를 얹을 자리가 아예 없다. #95 가 `driftWatch` 를 거기 넣었을 때
+  이 사실이 **21분 차이로 드러나지 않았다** — 마지막 앵커가 20:19, #95 가 20:40 이라 그 사이에
+  재동기화가 없었다. 그래서 게이트는 두 달 가까이 정상으로 보였고, 다음 재동기화(이 실행)가
+  첫 희생자였다. 지금은 `.design-sync/drift-watch.json` 으로 갈라 뒀다 —
+  **컨버터 스키마에 이 레포 것을 얹지 말 것.**
+
+- **드리프트 게이트의 감시 범위는 `.design-sync/drift-watch.json` 이 정한다**
+  (2026-08-31 도입, 2026-09-02 `config.json` 에서 분리).
   그 전까지는 `componentSrcMap` 만 봤고, 등록 컴포넌트가 *가져다 쓰는* 것(helper 모듈,
   `src/app/utilities.css`)을 고친 배포가 전부 새어 나갔다 — 실측으로 번들에 실리는 src 파일
   47개 중 14개만 감시(커버리지 30%). `utilities.css` 분리 배포(#94)가 실제로 게이트 CLEAN

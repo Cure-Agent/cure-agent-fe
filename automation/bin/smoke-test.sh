@@ -98,35 +98,44 @@ check "design-drift: 등록 소스 삭제 → DRIFT (앵커가 최신이어도 �
 
 git checkout -q -- src/btn.tsx
 
-# --- driftWatch: 카드가 아닌 의존 파일도 감시 대상에 넣는다 (componentSrcMap 은 카드 목록이라 못 쓴다)
+# --- 감시 목록: 카드가 아닌 의존 파일도 감시 대상에 넣는다 (componentSrcMap 은 카드 목록이라 못 쓴다).
+# 목록이 config.json 이 아니라 별도 파일인 이유는 config.json 이 design-sync 컨버터의 스키마라
+# 모르는 키를 보면 빌드 자체를 거부하기 때문이다 (NOTES.md 「감시 목록을 config.json 에 두면」).
 mkdir -p src/shared
 echo 'export const token = 1' > src/shared/helper.ts
-printf '{"componentSrcMap":{"Btn":"src/btn.tsx"},"driftWatch":["src/shared",":!src/**/*.test.*"]}' \
-  > .design-sync/config.json
-git add -f src/shared/helper.ts .design-sync/config.json
+printf '{"componentSrcMap":{"Btn":"src/btn.tsx"}}' > .design-sync/config.json
+printf '["src/shared",":!src/**/*.test.*"]' > .design-sync/drift-watch.json
+git add -f src/shared/helper.ts .design-sync/config.json .design-sync/drift-watch.json
 git -c user.email=smoke@test -c user.name=smoke commit -qm watch
 touch -t 203001010000 .design-sync/.cache/remote-sync.json
-check "design-drift: driftWatch 대상 변경 없음 → CLEAN" \
+check "design-drift: 감시 목록 대상 변경 없음 → CLEAN" \
   0 "DESIGN_DRIFT result=CLEAN" "$DRIFT" HEAD
 
 touch -t 200001010000 .design-sync/.cache/remote-sync.json
 echo '// touched' >> src/shared/helper.ts
-check "design-drift: driftWatch 의 helper 변경 → DRIFT (componentSrcMap 만 봤다면 놓쳤을 자리)" \
+check "design-drift: 감시 목록의 helper 변경 → DRIFT (componentSrcMap 만 봤다면 놓쳤을 자리)" \
   1 "DESIGN_DRIFT result=DRIFT changed=1 reason=stale-sources" "$DRIFT" HEAD
 
 git checkout -q -- src/shared/helper.ts
 echo 'export const x = 1' > src/shared/helper.test.ts
-check "design-drift: driftWatch 의 ':!' 제외가 먹는다 → CLEAN (테스트 파일은 번들에 안 실린다)" \
+check "design-drift: 감시 목록의 ':!' 제외가 먹는다 → CLEAN (테스트 파일은 번들에 안 실린다)" \
   0 "DESIGN_DRIFT result=CLEAN" "$DRIFT" HEAD
 rm src/shared/helper.test.ts
 
-printf '{"componentSrcMap":{},"driftWatch":[":!src/**/*.test.*"]}' > .design-sync/config.json
+printf '{"componentSrcMap":{}}' > .design-sync/config.json
+printf '[":!src/**/*.test.*"]' > .design-sync/drift-watch.json
 check "design-drift: 제외 pathspec만 남음 → SKIP (git의 '제외 외 전부' 매칭 방지)" \
   0 "DESIGN_DRIFT result=SKIP reason=exclude-only" "$DRIFT" HEAD
 
-printf '{"componentSrcMap":{}}' > .design-sync/config.json
+rm .design-sync/drift-watch.json
 check "design-drift: 감시 대상 비어 있음 → SKIP (빈 pathspec으로 전체 매칭 방지)" \
   0 "DESIGN_DRIFT result=SKIP reason=empty-watch" "$DRIFT" HEAD
+
+# 목록 파일이 깨진 것은 통과가 아니라 ERROR다 — 감시가 조용히 사라지면 배포가 새어 나간다
+printf '{"not":"an array"}' > .design-sync/drift-watch.json
+check "design-drift: 감시 목록이 배열이 아님 → ERROR (fail-closed)" \
+  1 "DESIGN_DRIFT result=ERROR" "$DRIFT" HEAD
+rm .design-sync/drift-watch.json
 
 git checkout -q -- .design-sync/config.json
 check "design-drift: 없는 기준 ref → ERROR (fail-closed)" \
