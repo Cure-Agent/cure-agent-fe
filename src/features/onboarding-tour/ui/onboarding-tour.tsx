@@ -40,6 +40,14 @@ const FLOATING_CARD =
 
 const CLOSE_BUTTON = 'shrink-0 rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600';
 
+/**
+ * 두 경로를 다 마친 완료 카드가 스스로 닫히기까지의 시간.
+ *
+ * 남은 경로가 없으면 카드에 누를 것도 없다 — 그런데도 사람이 닫아 줘야 사라지면, 끝난 안내가
+ * 화면 구석에 남아 다음 할 일인 것처럼 읽힌다. 마무리 문구를 읽을 만큼만 두고 물러난다.
+ */
+export const TOUR_FINISH_AUTO_CLOSE_MS = 5_000;
+
 function CloseIcon(): ReactElement {
   return (
     <svg

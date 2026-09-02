@@ -17,13 +17,27 @@ import { TOUR_PATHS, type TourAnchor, type TourPath } from './tour-steps';
 
 export const TOUR_STORAGE_KEY = 'cure.onboardingTour';
 
+/**
+ * 지금 걷는 경로보다 **먼저 마친 경로**. 없으면 `null`.
+ *
+ * 두 경로가 전부 끝났다는 것을 판정할 수 있는 유일한 근거다 — 이것이 없던 시절에는
+ * `completeTourStep`이 `<경로>:done`으로 앞선 기록을 통째로 덮어써서, 완료 카드가 늘
+ * 「다른 경로」를 권했고 두 경로를 오가는 왕복이 닫히지 않았다.
+ */
+type PriorPath = TourPath | null;
+
 export type TourState =
   | { readonly phase: 'off' }
   /** 가입 직후 — 다음 보호 화면에서 경로를 고르는 환영 모달을 띄운다 */
   | { readonly phase: 'welcome' }
-  | { readonly phase: 'running'; readonly path: TourPath; readonly stepIndex: number }
-  /** 마지막 단계까지 마침 — 완료 카드가 다른 경로를 권한다 */
-  | { readonly phase: 'finished'; readonly path: TourPath };
+  | {
+      readonly phase: 'running';
+      readonly path: TourPath;
+      readonly stepIndex: number;
+      readonly priorPath: PriorPath;
+    }
+  /** 마지막 단계까지 마침 — `priorPath`가 있으면 남은 경로가 없다는 뜻이다 */
+  | { readonly phase: 'finished'; readonly path: TourPath; readonly priorPath: PriorPath };
 
 const OFF: TourState = { phase: 'off' };
 
@@ -41,9 +55,11 @@ export function parseTourState(raw: string | null): TourState {
   const matched = PROGRESS.exec(raw ?? '');
   if (!matched) return OFF;
   const path = matched[1] as TourPath;
-  if (matched[2] === 'done') return { phase: 'finished', path };
+  if (matched[2] === 'done') return { phase: 'finished', path, priorPath: null };
   const stepIndex = Number(matched[2]);
-  return stepIndex < TOUR_PATHS[path].length ? { phase: 'running', path, stepIndex } : OFF;
+  return stepIndex < TOUR_PATHS[path].length
+    ? { phase: 'running', path, stepIndex, priorPath: null }
+    : OFF;
 }
 
 const listeners = new Set<() => void>();
