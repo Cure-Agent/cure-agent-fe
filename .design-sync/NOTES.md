@@ -273,10 +273,19 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 
 ## 재동기화 한 줄 요약
 
+**`<skill>` 은 디스크에 상주하지 않는다.** Claude Code 가 단일 바이너리라 스킬 파일은 그 안에 있고,
+**사람이 `/design-sync` 를 직접 실행해야** `/private/tmp/claude-501/bundled-skills/<버전>/<해시>/design-sync`
+로 풀린다. Claude 는 그 스킬을 부를 수 없다 (`disable-model-invocation`) — 스테이징 갱신이 필요하면
+사용자에게 실행을 요청할 것. 경로는 버전마다 달라지므로 적어 두지 말고 그때 받은 base directory 를 쓴다.
+**이미 깔린 스테이징으로 재동기화를 돌리는 것은 스킬 없이 된다** — 스킬이 필요한 것은 갱신뿐이다.
+갱신 후에는 `_ds_sync.json` 의 `scriptsSha` 만 움직이는데, 그건 스테이징 지문이고
+`sync-hashes.mjs` 가 "informational — never a partition input" 이라 원격에 옛 값이 남아도 무해하다.
+
 ```sh
 cd cure-agent-fe
 cp -r <skill>/package-build.mjs <skill>/package-validate.mjs <skill>/package-capture.mjs \
       <skill>/resync.mjs <skill>/lib <skill>/storybook .ds-sync/     # 스테이징 갱신
+      # non-storybook/ 은 SKILL.md 문서뿐이라 스테이징 대상이 아니다
 (cd .ds-sync && npm i esbuild ts-morph @types/react @tailwindcss/cli@4.3.3 && \
  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright)                 # 새 클론일 때만
 eval "$(python3 -c "import json;print(json.load(open('.design-sync/config.json'))['buildCmd'])")"
