@@ -117,6 +117,12 @@ const ko = {
 
   // 대화 목록
   newConversation: '새 대화',
+  /**
+   * 아직 제목이 없는 대화의 자리표시자 — 문장이 `newConversation`과 같아도 **키를 가른다.**
+   * 저건 버튼이 하는 동작이고 이건 대화의 상태다. BE가 기본 제목 상수를 바꾸면 이 키만
+   * 따라가야 하고 버튼 라벨은 그대로여야 한다.
+   */
+  untitledConversation: '',
   searchConversations: '대화 검색',
   searchByTitlePlaceholder: '제목으로 검색',
   search: '검색',
@@ -356,6 +362,12 @@ const ko = {
 
   startPatientConversation: '환자 맞춤 대화 시작',
   startPatientConversationFailed: '환자 맞춤 대화 생성에 실패했습니다.',
+  /**
+   * 환자 맞춤 대화의 기본 제목 틀. `{case}`는 케이스 라벨, `{when}`은 월/일 시:분.
+   * 자리표시자가 아니라 **서버에 저장되는 진짜 이름**이라 생성 시점의 언어로 굳는다 —
+   * `untitledConversation`과 성격이 반대다.
+   */
+  guidanceTitleTemplate: '',
   pickConversationOrStart: '왼쪽에서 대화를 선택하거나 새 대화를 시작하세요',
 
   // 온보딩 둘러보기 (features/onboarding-tour)
@@ -463,6 +475,7 @@ const en: Record<MessageKey, string> = {
   switchToEnglish: 'Switch to English',
 
   newConversation: 'New conversation',
+  untitledConversation: '',
   searchConversations: 'Search conversations',
   searchByTitlePlaceholder: 'Search by title',
   search: 'Search',
@@ -700,6 +713,7 @@ const en: Record<MessageKey, string> = {
 
   startPatientConversation: 'Start patient-specific conversation',
   startPatientConversationFailed: 'Could not start the patient-specific conversation.',
+  guidanceTitleTemplate: '',
   pickConversationOrStart: 'Pick a conversation on the left, or start a new one',
 
   tourWelcomeHeading: 'Get started with Cure Agent',
