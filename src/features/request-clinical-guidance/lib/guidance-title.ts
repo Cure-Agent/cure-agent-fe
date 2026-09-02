@@ -1,4 +1,5 @@
 /** 환자 맞춤 대화의 기본 제목 — 생성 시점에 확정한다 */
+import { formatMessage, messagesFor } from '@/shared/i18n/messages';
 import type { UiLang } from '@/shared/i18n/ui-lang';
 
 /**
@@ -8,19 +9,26 @@ import type { UiLang } from '@/shared/i18n/ui-lang';
  * 사용자가 질문을 던지지 않고 시작하므로 그 트리거가 걸리지 않아 "새 대화"로 남는다 —
  * 그래서 생성 요청이 직접 제목을 싣는다.
  *
- * 같은 환자를 하루에 여러 번 시작해도 갈리도록 시각까지 넣는다. 로케일에 흔들리지 않게
- * 직접 조립하며, 목록 항목이 한 줄 truncate라 연도는 뺀다. 분만 두 자리로 채운다 —
- * 9:5는 읽히지 않지만 09:05는 앞의 케이스 라벨이 쓸 글자를 뺏는다.
+ * **언어를 인자로 받아 생성 시점에 굳힌다.** 이건 자리표시자가 아니라 서버에 저장돼 검색·공유의
+ * 대상이 되는 **진짜 이름**이라, 보는 사람마다 달라지면 안 된다 — 화면 언어를 따라 렌더 시점에
+ * 번역하는 `manage-conversation/lib/conversation-title.ts`와 성격이 정확히 반대다.
+ * 첫 질문의 언어로 굳는 서버 자동 제목과 같은 성질이며, 그 시점에 아직 질의문이 없으므로
+ * 쓸 수 있는 축은 화면 언어뿐이다. 이 대화에서 실제로 나갈 질의문은 예시 질의문이고
+ * 「표시된 문장이 그대로 전송된다」가 계약이라(spec 41 기준 27) 두 축은 사실상 같은 값이다.
  *
- * TODO(stub): 시그니처만 세운 스텁이다. 본문은 동결 이후 구현이 채운다.
+ * 같은 환자를 하루에 여러 번 시작해도 갈리도록 시각까지 넣는다. 로케일에 흔들리지 않게
+ * 직접 조립하며(두 언어가 같은 `M/D H:MM`을 쓴다), 목록 항목이 한 줄 truncate라 연도는 뺀다.
+ * 분만 두 자리로 채운다 — 9:5는 읽히지 않지만 09:05는 앞의 케이스 라벨이 쓸 글자를 뺏는다.
  */
 export function buildGuidanceTitle(
   caseLabel: string,
   lang: UiLang,
   now: Date = new Date(),
 ): string {
-  void caseLabel;
-  void lang;
-  void now;
-  return '';
+  const date = `${now.getMonth() + 1}/${now.getDate()}`;
+  const time = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+  return formatMessage(messagesFor(lang).guidanceTitleTemplate, {
+    case: caseLabel,
+    when: `${date} ${time}`,
+  });
 }

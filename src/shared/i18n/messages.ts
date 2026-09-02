@@ -4,13 +4,17 @@
  * 키는 화면이 아니라 **문구의 역할**로 짓는다 — 같은 문장이 두 곳에 쓰이면 키도 하나여야
  * 한쪽만 고쳐지는 일이 없다.
  *
- * **여기 없는 것 셋**(의도적으로 남긴 한국어):
+ * **여기 없는 것 둘**(의도적으로 남긴 한국어):
  * - `app/layout.tsx`·`app/manifest.ts`의 메타데이터 — 서버 렌더라 방문자의 선택(localStorage)을
  *   알 수 없다. 언어별 메타데이터가 필요해지면 URL에 언어를 실어야 하고, 그건 다른 결정이다
- * - `request-clinical-guidance/lib/guidance-title.ts` — **서버에 저장되는 제목**이라 화면 언어로
- *   바꾸면 같은 기록의 제목이 방문자마다 갈린다
  * - BE가 봉투에 실어 보내는 오류 문구 — 소유자가 BE다. FE는 봉투에 문구가 없을 때의
  *   폴백만 든다
+ *
+ * **`guidance-title.ts`는 여기서 빠져나갔다.** 「서버에 저장되는 제목이라 화면 언어로 바꾸면
+ * 방문자마다 갈린다」가 원래 근거였는데, 그건 **렌더 시점에 번역할 때** 성립하는 말이다.
+ * 그 제목은 생성 시점에 한 번 확정돼 저장되므로 방문자마다 갈릴 수가 없다 — 첫 질문의 언어로
+ * 굳는 서버 자동 제목과 같은 성질이고, 그래서 `guidanceTitleTemplate`으로 들어왔다.
+ * 저장되는 문자열이 언어를 갖는 것과, 저장된 문자열을 보는 쪽에서 번역하는 것은 다른 문제다.
  */
 import { Fragment, type ReactNode, createElement } from 'react';
 import type { UiLang } from './ui-lang';
@@ -122,7 +126,7 @@ const ko = {
    * 저건 버튼이 하는 동작이고 이건 대화의 상태다. BE가 기본 제목 상수를 바꾸면 이 키만
    * 따라가야 하고 버튼 라벨은 그대로여야 한다.
    */
-  untitledConversation: '',
+  untitledConversation: '새 대화',
   searchConversations: '대화 검색',
   searchByTitlePlaceholder: '제목으로 검색',
   search: '검색',
@@ -367,7 +371,7 @@ const ko = {
    * 자리표시자가 아니라 **서버에 저장되는 진짜 이름**이라 생성 시점의 언어로 굳는다 —
    * `untitledConversation`과 성격이 반대다.
    */
-  guidanceTitleTemplate: '',
+  guidanceTitleTemplate: '{case} 임상 참고 ({when})',
   pickConversationOrStart: '왼쪽에서 대화를 선택하거나 새 대화를 시작하세요',
 
   // 온보딩 둘러보기 (features/onboarding-tour)
@@ -475,7 +479,7 @@ const en: Record<MessageKey, string> = {
   switchToEnglish: 'Switch to English',
 
   newConversation: 'New conversation',
-  untitledConversation: '',
+  untitledConversation: 'New conversation',
   searchConversations: 'Search conversations',
   searchByTitlePlaceholder: 'Search by title',
   search: 'Search',
@@ -713,7 +717,7 @@ const en: Record<MessageKey, string> = {
 
   startPatientConversation: 'Start patient-specific conversation',
   startPatientConversationFailed: 'Could not start the patient-specific conversation.',
-  guidanceTitleTemplate: '',
+  guidanceTitleTemplate: '{case} Clinical guidance ({when})',
   pickConversationOrStart: 'Pick a conversation on the left, or start a new one',
 
   tourWelcomeHeading: 'Get started with Cure Agent',
