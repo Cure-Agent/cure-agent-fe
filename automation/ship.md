@@ -91,7 +91,15 @@
 
 ## Phase 2: 검증
 
-CI(`.github/workflows/ci.yml`)의 머지 게이트 잡(`codegen-check`)과 **동일한 게이트를 같은 순서**로 로컬 선검증한다 — 전체 검사로 대체하지 않는다. (`scripts` 잡은 `automation/bin` 게이트 스크립트 회귀 검증이라 스크립트를 수정한 변경이 아니면, `gitleaks` 잡은 히스토리 시크릿 스캔이라 어느 변경이든 로컬 선검증 대상이 아니다 — 머지 게이트에서 함께 검사된다.)
+CI(`.github/workflows/ci.yml`)의 머지 게이트 잡 중 **`codegen-check`와 동일한 게이트를 같은 순서**로 로컬 선검증한다 — 전체 검사로 대체하지 않는다.
+
+**CI 잡은 넷이고(`codegen-check`·`e2e`·`scripts`·`gitleaks`), 그중 하나만 로컬에서 미리 돈다.** 나머지 셋을 뺀 이유는 각각 다르다:
+
+- **`e2e`**: 브라우저 설치와 프로덕션 빌드가 필요해 선검증 비용이 게이트 하나에 비해 크다. `/problem`으로 들어온 변경은 **그 Phase 5-2가 이미 돌렸으므로** 여기서 또 돌 이유가 없고, ship을 단독 호출한 경우에는 머지 게이트가 잡는다.
+- **`scripts`**: `automation/bin` 게이트 스크립트 회귀 검증이라, 그 스크립트를 수정한 변경이 아니면 볼 것이 없다.
+- **`gitleaks`**: 히스토리 시크릿 스캔이라 어느 변경이든 로컬 선검증 대상이 아니다.
+
+셋 다 머지 게이트에서 검사되고, 넷 모두 `main` 브랜치 보호의 required check다(`automation/pipeline.md` Step 1-5).
 
 ### 게이트 — `codegen-check` 잡
 
