@@ -6,9 +6,9 @@
 > **이 파일은 하네스 중립 「진실의 원천」이다.** 직접 실행 대상이 아니라, 동결이 필요한 상위 절차가 호출한다:
 > - `/implement` (`.claude/commands/implement.md` Phase 2·4) — 명세 출처는 **BE 레포의**
 >   `docs/specs/<번호>`이며 `scripts/fetch-spec.mjs`가 조달한다.
->
-> 이 레포에는 `/problem`이 없다. 운영 문제 표본(`[BUG]`)이 아직 0건이라 진단·라우팅 절차를 세울
-> 근거가 없다 — BE `architecture.md` §12 「측정 후 도입」. 표본이 쌓이면 그때 판단한다.
+> - `/problem` (`automation/problem.md` Phase 4) — 명세 출처는 그 절차의 Phase 1에서 확정된
+>   **해결책의 작업 명세**다. 운영 문제 표본(`[BUG]`)이 3건 쌓여 도입했다 — BE `architecture.md`
+>   §12 「측정 후 도입」의 트리거가 울린 것이며, `git log --grep='^\[BUG\]'`이 그 표본 목록이다.
 
 ## 원칙
 
@@ -23,18 +23,21 @@ Codex를 쓸 수 없으면 구현 하네스 단독 폴백으로 진행하되, **
 
 상위 절차가 아래를 확정한 뒤 이 문서의 절차에 진입한다.
 
-| 파라미터 | 값 |
-|---|---|
-| **명세** | BE 레포 `docs/specs/<번호>`의 **FE 범위 수용 기준** + FE `docs/architecture.md` §링크 |
-| **작업 ID** | **스펙 번호** (예: `41`) |
-| **동결 단위** | 스펙 1개 = 1 단위 |
-| **참조 패턴 파일** | 동일/유사 화면의 기존 테스트 1~2개 전문 (`src/shared/api/http.test.ts` 필수) |
+| 파라미터 | `/implement` (스펙 경로) | `/problem` (운영 문제 경로) |
+|---|---|---|
+| **명세** | BE 레포 `docs/specs/<번호>`의 **FE 범위 수용 기준** + FE `docs/architecture.md` §링크 | Phase 1에서 확정된 **해결책의 작업 명세** + `docs/architecture.md` 관련 § |
+| **작업 ID** | **스펙 번호** (예: `41`) | **브랜치 슬러그** (예: `answer-progress`) — 이슈 번호가 없다 |
+| **동결 단위** | 스펙 1개 = 1 단위 | `[동작]` 작업 1개 = 1 단위 |
+| **참조 패턴 파일** | 동일/유사 화면의 기존 테스트 1~2개 전문 (`src/shared/api/http.test.ts` 필수) | (동일) |
 
 **커밋 제목에 `#`를 쓰지 않는다.** 이 레포는 이슈를 만들지 않으므로(`automation/ship.md`
 「워크플로우 전제」) `#N`에 넣을 이슈 번호가 없고, spec 번호를 `#`와 함께 쓰면 **GitHub이 같은
 번호의 PR로 자동 링크한다** — 실제로 `[TEST/#09]`·`[TEST/#10]`·`[TEST/#11]`이 각각 PR #9·#10·#11
 (가이던스 화면·계약 동기화·fixture 수정)에 잘못 걸려 있다. 형식은 **`[TEST] spec <번호> <요약>`**이며,
 squash 머지가 붙이는 `(#PR번호)`가 추적 식별자 역할을 한다.
+
+> 아래 절차 본문의 `spec <번호>`는 **작업 ID 표기의 자리표시자**다 — `/problem` 경로에서는
+> `<슬러그>`로 읽는다(예: `[TEST] answer-progress 수용 기준 테스트 동결`). `#` 금지는 양쪽 공통이다.
 
 상태 파일은 `.cure-implement/`(git-ignored)에 둔다 — PreToolUse 훅
 (`.claude/hooks/freeze-test-files.sh`)이 이 경로를 참조한다. 이 레포의 훅은 `.claude/settings.json`에
