@@ -12,7 +12,7 @@
  */
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { type ReactElement, useEffect, useRef } from 'react';
+import { type CSSProperties, type ReactElement, useEffect, useRef } from 'react';
 import { type MessageKey, formatMessage, messagesFor } from '@/shared/i18n/messages';
 import { useUiLang } from '@/shared/i18n/ui-lang';
 import { dismissTour, startTourPath, useTourState } from '../model/tour-state';
@@ -40,6 +40,14 @@ const FLOATING_CARD =
 
 const CLOSE_BUTTON = 'shrink-0 rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600';
 
+/**
+ * 두 경로를 다 마친 완료 카드가 스스로 닫히기까지의 시간.
+ *
+ * 남은 경로가 없으면 카드에 누를 것도 없다 — 그런데도 사람이 닫아 줘야 사라지면, 끝난 안내가
+ * 화면 구석에 남아 다음 할 일인 것처럼 읽힌다. 마무리 문구를 읽을 만큼만 두고 물러난다.
+ */
+export const TOUR_FINISH_AUTO_CLOSE_MS = 5_000;
+
 function CloseIcon(): ReactElement {
   return (
     <svg
@@ -64,7 +72,14 @@ export function OnboardingTour(): ReactElement | null {
 
   if (state.phase === 'off') return null;
   if (state.phase === 'welcome') return <TourWelcome t={t} />;
-  if (state.phase === 'finished') return <TourFinished path={state.path} t={t} />;
+  if (state.phase === 'finished') {
+    // 먼저 마친 경로가 있으면 권할 것이 남아 있지 않다 — 카드의 성격 자체가 달라진다
+    return state.priorPath === null ? (
+      <TourFinished path={state.path} t={t} />
+    ) : (
+      <TourAllFinished t={t} />
+    );
+  }
   return <TourGuide path={state.path} stepIndex={state.stepIndex} t={t} />;
 }
 
@@ -209,6 +224,48 @@ function TourGuide({
           className="text-xs font-medium text-gray-500 hover:text-gray-700 hover:underline"
         >
           {t.tourSkip}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 두 경로를 다 마친 자리 — 권할 것이 없으므로 카드가 스스로 물러난다.
+ *
+ * 「이어서 해보기」를 빼는 것만으로는 끝나지 않는다. 남은 안내가 없는데도 카드가 화면 구석에
+ * 버티고 있으면, 끝난 것이 아니라 **아직 할 일**로 읽힌다. 그렇다고 마지막 단계를 마치자마자
+ * 지워 버리면 마쳤다는 사실을 알릴 자리가 없다. 그래서 마무리 문구를 읽을 만큼만 두고 물러난다.
+ *
+ * 닫기 수단(✕·「닫기」)은 그대로 남긴다 — 물러나는 것은 배려이지 강제가 아니므로, 기다리지
+ * 않고 지우려는 사람의 길을 막지 않는다.
+ */
+function TourAllFinished({ t }: { t: Messages }): ReactElement {
+  useEffect(() => {
+    const timer = setTimeout(dismissTour, TOUR_FINISH_AUTO_CLOSE_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div
+      className={`${FLOATING_CARD} tour-card-fade`}
+      role="status"
+      style={{ '--tour-card-fade-duration': `${TOUR_FINISH_AUTO_CLOSE_MS}ms` } as CSSProperties}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-medium text-emerald-800">{t.tourFinishedAllHeading}</p>
+        <button type="button" onClick={dismissTour} aria-label={t.tourClose} className={CLOSE_BUTTON}>
+          <CloseIcon />
+        </button>
+      </div>
+      <p className="mt-1 text-xs leading-relaxed text-gray-600">{t.tourFinishedAllBody}</p>
+      <div className="mt-3 flex justify-end">
+        <button
+          type="button"
+          onClick={dismissTour}
+          className="text-xs font-medium text-gray-500 hover:text-gray-700 hover:underline"
+        >
+          {t.tourDone}
         </button>
       </div>
     </div>

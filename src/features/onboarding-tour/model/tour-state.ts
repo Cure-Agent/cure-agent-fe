@@ -17,17 +17,42 @@ import { TOUR_PATHS, type TourAnchor, type TourPath } from './tour-steps';
 
 export const TOUR_STORAGE_KEY = 'cure.onboardingTour';
 
+/**
+ * 지금 걷는 경로보다 **먼저 마친 경로**. 없으면 `null`.
+ *
+ * 두 경로가 전부 끝났다는 것을 판정할 수 있는 유일한 근거다 — 이것이 없던 시절에는
+ * `completeTourStep`이 `<경로>:done`으로 앞선 기록을 통째로 덮어써서, 완료 카드가 늘
+ * 「다른 경로」를 권했고 두 경로를 오가는 왕복이 닫히지 않았다.
+ */
+type PriorPath = TourPath | null;
+
 export type TourState =
   | { readonly phase: 'off' }
   /** 가입 직후 — 다음 보호 화면에서 경로를 고르는 환영 모달을 띄운다 */
   | { readonly phase: 'welcome' }
-  | { readonly phase: 'running'; readonly path: TourPath; readonly stepIndex: number }
-  /** 마지막 단계까지 마침 — 완료 카드가 다른 경로를 권한다 */
-  | { readonly phase: 'finished'; readonly path: TourPath };
+  | {
+      readonly phase: 'running';
+      readonly path: TourPath;
+      readonly stepIndex: number;
+      readonly priorPath: PriorPath;
+    }
+  /** 마지막 단계까지 마침 — `priorPath`가 있으면 남은 경로가 없다는 뜻이다 */
+  | { readonly phase: 'finished'; readonly path: TourPath; readonly priorPath: PriorPath };
 
 const OFF: TourState = { phase: 'off' };
 
-const PROGRESS = /^(general|patient):(\d+|done)$/;
+/**
+ * `<경로>:<단계|done>`에 `|<먼저 마친 경로>`가 선택적으로 붙는다.
+ *
+ * 뒷조각을 **선택**으로 둔 덕에 이미 배포된 브라우저의 옛 값(`general:2`·`general:done`)이
+ * 그대로 읽힌다 — 저장소에 판 번호를 두고 갈아엎을 만큼 큰 변화가 아니다.
+ */
+const PROGRESS = /^(general|patient):(\d+|done)(?:\|(general|patient))?$/;
+
+/** 상태 → 저장 문자열. 읽는 쪽이 `PROGRESS` 하나이므로 쓰는 쪽도 여기 하나로 모은다 */
+function serialize(path: TourPath, progress: number | 'done', priorPath: PriorPath): string {
+  return `${path}:${progress}${priorPath === null ? '' : `|${priorPath}`}`;
+}
 
 /**
  * 저장된 문자열 → 상태.
@@ -41,9 +66,14 @@ export function parseTourState(raw: string | null): TourState {
   const matched = PROGRESS.exec(raw ?? '');
   if (!matched) return OFF;
   const path = matched[1] as TourPath;
-  if (matched[2] === 'done') return { phase: 'finished', path };
+  const priorPath = (matched[3] as TourPath | undefined) ?? null;
+  // 자기 자신을 먼저 마쳤다는 값은 이 코드가 만들 수 없다 — 손으로 고친 값이므로 끈다
+  if (priorPath === path) return OFF;
+  if (matched[2] === 'done') return { phase: 'finished', path, priorPath };
   const stepIndex = Number(matched[2]);
-  return stepIndex < TOUR_PATHS[path].length ? { phase: 'running', path, stepIndex } : OFF;
+  return stepIndex < TOUR_PATHS[path].length
+    ? { phase: 'running', path, stepIndex, priorPath }
+    : OFF;
 }
 
 const listeners = new Set<() => void>();
@@ -106,8 +136,18 @@ export function scheduleWelcomeTour(): void {
   commit('welcome');
 }
 
+/**
+ * 경로를 시작한다.
+ *
+ * **먼저 마친 경로는 호출부가 아니라 여기서 판정한다.** 이 함수를 부르는 곳은 둘인데
+ * (환영 모달의 경로 카드, 완료 카드의 「이어서 해보기」) 둘 다 자기가 어디서 왔는지만 알 뿐
+ * 저장 형식은 모른다. 지금 상태가 「다른 경로를 마친 직후」인지는 저장소가 이미 알고 있으므로
+ * 그것을 여기서 읽는다 — 호출부의 시그니처는 그대로다.
+ */
 export function startTourPath(path: TourPath): void {
-  commit(`${path}:0`);
+  const state = parseTourState(snapshot());
+  const priorPath = state.phase === 'finished' && state.path !== path ? state.path : null;
+  commit(serialize(path, 0, priorPath));
 }
 
 /** 닫기·건너뛰기 — 이 브라우저에서 다시 뜨지 않는다 */
@@ -144,8 +184,13 @@ export function completeTourStep(anchor: TourAnchor): void {
   const index = currentStepIndexOf(state, anchor);
   if (index === null || state.phase !== 'running') return;
   const next = index + 1;
+  // 먼저 마친 경로를 함께 넘긴다 — 여기서 흘리면 마지막 단계에서 종료 지점이 사라진다
   commit(
-    next < TOUR_PATHS[state.path].length ? `${state.path}:${next}` : `${state.path}:done`,
+    serialize(
+      state.path,
+      next < TOUR_PATHS[state.path].length ? next : 'done',
+      state.priorPath,
+    ),
   );
 }
 
