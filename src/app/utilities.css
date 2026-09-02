@@ -56,6 +56,35 @@
   }
 }
 
+/*
+ * 두 경로를 다 마친 완료 카드가 스스로 물러날 때.
+ *
+ * 카드를 지우는 것은 JS 타이머이고 이 애니메이션은 **그 순간을 예고할 뿐**이다. 그래서
+ * 길이를 값으로 적지 않고 변수로 받는다 — 시간의 원천은 `TOUR_FINISH_AUTO_CLOSE_MS` 하나이며,
+ * 여기에 5000ms를 다시 적으면 상수를 고친 날 페이드만 어긋난 채 남는다.
+ *
+ * 대부분의 구간을 불투명하게 두는 이유는 문구가 읽히는 시간이 먼저이기 때문이다. 끝자락에서만
+ * 흐려져 「사라지는 중」이라는 것을 알린다.
+ */
+@utility tour-card-fade {
+  animation: tour-card-fade var(--tour-card-fade-duration, 5000ms) ease-in forwards;
+
+  /* 움직임을 끈 사람에게는 그냥 사라진다 — 페이드는 장식이지 정보가 아니다 */
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes tour-card-fade {
+  0%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* 링은 제자리에 두고 그 안쪽으로만 번졌다 사라진다 — 바깥으로 퍼지면 스크롤 영역에 잘린다 */
 @keyframes tour-ring {
   0% {
