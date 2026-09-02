@@ -110,8 +110,12 @@ export function ConversationList({
   // 환자 목록과 달리 기본값이 '활성' — 대화는 찾아야 하는 대상이 아니라 치워야 하는 대상이다.
   // 대신 검색이 빈손으로 끝나면 보관된 대화까지 넓히는 버튼을 그 자리에 띄운다.
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ACTIVE');
-  // 보관 직후 그 대화는 목록에서 사라진다 — 되돌릴 자리를 잃지 않도록 한 번 잡아둔다
-  const [justArchived, setJustArchived] = useState<{ id: string; title: string } | null>(null);
+  // 보관 직후 그 대화는 목록에서 사라진다 — 되돌릴 자리를 잃지 않도록 한 번 잡아둔다.
+  // 배너도 제목을 그리므로 성격(type)까지 들고 간다 — 없으면 그 자리만 저장된 언어로 남는다
+  const [justArchived, setJustArchived] = useState<Pick<
+    ConversationSummary,
+    'id' | 'title' | 'type'
+  > | null>(null);
   // 삭제는 서버에 복구 경로가 없다(spec 34) — 되돌리기 배너가 아니라 사전 확인으로 막는다
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
@@ -128,8 +132,11 @@ export function ConversationList({
   const newConversationHighlight = useTourHighlight('new-conversation');
 
   /** 서버 제목을 화면에 그릴 문자열로 — 기본 제목만 표시 언어를 따른다 */
-  const displayTitle = (title: string): string =>
-    resolveConversationTitle(title, t.untitledConversation);
+  const displayTitle = ({
+    title,
+    type,
+  }: Pick<ConversationSummary, 'title' | 'type'>): string =>
+    resolveConversationTitle(title, lang, type);
 
   /**
    * 확인 블록은 행보다 훨씬 높아, 목록 하단에서 열면 늘어난 만큼 스크롤 밖으로 나가
@@ -185,7 +192,12 @@ export function ConversationList({
   // 되돌리기 배너는 selectedId에 묶인 훅을 쓴다 — 선택이 바뀌면 배너도 사라져야 짝이 맞는다
   const handleArchive = (conversation: ConversationSummary): void => {
     archiveConversation.mutate(undefined, {
-      onSuccess: () => setJustArchived({ id: conversation.id, title: conversation.title }),
+      onSuccess: () =>
+        setJustArchived({
+          id: conversation.id,
+          title: conversation.title,
+          type: conversation.type,
+        }),
     });
   };
 
@@ -211,7 +223,7 @@ export function ConversationList({
   };
 
   const startRename = (conversation: ConversationSummary): void => {
-    setTitleInput(displayTitle(conversation.title));
+    setTitleInput(displayTitle(conversation));
     setPendingDeleteId(null);
     setRenamingId(conversation.id);
   };
@@ -278,7 +290,7 @@ export function ConversationList({
       {justArchived?.id === selectedId && (
         <div className="mb-3 flex shrink-0 items-center gap-2 rounded-lg bg-gray-100 px-2.5 py-2">
           <p className="min-w-0 flex-1 truncate text-xs text-gray-600">
-            <span className="font-medium text-gray-800">{displayTitle(justArchived.title)}</span> {t.archivedSuffix}
+            <span className="font-medium text-gray-800">{displayTitle(justArchived)}</span> {t.archivedSuffix}
           </p>
           <button
             type="button"
@@ -342,7 +354,7 @@ export function ConversationList({
                   /* 되돌리기 배너가 없는 대신 여기서 막는다 — 서버에 restore가 없다(spec 34) */
                   <div ref={confirmRef} className="rounded-lg border border-red-200 bg-red-50/60 p-2">
                     <p className="truncate text-sm font-medium text-gray-800">
-                      {displayTitle(conversation.title)}
+                      {displayTitle(conversation)}
                     </p>
                     <p className="mt-0.5 text-xs text-red-700">
                       {t.deletePermanentWarning}
@@ -383,7 +395,7 @@ export function ConversationList({
                         isSelected ? 'font-medium text-emerald-800' : 'text-gray-700'
                       }`}
                     >
-                      {displayTitle(conversation.title)}
+                      {displayTitle(conversation)}
                       {conversation.status === 'ARCHIVED' && (
                         <span className="ml-1.5 text-xs text-gray-400">{t.archivedParenthetical}</span>
                       )}
