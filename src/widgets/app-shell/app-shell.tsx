@@ -8,7 +8,8 @@ import { completeTourStep, useTourHighlight } from '@/features/onboarding-tour/m
 import type { TourAnchor } from '@/features/onboarding-tour/model/tour-steps';
 import { OnboardingTour } from '@/features/onboarding-tour/ui/onboarding-tour';
 import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
-import { type UiLang, setUiLang, useUiLang } from '@/shared/i18n/ui-lang';
+import { useUiLang } from '@/shared/i18n/ui-lang';
+import { LanguageRailToggle, LanguageSwitch } from '@/shared/ui/language-switch';
 import { LogoMark } from '@/shared/ui/logo-mark';
 
 type IconProps = { className?: string };
@@ -109,86 +110,12 @@ function readSidebarOpen(): boolean {
   }
 }
 
-/**
- * 표시 언어 선택.
- *
- * **선택지 라벨을 번역하지 않는다** — 각 항목을 그 언어 자체로(`한국어`·`English`) 적는다.
- * 데모의 실제 시나리오는 「한국어 로케일 노트북으로 영어권 방문자에게 시연」이고, 그때 화면은
- * 전부 한국어다. 라벨을 현재 UI 언어로 번역하면 **한국어를 못 읽는 사람이 자기 항목을 찾을
- * 수 없다.** 언어 이름을 그 언어로 적는 것이 이 컨트롤의 유일한 요건이다.
- *
- * 사이드바 하단 계정 블록에 두는 이유: 표시 언어는 화면이 아니라 **사람에 딸린 설정**이라
- * 계정 동작(프로필·로그아웃)과 같은 자리에 있어야 하고, 어느 화면에서도 손이 닿는다.
- */
-const LANG_OPTIONS = [
-  { value: 'ko', label: '한국어', code: 'KO', switchKey: 'switchToKorean' },
-  { value: 'en', label: 'English', code: 'EN', switchKey: 'switchToEnglish' },
-] as const satisfies readonly {
-  value: UiLang;
-  label: string;
-  code: string;
-  switchKey: MessageKey;
-}[];
-
-function LanguageSwitch({
-  lang,
-  t,
-}: {
-  lang: UiLang;
-  t: Record<MessageKey, string>;
-}): React.ReactElement {
-  return (
-    <div
-      role="group"
-      aria-label={t.displayLanguage}
-      className="mb-2 flex rounded-lg border border-gray-300 p-0.5"
-    >
-      {LANG_OPTIONS.map((option) => {
-        const active = option.value === lang;
-        return (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => setUiLang(option.value)}
-            aria-pressed={active}
-            className={`flex-1 rounded-md py-1 text-xs font-medium ${
-              active ? 'bg-emerald-50 text-emerald-800' : 'text-gray-500 hover:bg-gray-100'
-            }`}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/**
- * 접힘 레일용 — 폭이 56px뿐이라 두 항목을 나란히 둘 수 없다.
- * 현재 언어 코드를 보여주고 누르면 다른 언어로 넘어간다. 접근성 이름은 **넘어갈 대상**을
- * 말한다 — 코드만 읽으면 「지금 이것」인지 「눌러서 이것」인지 갈리지 않는다.
- */
-function LanguageRailToggle({
-  lang,
-  t,
-}: {
-  lang: UiLang;
-  t: Record<MessageKey, string>;
-}): React.ReactElement {
-  const current = LANG_OPTIONS.find((option) => option.value === lang) ?? LANG_OPTIONS[0];
-  const next = LANG_OPTIONS.find((option) => option.value !== lang) ?? LANG_OPTIONS[1];
-  return (
-    <button
-      type="button"
-      onClick={() => setUiLang(next.value)}
-      aria-label={t[next.switchKey]}
-      title={t[next.switchKey]}
-      className={`${railIconClass(false)} text-xs font-semibold`}
-    >
-      {current.code}
-    </button>
-  );
-}
+// 표시 언어 컨트롤(LanguageSwitch·LanguageRailToggle)은 `@/shared/ui/language-switch`에 있다 —
+// 로그인 전 화면((auth) 레이아웃)도 같은 컨트롤을 쓰기 때문이다. 여기 두면 셸에 갇혀,
+// 로그인 화면에는 자동 판정만 남고 사람이 그것을 뒤집을 수 없다.
+//
+// 사이드바 하단 계정 블록에 두는 이유: 표시 언어는 화면이 아니라 **사람에 딸린 설정**이라
+// 계정 동작(프로필·로그아웃)과 같은 자리에 있어야 하고, 어느 화면에서도 손이 닿는다.
 
 // 레일 아이콘의 형태·색을 한곳에 묶는다 — 메뉴와 프로필이 따로 흘러가지 않게 한다
 function railIconClass(active: boolean): string {
@@ -278,7 +205,7 @@ export function AppShell({
           })}
         </nav>
         <div className="border-t border-gray-200 p-4">
-          <LanguageSwitch lang={lang} t={t} />
+          <LanguageSwitch className="mb-2" />
           {/* 계정 정보 블록이 프로필 진입점이다. -mx-2 px-2: 글자 위치는 그대로 두고 호버 영역만 넓힌다.
               되돌릴 수 없는 계정 동작(회원탈퇴)은 이 자리가 아니라 프로필 안에 둔다 — 로그아웃과
               나란히 두면 나가려다 지우는 오조작이 만들어진다 */}
@@ -341,7 +268,7 @@ export function AppShell({
               둘 다 주요 메뉴가 아니라 계정 동작이므로 위 nav 밖에 두고,
               순서도 열림 상태와 같이 프로필 → 로그아웃이다 (두 상태가 다른 순서를 가르치지 않게) */}
           <div className="mt-auto flex w-full flex-col items-center gap-1 border-t border-gray-200 py-3">
-            <LanguageRailToggle lang={lang} t={t} />
+            <LanguageRailToggle className={railIconClass(false)} />
             <Link
               href="/profile"
               aria-label={t.myProfile}
