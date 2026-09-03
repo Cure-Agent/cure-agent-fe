@@ -170,12 +170,16 @@ export function AppShell({
         {/* h-18: 접힘 레일 헤더와 같은 높이 토큰 — 두 상태의 상단 기준선을 맞춘다 */}
         <div className="relative flex h-18 items-center gap-2.5 border-b border-gray-200 px-5">
           <LogoMark className="h-7 w-auto shrink-0 text-emerald-700" />
-          <div className="min-w-0">
+          {/* pr-6: 닫기 버튼이 플로우 밖이라 이 자리를 텍스트가 스스로 비워야 한다.
+              남는 폭 ≈133px — 한국어 부제(124px)는 한 줄로 서고 영어는 두 줄로 접힌다 */}
+          <div className="min-w-0 pr-6">
             <p className="text-lg font-bold leading-tight text-emerald-800">Cure Agent</p>
-            <p className="truncate text-xs text-gray-500">{t.appTagline}</p>
+            {/* 영어 부제는 한 줄에 담기지 않는다(가용 폭의 1.8배). 잘라내면 뜻이 사라지므로
+                두 줄까지 흘린다 — 제목 22.5px + 두 줄 32px 이라 h-18 헤더 안에 그대로 든다 */}
+            <p className="line-clamp-2 text-xs text-gray-500">{t.appTagline}</p>
           </div>
-          {/* 부제가 헤더 폭을 거의 다 쓰므로 플로우 밖에 띄운다 — 행에 넣으면 부제가 잘린다.
-              세로는 접힘 레일의 토글과 같은 중앙 정렬 */}
+          {/* 부제가 헤더 폭을 거의 다 쓰므로 플로우 밖에 띄운다 — 행에 넣으면 남는 폭이 116px라
+              한국어 부제까지 두 줄이 된다. 세로는 접힘 레일의 토글과 같은 중앙 정렬 */}
           <button
             type="button"
             onClick={() => persistSidebarOpen(false)}

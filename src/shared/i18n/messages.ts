@@ -471,7 +471,9 @@ const en: Record<MessageKey, string> = {
 
   citationNotTranslated: 'Not translated',
 
-  appTagline: 'Korean medicine clinical guideline assistant',
+  // 한국어 원문과 정보량은 같되 영어에서 'clinical guideline'은 한 숙어라 'clinical'을 뺀다.
+  // 전문(245px)은 사이드바 부제의 가용 폭(≈137px)의 1.8배라 두 줄에도 담기지 않았다
+  appTagline: 'Korean medicine guideline assistant',
   navAssistant: 'Assistant',
   navGuidelines: 'Guidelines',
   navPatients: 'Patients',
@@ -612,7 +614,7 @@ const en: Record<MessageKey, string> = {
   joinSharesRecords: "Joining means sharing the clinic's patients and conversations with its members.",
   joinBlockedIfInClinic: 'An account that already belongs to another clinic cannot join.',
 
-  appTaglineShort: 'Korean medicine clinical guideline assistant',
+  appTaglineShort: 'Korean medicine guideline assistant',
   loginLeadIn: 'The first time you log in, you go through sign-up to enter your clinic details.',
   signupHeading: 'Clinician sign-up',
   signupLead: 'Your social account is verified. Enter your clinic details to finish signing up.',
