@@ -34,7 +34,7 @@ test.describe('비인증 화면 표시 언어 전환', () => {
 
     await page.getByRole('button', { name: 'English', exact: true }).click();
 
-    await expect(page.getByText('Korean medicine clinical guideline assistant')).toBeVisible();
+    await expect(page.getByText('Korean medicine guideline assistant')).toBeVisible();
     await expect(
       page.getByText(
         'The first time you log in, you go through sign-up to enter your clinic details.',
