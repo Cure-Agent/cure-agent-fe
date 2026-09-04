@@ -71,6 +71,13 @@ const ko = {
   loadingOlderMessages: '이전 대화를 불러오는 중…',
   retrievingEvidence: '지침 근거를 검색하는 중…',
   /**
+   * `retrieval.completed`가 도착한 뒤의 대기 — 근거는 이미 손에 있고 답을 쓰는 중이다.
+   * 이 자리를 `retrievingEvidence`로 계속 두면 검색이 끝난 뒤에도 「검색하는 중」이라 말하게 된다.
+   * 건수를 싣는 이유는 기다림 중에 화면이 실제로 한 번 바뀌어야 하기 때문이다 — 진행의 증거다.
+   * 상태 안내이므로 답변 내용물이 아니라 **표시 언어**를 따른다 (§44의 콘텐츠 축과 갈린다).
+   */
+  draftingAnswer: '지침 근거 {count}건을 바탕으로 답변을 작성하는 중…',
+  /**
    * 이어받을 스트림 없이 연 화면(새로고침·다른 탭)이 진행 중인 답변을 만났을 때.
    * 어느 단계인지 알 수 없으므로 `retrievingEvidence`를 재사용하지 않는다 — 근거 검색이
    * 이미 끝난 답변에도 「검색하는 중」이라 쓰면 틀린 말이 된다.
@@ -449,6 +456,7 @@ const en: Record<MessageKey, string> = {
   retry: 'Try again',
   loadingOlderMessages: 'Loading earlier messages…',
   retrievingEvidence: 'Searching the guidelines for evidence…',
+  draftingAnswer: 'Drafting the answer from {count} guideline sources…',
   answerInProgress: 'Generating the answer…',
   answerNotArrived: 'The answer has not arrived yet.',
   checkAgain: 'Check again',

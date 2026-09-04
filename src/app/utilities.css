@@ -75,6 +75,71 @@
   }
 }
 
+/*
+ * 답을 기다리는 동안 마크의 파형이 왼쪽에서 들어와 오른쪽으로 빠져나간다.
+ *
+ * **길이 115는 파형 path의 실측값(≈114.5)이다** — `logo-mark.tsx`의 여섯 점을 이은 선분 합이며,
+ * dasharray가 이보다 짧으면 획이 중간에 끊겨 다른 그림이 된다. 좌표를 고치면 이 값도 다시 잰다.
+ * `stroke-dashoffset`을 +115 → 0 → -115로 흘리면 획이 왼쪽에서 자라 들어왔다가(45%까지) 잠깐
+ * 온전히 서고(55%까지) 왼쪽부터 지워지며 오른쪽으로 빠진다. 한 방향으로만 흐르므로 왕복하는
+ * 스피너와 달리 「진행 중」이 읽힌다.
+ *
+ * 스켈레톤 스윕을 쓰지 않은 이유는 그것이 **「곧 이 자리에 글이 들어온다」는 약속**이기 때문이다.
+ * 이 화면은 근거를 못 찾으면 보류(ABSTAINED)로 끝날 수 있어 그 약속을 지키지 못한다.
+ */
+@utility mark-wave-sweep {
+  stroke-dasharray: 115;
+  animation: mark-wave-sweep 1.8s linear infinite;
+
+  /* 움직임을 끈 사람에게는 온전한 마크를 그대로 준다 — 획이 끊긴 채 멈추면 렌더 오류로 읽힌다 */
+  @media (prefers-reduced-motion: reduce) {
+    stroke-dasharray: none;
+    animation: none;
+  }
+}
+
+/*
+ * 파형이 도달하는 순간에만 밝아지는 인용 점.
+ *
+ * 위 파형과 **같은 1.8s 주기**를 쓰고 정점(50%)을 파형이 다 그려지는 구간(45~55%)에 맞춰 둔다 —
+ * 두 유틸리티는 같은 마운트에서 함께 시작하므로 위상이 맞는다. 주기를 한쪽만 고치면 점이 엉뚱한
+ * 때 밝아져 「파형이 점에 닿는다」는 마크의 개념이 깨진다.
+ */
+@utility mark-dot-arrive {
+  animation: mark-dot-arrive 1.8s ease-in-out infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes mark-wave-sweep {
+  0% {
+    stroke-dashoffset: 115;
+  }
+  45%,
+  55% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -115;
+  }
+}
+
+@keyframes mark-dot-arrive {
+  0%,
+  40% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+  70%,
+  100% {
+    opacity: 0.2;
+  }
+}
+
 @keyframes tour-card-fade {
   0%,
   85% {

@@ -27,8 +27,9 @@ import {
 import { useChatAutoScroll } from '@/shared/lib/use-chat-auto-scroll';
 import { GuidanceCard } from '@/features/review-clinical-guidance/ui/guidance-card';
 import { GuidanceCardLoader } from '@/features/review-clinical-guidance/ui/guidance-card-loader';
-import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
+import { type MessageKey, formatMessage, messagesFor } from '@/shared/i18n/messages';
 import { type UiLang, useUiLang } from '@/shared/i18n/ui-lang';
+import { LogoMark } from '@/shared/ui/logo-mark';
 import { sendMessageStream } from '../api/send-message';
 import { resolveResponseLang } from '../lib/response-lang';
 import { resolveSuggestedPrompts } from '../lib/suggested-prompts';
@@ -373,8 +374,20 @@ export function ChatPanel({
 
         {inFlight && (
           <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-800">
+            {/*
+              대기를 두 단계로 가른다. **축은 `phase`가 아니라 `evidence`다** — `retrieval.completed`가
+              와도 phase는 `retrieving`에 머무르므로(stream-state.model), phase만 보면 근거를 이미
+              받아 든 뒤에도 「검색하는 중」이라고 말하게 된다. 기다리는 사람에게는 화면이 실제로 한 번
+              바뀌는 것이 어떤 움직임보다 큰 신호다.
+            */}
             {state.phase !== 'streaming' && (
-              <p className="text-xs text-gray-400">{t.retrievingEvidence}</p>
+              <WaitingIndicator
+                label={
+                  state.evidence.length > 0
+                    ? formatMessage(t.draftingAnswer, { count: state.evidence.length })
+                    : t.retrievingEvidence
+                }
+              />
             )}
             {state.content && (
               <p className="whitespace-pre-wrap">
@@ -387,10 +400,11 @@ export function ChatPanel({
           </div>
         )}
 
-        {/* 이어받을 스트림 없이 연 화면이 만난 진행 중 답변 — 같은 자리, 같은 생김새로 */}
+        {/* 이어받을 스트림 없이 연 화면이 만난 진행 중 답변 — 같은 자리, 같은 생김새로.
+            단계를 알 수 없는 경로라 문구는 갈리지 않지만, 기다린다는 사실은 똑같이 움직여 보인다 */}
         {unfinishedAnswer && !unfinishedAnswer.abandoned && (
           <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-800">
-            <p className="text-xs text-gray-400">{t.answerInProgress}</p>
+            <WaitingIndicator label={t.answerInProgress} />
           </div>
         )}
 
@@ -466,6 +480,31 @@ export function ChatPanel({
         </button>
       </form>
     </div>
+  );
+}
+
+/**
+ * 답을 기다리는 동안의 진행 표시 — 대기 상자 둘이 공유한다.
+ *
+ * 마크의 파형이 왼쪽에서 들어와 인용 점을 지나 오른쪽으로 빠져나가고, 점은 파형이 닿는 순간에만
+ * 밝아진다. 이것은 임의의 장식이 아니라 **마크의 개념 그대로다** — 열린 원을 파형이 가로질러 원 밖의
+ * 점(= 인용/근거)에서 멈춘다(`logo-mark.tsx`). 그 그림이 곧 「근거를 훑어 인용에 도달한다」라서,
+ * 이 화면이 지금 하고 있는 일과 같다.
+ *
+ * 문구를 `aria-live`로 감싸는 이유는 **움직임이 정보가 아니기 때문**이다. 눈으로 보는 사람에게는
+ * 파형이 「멈추지 않았다」를 말하지만, 화면을 읽어 주는 경로에서는 단계가 바뀌었다는 사실만이
+ * 전달할 값어치가 있다. 흐르는 본문 쪽에는 걸지 않는다 — delta마다 읽어 대면 방해가 된다.
+ */
+function WaitingIndicator({ label }: { label: string }): React.ReactElement {
+  return (
+    <p aria-live="polite" className="flex items-center gap-2 text-xs text-gray-400">
+      <LogoMark
+        className="h-4 w-auto shrink-0 text-emerald-600"
+        waveClassName="mark-wave-sweep"
+        dotClassName="mark-dot-arrive"
+      />
+      <span>{label}</span>
+    </p>
   );
 }
 
