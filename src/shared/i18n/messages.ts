@@ -78,6 +78,18 @@ const ko = {
    */
   draftingAnswer: '지침 근거 {count}건을 바탕으로 답변을 작성하는 중…',
   /**
+   * 대기 문구 뒤에 붙는 **경과 시간** — 두 단계 문구가 공유한다.
+   *
+   * 이 자리에 경과를 두는 이유는, 실서버가 주는 단계 경계가 `retrieval.started` 하나뿐이기
+   * 때문이다. 프로덕션 실측(2026-09-04)에서 `retrieval.completed`와 첫 `answer.delta`가 **같은
+   * 밀리초에** 도착했다 — 즉 `draftingAnswer`의 창은 0ms이고, 사람이 실제로 겪는 8~11초는 전부
+   * 검색 구간이다. 그 구간에서 FE가 **단계를 지어내지 않고** 말할 수 있는 사실은 경과 시간뿐이다.
+   *
+   * 문구가 아니라 조각으로 둔 이유는 두 단계에 같은 형식으로 붙어야 하기 때문이다 —
+   * 단계가 바뀌어도 경과는 이어진다(기다린 시간은 초기화되지 않는다).
+   */
+  waitElapsed: '({seconds}초)',
+  /**
    * 이어받을 스트림 없이 연 화면(새로고침·다른 탭)이 진행 중인 답변을 만났을 때.
    * 어느 단계인지 알 수 없으므로 `retrievingEvidence`를 재사용하지 않는다 — 근거 검색이
    * 이미 끝난 답변에도 「검색하는 중」이라 쓰면 틀린 말이 된다.
@@ -457,6 +469,7 @@ const en: Record<MessageKey, string> = {
   loadingOlderMessages: 'Loading earlier messages…',
   retrievingEvidence: 'Searching the guidelines for evidence…',
   draftingAnswer: 'Drafting the answer from {count} guideline sources…',
+  waitElapsed: '({seconds}s)',
   answerInProgress: 'Generating the answer…',
   answerNotArrived: 'The answer has not arrived yet.',
   checkAgain: 'Check again',
