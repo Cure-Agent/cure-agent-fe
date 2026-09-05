@@ -86,6 +86,13 @@ export function ChatPanel({
   const questionRef = useRef<HTMLTextAreaElement | null>(null);
 
   const inFlight = isStreamLive(state);
+  /**
+   * 기다린 시간. 기준 시각이 `pendingUser.createdAt`인 이유는 **그 값만이 스트림과 함께
+   * 살기 때문이다** — 컴포넌트 로컬 state에 두면 대화를 떠났다 돌아온 화면이 0초부터 다시
+   * 세서, 이어지는 것처럼 보이던 대기가 화면 전환 한 번에 거짓이 된다. `send`가 전송 시각으로
+   * 채우고 `message.accepted`도 id만 갱신하므로(stream-state.model), 이 값은 대기 내내 고정이다.
+   */
+  const elapsedSeconds = useElapsedSeconds(state.pendingUser?.createdAt, inFlight);
   const messages = useMessages(conversationId, {
     // 이 화면이 스트림을 들고 있으면 SSE가 끝을 알려준다 — 폴링은 그때만 필요 없다
     pollUnfinishedAnswer: !inFlight,
@@ -387,6 +394,16 @@ export function ChatPanel({
                     ? formatMessage(t.draftingAnswer, { count: state.evidence.length })
                     : t.retrievingEvidence
                 }
+                /*
+                  경과는 **단계와 무관하게 이어진다** — 축이 다르기 때문이다. 단계는 서버가
+                  알려주는 것이고 경과는 사람이 기다린 시간이라, 단계가 넘어갔다고 기다림이
+                  리셋되지는 않는다. 1초 미만은 싣지 않는다 — 「(0초)」는 진행이 아니라 잡음이다.
+                */
+                elapsed={
+                  elapsedSeconds >= 1
+                    ? formatMessage(t.waitElapsed, { seconds: elapsedSeconds })
+                    : undefined
+                }
               />
             )}
             {state.content && (
@@ -494,18 +511,58 @@ export function ChatPanel({
  * 문구를 `aria-live`로 감싸는 이유는 **움직임이 정보가 아니기 때문**이다. 눈으로 보는 사람에게는
  * 파형이 「멈추지 않았다」를 말하지만, 화면을 읽어 주는 경로에서는 단계가 바뀌었다는 사실만이
  * 전달할 값어치가 있다. 흐르는 본문 쪽에는 걸지 않는다 — delta마다 읽어 대면 방해가 된다.
+ *
+ * **경과 시간은 그 `aria-live` 밖에 둔다.** 같은 이유의 연장이다 — 매초 바뀌는 숫자를 안에 넣으면
+ * 낭독기가 매초 읽어, 「단계가 바뀐 것만 알린다」는 규칙이 그 자리에서 무너진다. 눈으로 보는
+ * 사람에게만 값어치가 있는 정보라 `aria-hidden`이 맞다.
  */
-function WaitingIndicator({ label }: { label: string }): React.ReactElement {
+function WaitingIndicator({
+  label,
+  elapsed,
+}: {
+  label: string;
+  /** 이미 문구로 조립된 경과 표시. 1초 미만이면 없다 */
+  elapsed?: string;
+}): React.ReactElement {
   return (
-    <p aria-live="polite" className="flex items-center gap-2 text-xs text-gray-400">
+    <p className="flex items-center gap-2 text-xs text-gray-400">
       <LogoMark
         className="h-4 w-auto shrink-0 text-emerald-600"
         waveClassName="mark-wave-sweep"
         dotClassName="mark-dot-arrive"
       />
-      <span>{label}</span>
+      <span aria-live="polite">{label}</span>
+      {elapsed && <span aria-hidden="true">{elapsed}</span>}
     </p>
   );
+}
+
+/**
+ * 기다린 초. `startedAt`부터 흐르며 1초마다 갱신된다.
+ *
+ * **`startedAt`을 인자로 받는 이유**는 기준 시각의 소유권이 이 훅에 없기 때문이다 — 스트림은
+ * 화면보다 오래 살고(stream-store), 기다림도 그래야 한다. 여기서 시작 시각을 만들면 재마운트마다
+ * 0으로 돌아간다.
+ *
+ * 렌더 중 `Date.now()`를 읽지 않고 `now`를 상태로 두는 이유는, 그러면 같은 렌더에서 두 번 읽은
+ * 값이 갈라져 화면과 단언이 어긋날 수 있어서다. 시각이 바뀌는 지점을 타이머 하나로 좁힌다.
+ */
+function useElapsedSeconds(startedAt: string | undefined, active: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!active || !startedAt) return;
+    // 새 질문·재시도로 기준이 바뀌면 이전 대기의 잔여값을 한 프레임도 보여주지 않는다
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(timer);
+  }, [active, startedAt]);
+
+  if (!active || !startedAt) return 0;
+  const started = new Date(startedAt).getTime();
+  // 시각을 읽을 수 없으면 경과를 말하지 않는다 — 틀린 숫자보다 없는 편이 낫다
+  if (!Number.isFinite(started)) return 0;
+  return Math.max(0, Math.floor((now - started) / 1_000));
 }
 
 /**
