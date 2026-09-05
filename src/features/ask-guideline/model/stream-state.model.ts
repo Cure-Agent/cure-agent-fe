@@ -18,10 +18,22 @@ export type StreamPhase =
   | 'idle'
   | 'accepted'
   | 'retrieving'
+  /**
+   * `answer.started`부터 첫 델타까지 (BE docs/specs/46). `streaming`으로 올리면 본문이
+   * 아직 없는데 본문 렌더로 넘어가므로 그 사이에 단계를 하나 둔다.
+   */
+  | 'generating'
   | 'streaming'
   | 'completed'
   | 'abstained'
   | 'error';
+
+/**
+ * `retrieval.progress`가 말하는 **끝난 단계** (BE docs/specs/46).
+ * 리랭크가 꺼진 구성에서는 `reranked`가 오지 않고, 기권 경로는 도달한 단계까지만 온다 —
+ * 「보낸 진행은 실제로 일어난 일」이 그 계약의 불변식이다.
+ */
+export type RetrievalStage = 'embedded' | 'searched' | 'reranked';
 
 export interface StreamError {
   code: string;
@@ -36,6 +48,10 @@ export interface StreamState {
   userMessageId: string | null;
   assistantMessageId: string | null;
   evidence: EvidenceDetail[];
+  /** 마지막으로 도착한 `retrieval.progress`의 단계 — 진행 이벤트가 없는 BE에서는 null로 남는다 */
+  retrievalStage: RetrievalStage | null;
+  /** `stage=searched`가 싣는 후보 수. 다른 stage에는 실리지 않으므로 대개 null이다 */
+  retrievalCandidates: number | null;
   /** answer.delta 누적 본문 */
   content: string;
   /** 다음에 기대하는 seq — 불일치 delta는 무시 */
@@ -64,6 +80,8 @@ export const initialStreamState: StreamState = {
   userMessageId: null,
   assistantMessageId: null,
   evidence: [],
+  retrievalStage: null,
+  retrievalCandidates: null,
   content: '',
   nextSeq: 0,
   message: null,
