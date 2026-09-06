@@ -217,13 +217,13 @@ describe('ChatPanel 화면 이탈 후 복귀', () => {
     });
 
     await sendQuestion(user);
-    await screen.findByText('지침 근거를 검색하는 중…');
+    await screen.findByText('질문을 분석하는 중…');
 
     first.unmount();
     renderWithProviders(<ChatPanel conversationId="conversation-4" />, { queryClient });
 
     // 진행 중이라는 사실이 그대로 돌아온다 — 답변 자리가 비지 않는다
-    expect(await screen.findByText('지침 근거를 검색하는 중…')).toBeTruthy();
+    expect(await screen.findByText('질문을 분석하는 중…')).toBeTruthy();
 
     // 떠나 있는 동안에도 도착하던 이벤트를 돌아온 화면이 이어받는다
     act(() => {

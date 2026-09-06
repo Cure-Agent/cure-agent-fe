@@ -69,7 +69,15 @@ const ko = {
   send: '전송',
   retry: '다시 시도',
   loadingOlderMessages: '이전 대화를 불러오는 중…',
-  retrievingEvidence: '지침 근거를 검색하는 중…',
+  /**
+   * 진행 이벤트가 하나도 도착하기 전의 대기 문구 (BE docs/specs/47).
+   *
+   * 이 구간에 실제로 도는 것은 **질의 임베딩**이다. 그런데 문구가 「지침 근거를 검색하는
+   * 중」이라 검색이라고 말했고, 그러면 다음 문구(`retrievalStageEmbedded`, 「지침을 검색하는
+   * 중」)와 두 글자 차이가 된다 — 실측 251~340ms인 그 창에서는 바뀐 것을 알아볼 수 없다.
+   * 두 구간이 **다른 일을 한다는 사실**이 문구에도 드러나야 전환이 진행으로 읽힌다.
+   */
+  analyzingQuestion: '질문을 분석하는 중…',
   /**
    * `retrieval.progress`가 알려주는 **끝난 단계** 뒤의 대기 문구 (BE docs/specs/46).
    *
@@ -78,7 +86,7 @@ const ko = {
    * 「검색하는 중」, `searched`(검색 완료)는 「고르는 중」으로 한 칸씩 밀려 있다.
    *
    * 실측(2026-09-06 prod)상 이 구간이 대기의 거의 전부다: embed 236~2,575ms →
-   * 검색 291~2,048ms → 리랭크 1,025~1,887ms. 오늘은 그 2~6.5초 내내 `retrievingEvidence`
+   * 검색 291~2,048ms → 리랭크 1,025~1,887ms. spec 46 이전에는 그 2~6.5초 내내
    * 한 문구만 서 있었다.
    */
   retrievalStageEmbedded: '지침을 검색하는 중…',
@@ -91,8 +99,10 @@ const ko = {
   retrievalStageReranked: '근거를 정리하는 중…',
   /**
    * `retrieval.completed`가 도착한 뒤의 대기 — 근거는 이미 손에 있고 답을 쓰는 중이다.
-   * 이 자리를 `retrievingEvidence`로 계속 두면 검색이 끝난 뒤에도 「검색하는 중」이라 말하게 된다.
+   * 검색 단계 문구를 이 자리까지 끌고 오면 검색이 끝난 뒤에도 「검색하는 중」이라 말하게 된다.
    * 건수를 싣는 이유는 기다림 중에 화면이 실제로 한 번 바뀌어야 하기 때문이다 — 진행의 증거다.
+   * **N의 원천은 `answer.started`의 `evidenceCount`다** (§47) — 이 문구가 뜨는 시점에
+   * 근거 배열은 아직 비어 있어서, 배열 길이를 세면 「0건」이라 말한다.
    * 상태 안내이므로 답변 내용물이 아니라 **표시 언어**를 따른다 (§44의 콘텐츠 축과 갈린다).
    */
   draftingAnswer: '지침 근거 {count}건을 바탕으로 답변을 작성하는 중…',
@@ -114,8 +124,8 @@ const ko = {
   waitElapsed: '({seconds}초)',
   /**
    * 이어받을 스트림 없이 연 화면(새로고침·다른 탭)이 진행 중인 답변을 만났을 때.
-   * 어느 단계인지 알 수 없으므로 `retrievingEvidence`를 재사용하지 않는다 — 근거 검색이
-   * 이미 끝난 답변에도 「검색하는 중」이라 쓰면 틀린 말이 된다.
+   * 어느 단계인지 알 수 없으므로 단계 문구를 재사용하지 않는다 — 이미 검색을 마치고
+   * 답을 쓰고 있는 답변에도 「질문을 분석하는 중」이라 쓰면 틀린 말이 된다.
    */
   answerInProgress: '답변을 생성하는 중…',
   /** 위 상태로 너무 오래된 답변 — 실패라고 단정하지 않는다(서버는 방금 끝냈을 수도 있다) */
@@ -490,7 +500,7 @@ const en: Record<MessageKey, string> = {
   send: 'Send',
   retry: 'Try again',
   loadingOlderMessages: 'Loading earlier messages…',
-  retrievingEvidence: 'Searching the guidelines for evidence…',
+  analyzingQuestion: 'Analyzing your question…',
   retrievalStageEmbedded: 'Searching the guidelines…',
   retrievalStageSearched: 'Selecting evidence from {count} candidates…',
   retrievalStageReranked: 'Organizing the evidence…',
