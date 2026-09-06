@@ -28,14 +28,14 @@ const PAGE = { size: 50, hasNext: false, nextCursor: null };
 const QUESTION = '만성 요통에 침 치료가 효과적인가요?';
 const DELTA_TEXT = '침 치료를 고려할 수 있습니다.';
 
-const RETRIEVING_KO = '지침 근거를 검색하는 중…';
+const ANALYZING_KO = '질문을 분석하는 중…';
 const EMBEDDED_KO = '지침을 검색하는 중…';
 const SEARCHED_42_KO = '후보 42건에서 근거를 고르는 중…';
 const SEARCHED_7_KO = '후보 7건에서 근거를 고르는 중…';
 const RERANKED_KO = '근거를 정리하는 중…';
 const GENERATING_2_KO = '지침 근거 2건을 바탕으로 답변을 작성하는 중…';
 
-const RETRIEVING_EN = 'Searching the guidelines for evidence…';
+const ANALYZING_EN = 'Analyzing your question…';
 const EMBEDDED_EN = 'Searching the guidelines…';
 const SEARCHED_42_EN = 'Selecting evidence from 42 candidates…';
 const RERANKED_EN = 'Organizing the evidence…';
@@ -44,7 +44,7 @@ const GENERATING_2_EN = 'Drafting the answer from 2 guideline sources…';
 const EN_CONTROLS = {
   input: 'Question',
   send: 'Send',
-  retrieving: RETRIEVING_EN,
+  waiting: ANALYZING_EN,
 };
 
 type LiveStream = {
@@ -117,10 +117,10 @@ async function advanceElapsed(milliseconds: number): Promise<void> {
 
 async function sendQuestion(
   conversationId: string,
-  controls: { input: string; send: string; retrieving: string } = {
+  controls: { input: string; send: string; waiting: string } = {
     input: '질문 입력',
     send: '전송',
-    retrieving: RETRIEVING_KO,
+    waiting: ANALYZING_KO,
   },
 ): Promise<LiveStream> {
   mockEmptyMessages(conversationId);
@@ -130,7 +130,7 @@ async function sendQuestion(
   renderWithProviders(<ChatPanel conversationId={conversationId} />);
   await user.type(await screen.findByLabelText(controls.input), QUESTION);
   await user.click(screen.getByRole('button', { name: controls.send }));
-  await screen.findByText(controls.retrieving);
+  await screen.findByText(controls.waiting);
 
   return stream;
 }
@@ -189,14 +189,14 @@ afterEach(() => {
 describe('ChatPanel spec 46 스트림 진행 단계 (FE 수용 기준 23~30)', () => {
   it('기준 23-a: embedded가 오면 검색 문구를 바꾸고 직전 문구를 제거한다', async () => {
     const stream = await sendQuestion('spec-46-stage-23-a');
-    expect(screen.getByText(RETRIEVING_KO)).toBeTruthy();
+    expect(screen.getByText(ANALYZING_KO)).toBeTruthy();
 
     act(() => {
       stream.emit({ eventType: 'retrieval.progress', stage: 'embedded' });
     });
 
     expect(screen.getByText(EMBEDDED_KO)).toBeTruthy();
-    expect(screen.queryByText(RETRIEVING_KO)).toBeNull();
+    expect(screen.queryByText(ANALYZING_KO)).toBeNull();
   });
 
   it('기준 23-b: searched는 실제 candidates 수를 표시하고 직전 단계 문구를 제거한다', async () => {
@@ -323,7 +323,7 @@ describe('ChatPanel spec 46 스트림 진행 단계 (FE 수용 기준 23~30)', (
       });
     });
 
-    expect(screen.queryByText(RETRIEVING_KO)).toBeNull();
+    expect(screen.queryByText(ANALYZING_KO)).toBeNull();
     expect(screen.queryByText(EMBEDDED_KO)).toBeNull();
     expect(screen.queryByText(SEARCHED_42_KO)).toBeNull();
     expect(screen.queryByText(RERANKED_KO)).toBeNull();
@@ -341,7 +341,7 @@ describe('ChatPanel spec 46 스트림 진행 단계 (FE 수용 기준 23~30)', (
     });
 
     expect(screen.getByText(EMBEDDED_KO)).toBeTruthy();
-    expect(screen.queryByText(RETRIEVING_KO)).toBeNull();
+    expect(screen.queryByText(ANALYZING_KO)).toBeNull();
     expect(screen.getByText('(3초)')).toBeTruthy();
     expect(screen.queryByText('(0초)')).toBeNull();
   });
@@ -378,7 +378,7 @@ describe('ChatPanel spec 46 스트림 진행 단계 (FE 수용 기준 23~30)', (
     });
 
     expect(screen.getByText(GENERATING_2_KO)).toBeTruthy();
-    expect(screen.queryByText(RETRIEVING_KO)).toBeNull();
+    expect(screen.queryByText(ANALYZING_KO)).toBeNull();
 
     // 위 호환성 회귀만으로는 현재 스텁도 통과하므로, 별도 스트림의 아는 stage로 RED를 보장한다.
     cleanup();
@@ -387,20 +387,20 @@ describe('ChatPanel spec 46 스트림 진행 단계 (FE 수용 기준 23~30)', (
       wiringGuard.emit({ eventType: 'retrieval.progress', stage: 'embedded' });
     });
     expect(screen.getByText(EMBEDDED_KO)).toBeTruthy();
-    expect(screen.queryByText(RETRIEVING_KO)).toBeNull();
+    expect(screen.queryByText(ANALYZING_KO)).toBeNull();
   });
 
   it('기준 29-b: retrieval.started까지만 오면 오늘의 검색 문구를 유지한다', async () => {
     const stream = await sendQuestion('spec-46-stage-29-b');
 
-    expect(screen.getByText(RETRIEVING_KO)).toBeTruthy();
+    expect(screen.getByText(ANALYZING_KO)).toBeTruthy();
 
     // started 폴백만으로는 스텁도 통과하므로 다음 유효 stage 전환을 양성 대조로 둔다.
     act(() => {
       stream.emit({ eventType: 'retrieval.progress', stage: 'embedded' });
     });
     expect(screen.getByText(EMBEDDED_KO)).toBeTruthy();
-    expect(screen.queryByText(RETRIEVING_KO)).toBeNull();
+    expect(screen.queryByText(ANALYZING_KO)).toBeNull();
   });
 
   it('기준 30-a: en의 embedded 문구를 표시하고 한국어 문구는 표시하지 않는다', async () => {

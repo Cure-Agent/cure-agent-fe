@@ -192,16 +192,48 @@ function applyEvent(state: StreamState, event: StreamEvent): StreamState {
         retrievalCandidates: typeof event.candidates === 'number' ? event.candidates : null,
       };
     }
-    case 'retrieval.completed':
+    case 'retrieval.evidence': {
+      // 큰 프레임을 근거 1건씩으로 쪼갠 신규 이벤트 (BE docs/specs/47) — 일찍 도착한
+      // 바이트가 **완결된 프레임**이 되어 카드를 하나씩 그릴 수 있게 한다.
+      //
+      // `index`는 재배치 키가 아니라 검산용이다: 같은 스트림의 프레임은 발신 순서대로
+      // 도착하므로 이어붙이면 그 순서가 곧 리랭크 순위다. `index`를 배열 위치로 쓰면
+      // 값이 하나라도 건너뛰었을 때 배열에 구멍이 생겨 `length`가 거짓말을 한다.
+      const arrived = event.evidence as EvidenceDetail | undefined;
+      if (!arrived) return state;
+      // phase를 건드리지 않는다 — 이 프레임은 `answer.started` **뒤**에 오므로
+      // `retrieving`으로 되돌리면 화면이 「답변 작성 중」에서 「검색 중」으로 뒷걸음질친다.
+      return { ...state, evidence: [...state.evidence, arrived] };
+    }
+    case 'retrieval.completed': {
+      /*
+        신규 BE는 여기에 evidence를 싣지 않는다 (spec 47 기준 11) — 이미 근거 프레임으로
+        다 보냈기 때문이다. **그래서 덮어쓰지 않고 있을 때만 받는다**: 무조건 대입하면
+        키가 없는 신규 프레임이 앞서 모은 카드를 통째로 지운다.
+
+        배열이 실려 오는 경로는 구버전 BE다. FE가 먼저 배포되므로(spec 47 배포 순서)
+        이 갈래가 살아 있는 동안이 실제 운영 구간이고, 이 한 줄이 그 구간의 안전이다.
+      */
+      const legacyBatch = event.evidence;
+      const hasLegacyBatch = Array.isArray(legacyBatch) && legacyBatch.length > 0;
       return {
         ...state,
-        phase: 'retrieving',
-        evidence: (event.evidence as EvidenceDetail[]) ?? [],
+        // `answer.started`가 이 프레임보다 앞에 오므로 generating은 유지한다.
+        phase: state.phase === 'generating' ? state.phase : 'retrieving',
+        evidence: hasLegacyBatch ? (legacyBatch as EvidenceDetail[]) : state.evidence,
       };
+    }
     case 'answer.started':
-      // evidence를 지우지 않는다 — 이 이벤트는 evidence를 싣지 않고(spec 46 기준 10),
-      // 「근거 N건을 바탕으로」의 N은 앞서 온 `retrieval.completed`의 배열이 원천이다.
-      return { ...state, phase: 'generating' };
+      // evidence를 지우지 않는다 — 이 이벤트는 evidence 배열을 싣지 않고(spec 47 기준 3),
+      // 근거는 뒤따르는 `retrieval.evidence` 프레임이 채운다.
+      return {
+        ...state,
+        phase: 'generating',
+        // 건수만 정수로 실려 온다. 이 시점의 `evidence`는 아직 비어 있으므로
+        // 「근거 N건을 바탕으로」의 N은 여기서만 나온다. 싣지 않는 BE에서는 null로 두어
+        // 화면이 `evidence.length`로 되돌아가게 한다.
+        evidenceCount: typeof event.evidenceCount === 'number' ? event.evidenceCount : null,
+      };
     case 'answer.delta': {
       if (event.seq !== state.nextSeq) return state; // 중복·역행 seq 무시
       return {

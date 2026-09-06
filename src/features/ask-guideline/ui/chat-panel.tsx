@@ -516,10 +516,16 @@ export function ChatPanel({
  * 2. 진행 단계가 있으면 그 단계를 말한다
  * 3. **`evidence`는 폴백으로 남긴다** — 진행 이벤트를 보내지 않는 BE(배포 순서가 FE보다
  *    뒤인 구간)에서도 오늘과 똑같이 동작해야 한다. 이 한 줄이 되돌림 안전의 전부다
+ *
+ * **건수의 원천이 둘인 이유** (BE docs/specs/47): `answer.started`가 근거 프레임보다 앞으로
+ * 옮겨져, 그 문구를 띄우는 시점에 `evidence`는 아직 비어 있다. 그래서 이벤트가 싣고 온
+ * `evidenceCount`를 **먼저** 쓴다 — 안 그러면 「0건을 바탕으로」라고 말하고, 근거가 하나씩
+ * 도착할 때마다 숫자가 1·2·3으로 굴러간다. 싣지 않는 BE에서만 배열 길이로 되돌아간다.
  */
 function waitingLabel(state: StreamState, t: Record<MessageKey, string>): string {
   if (state.phase === 'generating') {
-    return formatMessage(t.draftingAnswer, { count: state.evidence.length });
+    const count = state.evidenceCount ?? state.evidence.length;
+    return formatMessage(t.draftingAnswer, { count });
   }
   switch (state.retrievalStage) {
     case 'embedded':

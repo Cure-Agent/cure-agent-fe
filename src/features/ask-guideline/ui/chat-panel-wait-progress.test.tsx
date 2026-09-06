@@ -85,10 +85,10 @@ function makeEvidence(count: number) {
 
 async function sendQuestion(
   conversationId: string,
-  controls: { input: string; send: string; retrieving: string } = {
+  controls: { input: string; send: string; waiting: string } = {
     input: '질문 입력',
     send: '전송',
-    retrieving: '지침 근거를 검색하는 중…',
+    waiting: '질문을 분석하는 중…',
   },
 ): Promise<LiveStream> {
   mockEmptyMessages(conversationId);
@@ -98,7 +98,7 @@ async function sendQuestion(
   renderWithProviders(<ChatPanel conversationId={conversationId} />);
   await user.type(await screen.findByLabelText(controls.input), QUESTION);
   await user.click(screen.getByRole('button', { name: controls.send }));
-  await screen.findByText(controls.retrieving);
+  await screen.findByText(controls.waiting);
 
   return stream;
 }
@@ -115,10 +115,10 @@ afterEach(() => {
 });
 
 describe('ChatPanel 답변 대기 진행 단계 (작업 2-a 수용 기준 1~6)', () => {
-  it('기준 1: retrieval.started까지만 도착하면 근거를 검색하는 중이라고 표시한다', async () => {
+  it('기준 1: retrieval.started까지만 도착하면 질문을 분석하는 중이라고 표시한다', async () => {
     await sendQuestion('wait-progress-1');
 
-    expect(screen.getByText('지침 근거를 검색하는 중…')).toBeTruthy();
+    expect(screen.getByText('질문을 분석하는 중…')).toBeTruthy();
   });
 
   it('기준 2: 근거 2건의 retrieval.completed가 도착하면 답변 작성 단계와 건수를 표시한다', async () => {
@@ -133,14 +133,14 @@ describe('ChatPanel 답변 대기 진행 단계 (작업 2-a 수용 기준 1~6)',
     ).toBeTruthy();
   });
 
-  it('기준 3: 근거 2건의 retrieval.completed 뒤에는 검색 단계 문구가 남지 않는다', async () => {
+  it('기준 3: 근거 2건의 retrieval.completed 뒤에는 분석 단계 문구가 남지 않는다', async () => {
     const stream = await sendQuestion('wait-progress-3');
 
     act(() => {
       stream.emit({ eventType: 'retrieval.completed', evidence: makeEvidence(2) });
     });
 
-    expect(screen.queryByText('지침 근거를 검색하는 중…')).toBeNull();
+    expect(screen.queryByText('질문을 분석하는 중…')).toBeNull();
   });
 
   it('기준 4: 근거가 3건이면 작성 단계에 3건을 표시하고 2건을 하드코딩하지 않는다', async () => {
@@ -181,7 +181,7 @@ describe('ChatPanel 답변 대기 진행 단계 (작업 2-a 수용 기준 1~6)',
     expect(
       screen.queryByText('지침 근거 2건을 바탕으로 답변을 작성하는 중…'),
     ).toBeNull();
-    expect(screen.queryByText('지침 근거를 검색하는 중…')).toBeNull();
+    expect(screen.queryByText('질문을 분석하는 중…')).toBeNull();
     expect(screen.getByText('침 치료를 고려할 수 있습니다.')).toBeTruthy();
   });
 
@@ -190,7 +190,7 @@ describe('ChatPanel 답변 대기 진행 단계 (작업 2-a 수용 기준 1~6)',
     const stream = await sendQuestion('wait-progress-6', {
       input: 'Question',
       send: 'Send',
-      retrieving: 'Searching the guidelines for evidence…',
+      waiting: 'Analyzing your question…',
     });
 
     act(() => {

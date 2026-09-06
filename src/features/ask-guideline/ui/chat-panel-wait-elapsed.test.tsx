@@ -27,8 +27,8 @@ useMswServer();
 const PAGE = { size: 50, hasNext: false, nextCursor: null };
 const QUESTION = '만성 요통에 침 치료가 효과적인가요?';
 const NEXT_QUESTION = '허리 통증 운동도 알려 주세요.';
-const RETRIEVING_KO = '지침 근거를 검색하는 중…';
-const RETRIEVING_EN = 'Searching the guidelines for evidence…';
+const ANALYZING_KO = '질문을 분석하는 중…';
+const ANALYZING_EN = 'Analyzing your question…';
 const KO_ELAPSED = /^\(\d+초\)$/;
 
 type LiveStream = {
@@ -123,10 +123,10 @@ async function advanceElapsed(milliseconds: number): Promise<void> {
 
 async function sendQuestion(
   conversationId: string,
-  controls: { input: string; send: string; retrieving: string } = {
+  controls: { input: string; send: string; waiting: string } = {
     input: '질문 입력',
     send: '전송',
-    retrieving: RETRIEVING_KO,
+    waiting: ANALYZING_KO,
   },
 ): Promise<LiveStream> {
   mockEmptyMessages(conversationId);
@@ -136,7 +136,7 @@ async function sendQuestion(
   renderWithProviders(<ChatPanel conversationId={conversationId} />);
   await user.type(await screen.findByLabelText(controls.input), QUESTION);
   await user.click(screen.getByRole('button', { name: controls.send }));
-  await screen.findByText(controls.retrieving);
+  await screen.findByText(controls.waiting);
 
   return stream;
 }
@@ -174,12 +174,12 @@ describe('ChatPanel 답변 대기 경과 시간 (작업 2-a 수용 기준 1~8)',
   it('기준 1: 1초 미만에는 경과를 표시하지 않고 1초부터 표시한다', async () => {
     await sendQuestion('wait-elapsed-1');
 
-    expect(screen.getByText(RETRIEVING_KO)).toBeTruthy();
+    expect(screen.getByText(ANALYZING_KO)).toBeTruthy();
     expect(screen.queryByText(KO_ELAPSED)).toBeNull();
 
     await advanceElapsed(999);
 
-    expect(screen.getByText(RETRIEVING_KO)).toBeTruthy();
+    expect(screen.getByText(ANALYZING_KO)).toBeTruthy();
     expect(screen.queryByText(KO_ELAPSED)).toBeNull();
 
     // 1초 경계의 양쪽을 함께 관측해, 스텁에서도 통과하는 공허한 부재 테스트가 되지 않게 한다.
@@ -192,7 +192,7 @@ describe('ChatPanel 답변 대기 경과 시간 (작업 2-a 수용 기준 1~8)',
 
     await advanceElapsed(3_000);
 
-    expect(screen.getByText(RETRIEVING_KO)).toBeTruthy();
+    expect(screen.getByText(ANALYZING_KO)).toBeTruthy();
     expect(screen.getByText('(3초)')).toBeTruthy();
   });
 
@@ -228,7 +228,7 @@ describe('ChatPanel 답변 대기 경과 시간 (작업 2-a 수용 기준 1~8)',
     await advanceElapsed(3_000);
 
     // delta 직전에 경과 표시가 실제로 있었음을 보장해 사라짐 단언이 공허해지지 않게 한다.
-    expect(screen.getByText(RETRIEVING_KO)).toBeTruthy();
+    expect(screen.getByText(ANALYZING_KO)).toBeTruthy();
     expect(screen.getByText('(3초)')).toBeTruthy();
 
     act(() => {
@@ -240,7 +240,7 @@ describe('ChatPanel 답변 대기 경과 시간 (작업 2-a 수용 기준 1~8)',
       });
     });
 
-    expect(screen.queryByText(RETRIEVING_KO)).toBeNull();
+    expect(screen.queryByText(ANALYZING_KO)).toBeNull();
     expect(screen.queryByText(KO_ELAPSED)).toBeNull();
     expect(screen.getByText('침 치료를 고려할 수 있습니다.')).toBeTruthy();
   });
@@ -251,11 +251,11 @@ describe('ChatPanel 답변 대기 경과 시간 (작업 2-a 수용 기준 1~8)',
 
     const elapsed = screen.getByText('(3초)');
     const liveRegion = screen
-      .getByText(RETRIEVING_KO)
+      .getByText(ANALYZING_KO)
       .closest<HTMLElement>('[aria-live="polite"]');
 
     expect(liveRegion).not.toBeNull();
-    expect(liveRegion).toHaveTextContent(RETRIEVING_KO);
+    expect(liveRegion).toHaveTextContent(ANALYZING_KO);
     expect(liveRegion).not.toHaveTextContent(KO_ELAPSED);
     expect(liveRegion).not.toContainElement(elapsed);
     expect(elapsed.closest('[aria-hidden="true"]')).not.toBeNull();
@@ -266,12 +266,12 @@ describe('ChatPanel 답변 대기 경과 시간 (작업 2-a 수용 기준 1~8)',
     await sendQuestion('wait-elapsed-7', {
       input: 'Question',
       send: 'Send',
-      retrieving: RETRIEVING_EN,
+      waiting: ANALYZING_EN,
     });
 
     await advanceElapsed(3_000);
 
-    expect(screen.getByText(RETRIEVING_EN)).toBeTruthy();
+    expect(screen.getByText(ANALYZING_EN)).toBeTruthy();
     expect(screen.getByText('(3s)')).toBeTruthy();
   });
 
@@ -290,7 +290,7 @@ describe('ChatPanel 답변 대기 경과 시간 (작업 2-a 수용 기준 1~8)',
     const user = setupUser();
     await user.type(screen.getByLabelText('질문 입력'), NEXT_QUESTION);
     await user.click(screen.getByRole('button', { name: '전송' }));
-    await screen.findByText(RETRIEVING_KO);
+    await screen.findByText(ANALYZING_KO);
 
     expect(sendMessageStreamMock).toHaveBeenCalledTimes(2);
     expect(screen.queryByText('(3초)')).toBeNull();
