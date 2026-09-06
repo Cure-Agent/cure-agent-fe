@@ -38,6 +38,7 @@ import {
   type EvidenceDetail,
   type MessageDto,
   type StreamAction,
+  type StreamState,
 } from '../model/stream-state.model';
 import {
   dispatchStream,
@@ -381,19 +382,9 @@ export function ChatPanel({
 
         {inFlight && (
           <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-800">
-            {/*
-              대기를 두 단계로 가른다. **축은 `phase`가 아니라 `evidence`다** — `retrieval.completed`가
-              와도 phase는 `retrieving`에 머무르므로(stream-state.model), phase만 보면 근거를 이미
-              받아 든 뒤에도 「검색하는 중」이라고 말하게 된다. 기다리는 사람에게는 화면이 실제로 한 번
-              바뀌는 것이 어떤 움직임보다 큰 신호다.
-            */}
             {state.phase !== 'streaming' && (
               <WaitingIndicator
-                label={
-                  state.evidence.length > 0
-                    ? formatMessage(t.draftingAnswer, { count: state.evidence.length })
-                    : t.retrievingEvidence
-                }
+                label={waitingLabel(state, t)}
                 /*
                   경과는 **단계와 무관하게 이어진다** — 축이 다르기 때문이다. 단계는 서버가
                   알려주는 것이고 경과는 사람이 기다린 시간이라, 단계가 넘어갔다고 기다림이
@@ -516,6 +507,37 @@ export function ChatPanel({
  * 낭독기가 매초 읽어, 「단계가 바뀐 것만 알린다」는 규칙이 그 자리에서 무너진다. 눈으로 보는
  * 사람에게만 값어치가 있는 정보라 `aria-hidden`이 맞다.
  */
+/**
+ * 대기 상자의 문구를 고른다 — **축은 서버가 말한 단계다** (BE docs/specs/46).
+ *
+ * 먼저 맞는 것을 쓰는 순서에 이유가 있다:
+ * 1. `generating`(= `answer.started` 도착)이 최우선이다. 그 이벤트가 열어 주는 TTFT
+ *    0.65~1.5초의 창이 「답을 쓰는 중」을 말할 수 있는 유일한 구간이다
+ * 2. 진행 단계가 있으면 그 단계를 말한다
+ * 3. **`evidence`는 폴백으로 남긴다** — 진행 이벤트를 보내지 않는 BE(배포 순서가 FE보다
+ *    뒤인 구간)에서도 오늘과 똑같이 동작해야 한다. 이 한 줄이 되돌림 안전의 전부다
+ */
+function waitingLabel(state: StreamState, t: Record<MessageKey, string>): string {
+  if (state.phase === 'generating') {
+    return formatMessage(t.draftingAnswer, { count: state.evidence.length });
+  }
+  switch (state.retrievalStage) {
+    case 'embedded':
+      return t.retrievalStageEmbedded;
+    case 'searched':
+      // 후보 수가 없으면 그 단계를 말할 말이 없다 — 앞 단계 문구를 이어 둔다.
+      return state.retrievalCandidates === null
+        ? t.retrievalStageEmbedded
+        : formatMessage(t.retrievalStageSearched, { count: state.retrievalCandidates });
+    case 'reranked':
+      return t.retrievalStageReranked;
+    default:
+      return state.evidence.length > 0
+        ? formatMessage(t.draftingAnswer, { count: state.evidence.length })
+        : t.retrievingEvidence;
+  }
+}
+
 function WaitingIndicator({
   label,
   elapsed,
