@@ -48,6 +48,15 @@ export interface StreamState {
   userMessageId: string | null;
   assistantMessageId: string | null;
   evidence: EvidenceDetail[];
+  /**
+   * `answer.started`가 싣는 **최종 근거 수** (BE docs/specs/47).
+   *
+   * 근거 배열과 별도의 축인 이유는 도착 순서가 뒤집혔기 때문이다 — `answer.started`가
+   * 근거 프레임보다 **앞**에 오므로, 그 시점의 `evidence`는 아직 비어 있는데도 화면은
+   * 「근거 N건을 바탕으로」의 N을 말해야 한다. 싣지 않는 BE에서는 null로 남고 화면이
+   * `evidence.length`로 되돌아간다.
+   */
+  evidenceCount: number | null;
   /** 마지막으로 도착한 `retrieval.progress`의 단계 — 진행 이벤트가 없는 BE에서는 null로 남는다 */
   retrievalStage: RetrievalStage | null;
   /** `stage=searched`가 싣는 후보 수. 다른 stage에는 실리지 않으므로 대개 null이다 */
@@ -80,6 +89,7 @@ export const initialStreamState: StreamState = {
   userMessageId: null,
   assistantMessageId: null,
   evidence: [],
+  evidenceCount: null,
   retrievalStage: null,
   retrievalCandidates: null,
   content: '',

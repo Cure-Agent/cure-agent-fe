@@ -534,7 +534,7 @@ function waitingLabel(state: StreamState, t: Record<MessageKey, string>): string
     default:
       return state.evidence.length > 0
         ? formatMessage(t.draftingAnswer, { count: state.evidence.length })
-        : t.retrievingEvidence;
+        : t.analyzingQuestion;
   }
 }
 

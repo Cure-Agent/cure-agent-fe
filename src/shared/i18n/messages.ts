@@ -69,7 +69,11 @@ const ko = {
   send: '전송',
   retry: '다시 시도',
   loadingOlderMessages: '이전 대화를 불러오는 중…',
-  retrievingEvidence: '지침 근거를 검색하는 중…',
+  /**
+   * 진행 이벤트가 하나도 도착하기 전의 대기 문구 — 이 구간에 실제로 도는 것은 **질의 임베딩**이다
+   * (BE docs/specs/47).
+   */
+  analyzingQuestion: '지침 근거를 검색하는 중…',
   /**
    * `retrieval.progress`가 알려주는 **끝난 단계** 뒤의 대기 문구 (BE docs/specs/46).
    *
@@ -78,7 +82,7 @@ const ko = {
    * 「검색하는 중」, `searched`(검색 완료)는 「고르는 중」으로 한 칸씩 밀려 있다.
    *
    * 실측(2026-09-06 prod)상 이 구간이 대기의 거의 전부다: embed 236~2,575ms →
-   * 검색 291~2,048ms → 리랭크 1,025~1,887ms. 오늘은 그 2~6.5초 내내 `retrievingEvidence`
+   * 검색 291~2,048ms → 리랭크 1,025~1,887ms. 오늘은 그 2~6.5초 내내 `analyzingQuestion`
    * 한 문구만 서 있었다.
    */
   retrievalStageEmbedded: '지침을 검색하는 중…',
@@ -91,7 +95,7 @@ const ko = {
   retrievalStageReranked: '근거를 정리하는 중…',
   /**
    * `retrieval.completed`가 도착한 뒤의 대기 — 근거는 이미 손에 있고 답을 쓰는 중이다.
-   * 이 자리를 `retrievingEvidence`로 계속 두면 검색이 끝난 뒤에도 「검색하는 중」이라 말하게 된다.
+   * 이 자리를 `analyzingQuestion`로 계속 두면 검색이 끝난 뒤에도 「검색하는 중」이라 말하게 된다.
    * 건수를 싣는 이유는 기다림 중에 화면이 실제로 한 번 바뀌어야 하기 때문이다 — 진행의 증거다.
    * 상태 안내이므로 답변 내용물이 아니라 **표시 언어**를 따른다 (§44의 콘텐츠 축과 갈린다).
    */
@@ -114,7 +118,7 @@ const ko = {
   waitElapsed: '({seconds}초)',
   /**
    * 이어받을 스트림 없이 연 화면(새로고침·다른 탭)이 진행 중인 답변을 만났을 때.
-   * 어느 단계인지 알 수 없으므로 `retrievingEvidence`를 재사용하지 않는다 — 근거 검색이
+   * 어느 단계인지 알 수 없으므로 `analyzingQuestion`를 재사용하지 않는다 — 근거 검색이
    * 이미 끝난 답변에도 「검색하는 중」이라 쓰면 틀린 말이 된다.
    */
   answerInProgress: '답변을 생성하는 중…',
@@ -490,7 +494,7 @@ const en: Record<MessageKey, string> = {
   send: 'Send',
   retry: 'Try again',
   loadingOlderMessages: 'Loading earlier messages…',
-  retrievingEvidence: 'Searching the guidelines for evidence…',
+  analyzingQuestion: 'Searching the guidelines for evidence…',
   retrievalStageEmbedded: 'Searching the guidelines…',
   retrievalStageSearched: 'Selecting evidence from {count} candidates…',
   retrievalStageReranked: 'Organizing the evidence…',
