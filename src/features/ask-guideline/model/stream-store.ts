@@ -44,7 +44,14 @@ export function getConversationStream(conversationId: string): ConversationStrea
 
 /** 답변이 아직 오는 중 — 이 판정이 폴링·자리 표시의 기준이 된다 */
 export function isStreamLive(state: StreamState): boolean {
-  return state.phase === 'accepted' || state.phase === 'retrieving' || state.phase === 'streaming';
+  return (
+    state.phase === 'accepted' ||
+    state.phase === 'retrieving' ||
+    // `answer.started`부터 첫 델타까지 — 실측 TTFT 0.65~1.5초의 창이다. 여기를 빼면
+    // 그 구간에 대기 상자와 경과 시간이 통째로 사라진다 (spec 46 기준 28).
+    state.phase === 'generating' ||
+    state.phase === 'streaming'
+  );
 }
 
 function update(conversationId: string, next: ConversationStream): void {

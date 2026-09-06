@@ -71,6 +71,25 @@ const ko = {
   loadingOlderMessages: '이전 대화를 불러오는 중…',
   retrievingEvidence: '지침 근거를 검색하는 중…',
   /**
+   * `retrieval.progress`가 알려주는 **끝난 단계** 뒤의 대기 문구 (BE docs/specs/46).
+   *
+   * 세 문구가 말하는 것은 「방금 끝난 일」이 아니라 **지금 하고 있는 일**이다 — 기다리는
+   * 사람에게 필요한 건 진행 상황이지 완료 보고가 아니다. 그래서 `embedded`(임베딩 완료)는
+   * 「검색하는 중」, `searched`(검색 완료)는 「고르는 중」으로 한 칸씩 밀려 있다.
+   *
+   * 실측(2026-09-06 prod)상 이 구간이 대기의 거의 전부다: embed 236~2,575ms →
+   * 검색 291~2,048ms → 리랭크 1,025~1,887ms. 오늘은 그 2~6.5초 내내 `retrievingEvidence`
+   * 한 문구만 서 있었다.
+   */
+  retrievalStageEmbedded: '지침을 검색하는 중…',
+  /**
+   * 후보 수는 `stage=searched`에만 실린다 — 그 단계의 산출이기 때문이다.
+   * 숫자를 싣는 이유는 이 구간(리랭크, 평균 1,410ms)이 가장 긴데 화면이 말할 수 있는
+   * 사실이 그것뿐이라서다.
+   */
+  retrievalStageSearched: '후보 {count}건에서 근거를 고르는 중…',
+  retrievalStageReranked: '근거를 정리하는 중…',
+  /**
    * `retrieval.completed`가 도착한 뒤의 대기 — 근거는 이미 손에 있고 답을 쓰는 중이다.
    * 이 자리를 `retrievingEvidence`로 계속 두면 검색이 끝난 뒤에도 「검색하는 중」이라 말하게 된다.
    * 건수를 싣는 이유는 기다림 중에 화면이 실제로 한 번 바뀌어야 하기 때문이다 — 진행의 증거다.
@@ -80,13 +99,17 @@ const ko = {
   /**
    * 대기 문구 뒤에 붙는 **경과 시간** — 두 단계 문구가 공유한다.
    *
-   * 이 자리에 경과를 두는 이유는, 실서버가 주는 단계 경계가 `retrieval.started` 하나뿐이기
-   * 때문이다. 프로덕션 실측(2026-09-04)에서 `retrieval.completed`와 첫 `answer.delta`가 **같은
-   * 밀리초에** 도착했다 — 즉 `draftingAnswer`의 창은 0ms이고, 사람이 실제로 겪는 8~11초는 전부
-   * 검색 구간이다. 그 구간에서 FE가 **단계를 지어내지 않고** 말할 수 있는 사실은 경과 시간뿐이다.
+   * 이 자리에 경과를 둔 이유는, 실서버가 주는 단계 경계가 `retrieval.started` 하나뿐이라
+   * FE가 **단계를 지어내지 않고** 말할 수 있는 사실이 경과 시간뿐이었기 때문이다.
+   * spec 46이 단계 경계를 이벤트로 열어 그 전제는 풀렸지만, **경과는 남는다** — 축이 다르다.
+   * 단계는 서버가 알려주는 것이고 경과는 사람이 기다린 시간이라, 단계가 넘어갔다고 기다림이
+   * 리셋되지는 않는다.
    *
-   * 문구가 아니라 조각으로 둔 이유는 두 단계에 같은 형식으로 붙어야 하기 때문이다 —
-   * 단계가 바뀌어도 경과는 이어진다(기다린 시간은 초기화되지 않는다).
+   * (2026-09-04 관측 「`retrieval.completed`와 첫 `answer.delta`가 같은 밀리초」의 원인도
+   * spec 46이 밝혔다: 발신 지연이 아니라 30KB 프레임의 **꼬리 도착 지연**이었고, 작은
+   * `answer.started`가 그 꼬리를 밀어내 `draftingAnswer`의 창을 연다.)
+   *
+   * 문구가 아니라 조각으로 둔 이유는 모든 단계에 같은 형식으로 붙어야 하기 때문이다.
    */
   waitElapsed: '({seconds}초)',
   /**
@@ -468,6 +491,9 @@ const en: Record<MessageKey, string> = {
   retry: 'Try again',
   loadingOlderMessages: 'Loading earlier messages…',
   retrievingEvidence: 'Searching the guidelines for evidence…',
+  retrievalStageEmbedded: 'Searching the guidelines…',
+  retrievalStageSearched: 'Selecting evidence from {count} candidates…',
+  retrievalStageReranked: 'Organizing the evidence…',
   draftingAnswer: 'Drafting the answer from {count} guideline sources…',
   waitElapsed: '({seconds}s)',
   answerInProgress: 'Generating the answer…',

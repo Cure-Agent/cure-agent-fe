@@ -18,10 +18,22 @@ export type StreamPhase =
   | 'idle'
   | 'accepted'
   | 'retrieving'
+  /**
+   * `answer.started`부터 첫 델타까지 (BE docs/specs/46). `streaming`으로 올리면 본문이
+   * 아직 없는데 본문 렌더로 넘어가므로 그 사이에 단계를 하나 둔다.
+   */
+  | 'generating'
   | 'streaming'
   | 'completed'
   | 'abstained'
   | 'error';
+
+/**
+ * `retrieval.progress`가 말하는 **끝난 단계** (BE docs/specs/46).
+ * 리랭크가 꺼진 구성에서는 `reranked`가 오지 않고, 기권 경로는 도달한 단계까지만 온다 —
+ * 「보낸 진행은 실제로 일어난 일」이 그 계약의 불변식이다.
+ */
+export type RetrievalStage = 'embedded' | 'searched' | 'reranked';
 
 export interface StreamError {
   code: string;
@@ -36,6 +48,10 @@ export interface StreamState {
   userMessageId: string | null;
   assistantMessageId: string | null;
   evidence: EvidenceDetail[];
+  /** 마지막으로 도착한 `retrieval.progress`의 단계 — 진행 이벤트가 없는 BE에서는 null로 남는다 */
+  retrievalStage: RetrievalStage | null;
+  /** `stage=searched`가 싣는 후보 수. 다른 stage에는 실리지 않으므로 대개 null이다 */
+  retrievalCandidates: number | null;
   /** answer.delta 누적 본문 */
   content: string;
   /** 다음에 기대하는 seq — 불일치 delta는 무시 */
@@ -64,6 +80,8 @@ export const initialStreamState: StreamState = {
   userMessageId: null,
   assistantMessageId: null,
   evidence: [],
+  retrievalStage: null,
+  retrievalCandidates: null,
   content: '',
   nextSeq: 0,
   message: null,
@@ -120,6 +138,15 @@ export function streamReducer(state: StreamState, action: StreamAction): StreamS
   }
 }
 
+const RETRIEVAL_STAGES: readonly string[] = ['embedded', 'searched', 'reranked'];
+
+/** 계약이 아는 stage만 통과시킨다. 모르는 값·없는 값은 `null` — 호출부가 이벤트째 무시한다 */
+function toRetrievalStage(value: unknown): RetrievalStage | null {
+  return typeof value === 'string' && RETRIEVAL_STAGES.includes(value)
+    ? (value as RetrievalStage)
+    : null;
+}
+
 function applyEvent(state: StreamState, event: StreamEvent): StreamState {
   switch (event.eventType) {
     case 'message.accepted': {
@@ -141,12 +168,30 @@ function applyEvent(state: StreamState, event: StreamEvent): StreamState {
     }
     case 'retrieval.started':
       return { ...state, phase: 'retrieving' };
+    case 'retrieval.progress': {
+      const stage = toRetrievalStage(event.stage);
+      // 모르는 stage는 진행이 아니라 미지의 문자열이다. 무시해야 BE가 단계를 늘려도
+      // 화면이 「없는 진행」을 지어내지 않는다 (spec 46 기준 27 · architecture.md §3 전방 호환).
+      if (!stage) return state;
+      return {
+        ...state,
+        phase: 'retrieving',
+        retrievalStage: stage,
+        // `candidates`는 `searched`에만 실린다 — 매번 다시 읽어야 지난 단계의 후보 수가
+        // 다음 단계 문구에 새지 않는다.
+        retrievalCandidates: typeof event.candidates === 'number' ? event.candidates : null,
+      };
+    }
     case 'retrieval.completed':
       return {
         ...state,
         phase: 'retrieving',
         evidence: (event.evidence as EvidenceDetail[]) ?? [],
       };
+    case 'answer.started':
+      // evidence를 지우지 않는다 — 이 이벤트는 evidence를 싣지 않고(spec 46 기준 10),
+      // 「근거 N건을 바탕으로」의 N은 앞서 온 `retrieval.completed`의 배열이 원천이다.
+      return { ...state, phase: 'generating' };
     case 'answer.delta': {
       if (event.seq !== state.nextSeq) return state; // 중복·역행 seq 무시
       return {
