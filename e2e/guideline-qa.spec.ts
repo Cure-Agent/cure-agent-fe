@@ -1,3 +1,4 @@
+// spec 52 FE 수용 기준 31 동결 테스트. 구현 중 수정 금지.
 /**
  * 크리티컬 플로우 2 — 지침 질의: 대화 생성 → 질문 → 스트리밍 답변 → 인용 근거.
  *
@@ -9,7 +10,7 @@
 import { expect, test } from '@playwright/test';
 import { mockApi, ok, okList, stream } from './fixtures/api';
 import {
-  ANSWER_STREAM,
+  AGENT_ANSWER_STREAM,
   ANSWER_TEXT,
   ASSISTANT_MESSAGE,
   CLINICIAN,
@@ -19,9 +20,10 @@ import {
   USER_MESSAGE,
 } from './fixtures/data';
 
-const STREAM_PATH = '/api/v1/conversations/:conversationId/messages/stream';
+const STREAM_PATH = '/api/v1/agent/conversations/:conversationId/messages/stream';
 
 test('질문하면 스트리밍 답변과 인용 근거가 함께 도착한다', async ({ page }) => {
+  // 31-a RED: 스텁은 오늘 경로로 보내므로 미등록 501을 받고 답변을 표시하지 못한다.
   // 대화·메시지는 요청 시점의 서버 상태를 반영해야 한다 — 스트림이 끝나면
   // ChatPanel이 GET messages를 다시 부르고(§8: GET messages가 최종 진실) 그 응답이 화면의 최종본이 된다
   let conversations: unknown[] = [];
@@ -40,7 +42,7 @@ test('질문하면 스트리밍 답변과 인용 근거가 함께 도착한다',
     [`POST ${STREAM_PATH}`]: () => {
       // GET messages는 order=desc 계약 — 최신(답변)이 먼저 온다 (화면은 시간순으로 뒤집는다)
       messages = [ASSISTANT_MESSAGE, USER_MESSAGE];
-      return stream(ANSWER_STREAM);
+      return stream(AGENT_ANSWER_STREAM);
     },
   });
 
@@ -54,6 +56,8 @@ test('질문하면 스트리밍 답변과 인용 근거가 함께 도착한다',
 
   const composer = page.getByRole('textbox', { name: '질문 입력' });
   await expect(composer).toBeVisible();
+  // 대화 단건의 type이 로드된 뒤 질문을 전송한다.
+  await expect(page.getByText('이렇게 질문해 보세요')).toBeVisible();
   await composer.fill(QUESTION);
   await page.getByRole('button', { name: '전송' }).click();
 
@@ -62,7 +66,7 @@ test('질문하면 스트리밍 답변과 인용 근거가 함께 도착한다',
   // 스트림 종결 후 서버 상태로 동기화되면 질문 버블도 함께 남는다
   await expect(page.getByText(QUESTION)).toBeVisible();
 
-  // 근거 패널은 retrieval.completed로 채워진다 — 답변과 별개 경로다
+  // 근거 패널은 retrieval.evidence 프레임으로 채워진다 — 답변과 별개 경로다
   await expect(page.getByRole('button', { name: new RegExp(EVIDENCE.guidelineTitle) })).toBeVisible();
   await expect(page.getByText(`권고등급 A (강한 권고)`)).toBeVisible();
 
@@ -72,11 +76,15 @@ test('질문하면 스트리밍 답변과 인용 근거가 함께 도착한다',
 
   // 전송 계약: 질문 본문 + 중복 생성 방지 키 (§8)
   const [streamCall] = api.callsTo('POST', STREAM_PATH);
-  expect(streamCall.pathname).toBe(`/api/v1/conversations/${CONVERSATION.id}/messages/stream`);
+  // 31-b: 에이전트 요청의 실제 경로·본문 계약
+  expect(streamCall.pathname).toBe(`/api/v1/agent/conversations/${CONVERSATION.id}/messages/stream`);
   expect(streamCall.body).toMatchObject({ content: QUESTION });
   expect((streamCall.body as { clientRequestId?: unknown }).clientRequestId).toEqual(
     expect.stringMatching(/^[0-9a-f-]{36}$/),
   );
 
+  expect(streamCall.body).not.toHaveProperty('filters');
+  // 31-c·31-d: 오늘 경로는 스텁하지 않는다. 누출은 unhandled에도 기록된다.
+  expect(api.callsTo('POST', '/api/v1/conversations/:conversationId/messages/stream')).toEqual([]);
   expect(api.unhandled).toEqual([]);
 });

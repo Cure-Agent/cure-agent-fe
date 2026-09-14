@@ -1,3 +1,4 @@
+// spec 52 FE 수용 기준 31 동결 테스트. 구현 중 수정 금지.
 /**
  * E2E 시드 데이터. 전부 생성 스키마 타입으로 못 박아 두었으므로,
  * 계약이 바뀌면 `pnpm typecheck`가 여기서 먼저 깨진다 — 테스트를 돌리기 전에.
@@ -96,6 +97,24 @@ export const ANSWER_STREAM: unknown[] = [
   { eventType: 'retrieval.started' },
   { eventType: 'retrieval.completed', evidence: [EVIDENCE] },
   ...ANSWER_DELTAS.map((delta, index) => ({ eventType: 'answer.delta', seq: index, delta })),
+  { eventType: 'answer.completed', message: ASSISTANT_MESSAGE },
+];
+
+/** spec 52 기준 31-a: GUIDELINE 에이전트 계약 순서의 합성 스트림. */
+export const AGENT_ANSWER_STREAM: unknown[] = [
+  {
+    eventType: 'message.accepted',
+    requestId: 'req-agent-901',
+    userMessageId: USER_MESSAGE.id,
+    assistantMessageId: ASSISTANT_MESSAGE.id,
+  },
+  { eventType: 'agent.progress', stage: 'routed', route: 'GUIDELINE' },
+  { eventType: 'retrieval.started' },
+  { eventType: 'retrieval.progress', stage: 'embedded' },
+  { eventType: 'answer.started', evidenceCount: 1 },
+  { eventType: 'retrieval.evidence', index: 0, total: 1, evidence: EVIDENCE },
+  { eventType: 'retrieval.completed' },
+  ...ANSWER_DELTAS.map((delta, seq) => ({ eventType: 'answer.delta', seq, delta })),
   { eventType: 'answer.completed', message: ASSISTANT_MESSAGE },
 ];
 
