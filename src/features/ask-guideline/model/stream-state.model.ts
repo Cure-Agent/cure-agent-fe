@@ -169,8 +169,38 @@ function toRetrievalStage(value: unknown): RetrievalStage | null {
     : null;
 }
 
+const AGENT_ROUTES: readonly string[] = ['GUIDELINE', 'PATIENT', 'COMPOSITE', 'OTHER'];
+
+/** 계약이 아는 route만 통과시킨다. 모르는 값은 `null` — 호출부가 이벤트째 무시한다 */
+function toAgentRoute(value: unknown): AgentRoute | null {
+  return typeof value === 'string' && AGENT_ROUTES.includes(value) ? (value as AgentRoute) : null;
+}
+
+/**
+ * `agent.progress` (BE docs/specs/52) — **상태를 만들지 않는 진행 이벤트**라 `phase`를 건드리지
+ * 않는다. 그래서 §8 복구 기준점(`assistantMessageId`)도, PATIENT 경로가 `accepted`에서 첫 델타로
+ * 곧장 `streaming`이 되는 것도 그대로다. 단계는 `stage`로 쪼개고, 모르는 stage·모르는 route는
+ * **같은 참조를 돌려** 화면이 없는 진행을 지어내지 않게 한다 (spec 46 규약 · §3 전방 호환).
+ */
+function applyAgentProgress(state: StreamState, event: StreamEvent): StreamState {
+  switch (event.stage) {
+    case 'routed': {
+      const route = toAgentRoute(event.route);
+      // 모르는 route는 이미 아는 경로를 지우지도 않는다 — 에이전트가 경로를 늘려도 화면은 그대로다
+      if (!route) return state;
+      return { ...state, agentRoute: route };
+    }
+    case 'patient_loaded':
+      return state.patientLoaded ? state : { ...state, patientLoaded: true };
+    default:
+      return state;
+  }
+}
+
 function applyEvent(state: StreamState, event: StreamEvent): StreamState {
   switch (event.eventType) {
+    case 'agent.progress':
+      return applyAgentProgress(state, event);
     case 'message.accepted': {
       // 재시도 대비 초기화하되, 이미 그려둔 내 질문은 서버 id로 갱신만 한다
       const userMessageId = (event.userMessageId as string) ?? null;

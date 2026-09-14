@@ -106,10 +106,16 @@ const ko = {
    * 상태 안내이므로 답변 내용물이 아니라 **표시 언어**를 따른다 (§44의 콘텐츠 축과 갈린다).
    */
   draftingAnswer: '지침 근거 {count}건을 바탕으로 답변을 작성하는 중…',
-  // 에이전트 경로의 환자 단계 문구 (BE docs/specs/52) — 값은 구현이 채운다
-  agentReadingPatient: '(spec 52 미구현)',
-  agentDraftingFromPatient: '(spec 52 미구현)',
-  agentDraftingComposite: '(spec 52 미구현)',
+  /**
+   * 에이전트 경로의 **환자 단계** 문구 (BE docs/specs/52). 경로가 정해졌다는 사실과 환자 기록을
+   * 읽었다는 사실을 기다리는 동안 말한다 — 답변 말풍선은 일반 답변과 같고 경로는 화면에 남지
+   * 않으므로, 이 대기 문구가 「환자 기록을 썼다」를 말하는 유일한 자리다.
+   * 분류 지연이 p50 0.69초라 `analyzingQuestion`이 실제로 보이는 구간이 있고, 그 뒤에야 바뀐다.
+   */
+  agentReadingPatient: '환자 기록을 읽는 중…',
+  agentDraftingFromPatient: '환자 기록을 바탕으로 답변을 작성하는 중…',
+  /** 복합 경로의 `answer.started` — 환자 기록과 검색 근거를 한 문장으로 합친다. N은 `evidenceCount` */
+  agentDraftingComposite: '환자 기록과 지침 근거 {count}건을 바탕으로 답변을 작성하는 중…',
   /**
    * 대기 문구 뒤에 붙는 **경과 시간** — 두 단계 문구가 공유한다.
    *
@@ -509,9 +515,10 @@ const en: Record<MessageKey, string> = {
   retrievalStageSearched: 'Selecting evidence from {count} candidates…',
   retrievalStageReranked: 'Organizing the evidence…',
   draftingAnswer: 'Drafting the answer from {count} guideline sources…',
-  agentReadingPatient: '(spec 52 not implemented)',
-  agentDraftingFromPatient: '(spec 52 not implemented)',
-  agentDraftingComposite: '(spec 52 not implemented)',
+  agentReadingPatient: 'Reading the patient record…',
+  agentDraftingFromPatient: 'Drafting the answer from the patient record…',
+  agentDraftingComposite:
+    'Drafting the answer from the patient record and {count} guideline sources…',
   waitElapsed: '({seconds}s)',
   answerInProgress: 'Generating the answer…',
   answerNotArrived: 'The answer has not arrived yet.',

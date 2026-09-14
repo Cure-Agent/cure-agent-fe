@@ -259,6 +259,9 @@ export function ChatPanel({
     try {
       await sendMessageStream({
         conversationId,
+        // 일반 대화는 에이전트, 환자 맞춤은 오늘 경로 — 분기는 전송 함수가 진다 (spec 52).
+        // 아직 단건 조회 전이면 undefined → 오늘 경로.
+        conversationType: conversation.data?.type,
         content,
         clientRequestId,
         responseLang,
@@ -521,11 +524,17 @@ export function ChatPanel({
  * 옮겨져, 그 문구를 띄우는 시점에 `evidence`는 아직 비어 있다. 그래서 이벤트가 싣고 온
  * `evidenceCount`를 **먼저** 쓴다 — 안 그러면 「0건을 바탕으로」라고 말하고, 근거가 하나씩
  * 도착할 때마다 숫자가 1·2·3으로 굴러간다. 싣지 않는 BE에서만 배열 길이로 되돌아간다.
+ *
+ * **환자 단계는 검색 단계 아래다** (BE docs/specs/52): `generating` > 검색 단계 > 환자 단계 > 폴백.
+ * 복합 경로는 환자 기록을 읽은 **뒤** 검색이 오므로 검색 문구가 환자 문구를 덮는 것이 더 최근
+ * 사실이고, 둘은 `answer.started`에서 「환자 기록과 지침 근거 N건」으로 다시 합쳐진다.
  */
 function waitingLabel(state: StreamState, t: Record<MessageKey, string>): string {
   if (state.phase === 'generating') {
     const count = state.evidenceCount ?? state.evidence.length;
-    return formatMessage(t.draftingAnswer, { count });
+    return formatMessage(state.patientLoaded ? t.agentDraftingComposite : t.draftingAnswer, {
+      count,
+    });
   }
   switch (state.retrievalStage) {
     case 'embedded':
@@ -540,7 +549,22 @@ function waitingLabel(state: StreamState, t: Record<MessageKey, string>): string
     default:
       return state.evidence.length > 0
         ? formatMessage(t.draftingAnswer, { count: state.evidence.length })
-        : t.analyzingQuestion;
+        : patientStageLabel(state, t);
+  }
+}
+
+/**
+ * 검색 단계가 아직 없을 때의 환자 단계 문구. 지침(`GUIDELINE`)은 곧 `retrieval.*`가, 기타(`OTHER`)는
+ * 곧 기권이 오므로 두 경로는 문구를 바꾸지 않는다 — 경로가 정해졌다는 사실만으로는 말할 게 없다.
+ */
+function patientStageLabel(state: StreamState, t: Record<MessageKey, string>): string {
+  if (state.patientLoaded) return t.agentDraftingFromPatient;
+  switch (state.agentRoute) {
+    case 'PATIENT':
+    case 'COMPOSITE':
+      return t.agentReadingPatient;
+    default:
+      return t.analyzingQuestion;
   }
 }
 

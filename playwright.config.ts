@@ -42,6 +42,8 @@ export default defineConfig({
       // 스텁이 빠진 요청의 안전장치: rewrites 대상을 항상 연결이 거부되는 주소로 고정한다.
       // .env의 실제 BE(운영 API)로 새지 않고 그 자리에서 실패해 누락이 드러난다.
       BE_ORIGIN: 'http://127.0.0.1:9',
+      // 에이전트 경로도 같은 이유로 거부 주소다 (BE docs/specs/52) — 스텁이 빠져도 새지 않는다
+      AGENT_ORIGIN: 'http://127.0.0.1:9',
       // same-origin 고정 (docs/specs/07) — 로컬 .env가 값을 갖고 있어도 여기서 덮는다
       NEXT_PUBLIC_API_BASE_URL: '',
       NEXT_PUBLIC_SITE_URL: BASE_URL,
