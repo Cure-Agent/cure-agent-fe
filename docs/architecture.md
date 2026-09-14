@@ -111,7 +111,7 @@ cure-agent-fe/
 ## 3. Codegen 규칙
 
 - `openapi/cure-agent.v1.json`은 `scripts/generate-api.mjs`가 BE 레포에서 fetch해 동기화한다. **직접 편집 금지** — CI가 재생성 diff = 0을 검사해 강제한다.
-- **자동 동기화**: BE 계약이 main에 반영되면 `contract-sync` 워크플로우(repository_dispatch)가 `api:sync`를 실행해 **동기화 PR(`chore/contract-sync`)을 자동 생성**한다. dispatch 실패는 BE `contract-notify` job의 hard-fail로 감지하며 cron 폴백은 두지 않는다. 동기화 PR은 PAT(`CONTRACT_SYNC_TOKEN` 시크릿)로 생성되어 **pull_request CI가 정상 트리거된다** — breaking 판정은 PR CI가 하고, main 브랜치 보호(required checks: `codegen-check`·`gitleaks`)가 머지를 강제한다. contract-sync run 자체의 typecheck는 조기 신호로 남는다(실패 = breaking → run이 빨갛게 실패하고 PR 본문에 판정이 기록됨). breaking이면 FE 적응 커밋을 같은 브랜치에 쌓은 뒤 머지한다.
+- **자동 동기화**: BE 계약이 main에 반영되면 `contract-sync` 워크플로우(repository_dispatch)가 `api:sync`를 실행해 **동기화 PR(`chore/contract-sync`)을 자동 생성**한다. dispatch 실패는 BE `contract-notify` job의 hard-fail로 감지하며 cron 폴백은 두지 않는다. 동기화 PR은 PAT(`CONTRACT_SYNC_TOKEN` 시크릿)로 생성되어 **pull_request CI가 정상 트리거된다** — breaking 판정은 PR CI가 하고, main 브랜치 보호의 required checks(목록은 `automation/pipeline.md` Step 1-5)가 머지를 강제한다. contract-sync run 자체의 typecheck는 조기 신호로 남는다(실패 = breaking → run이 빨갛게 실패하고 PR 본문에 판정이 기록됨). **조기 typecheck가 통과하면 run이 auto-merge를 예약해, required checks가 모두 통과하는 대로 squash 머지된다.** 머지가 곧 프로덕션 배포인데도 사람을 거치지 않는 근거는 생성물에 런타임 코드가 없다는 것이다(`schema.ts`는 타입 선언뿐, `client.ts`는 스펙과 무관한 고정 템플릿) — 생성물에 런타임 코드(응답 검증 스키마 등)를 넣게 되면 자동 머지를 다시 판단한다. breaking이면 예약하지 않고(앞선 런이 건 예약도 푼다) FE 적응 커밋을 같은 브랜치에 쌓은 뒤 사람이 머지한다.
 - `shared/api/generated/`는 codegen 산출물이다. 수동 편집 금지.
 - 수동 DTO(`interfaces/response/*` 류)를 만들지 않는다. 타입은 전부 generated에서 가져온다.
 - **enum 전방 호환**: OpenAPI enum에 값이 추가될 수 있음을 전제로, unknown variant를 안전하게 무시/기본 렌더링한다. exhaustive switch에는 `default`를 반드시 둔다.
