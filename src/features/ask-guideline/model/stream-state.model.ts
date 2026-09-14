@@ -35,6 +35,12 @@ export type StreamPhase =
  */
 export type RetrievalStage = 'embedded' | 'searched' | 'reranked';
 
+/**
+ * `agent.progress { stage: 'routed', route }`가 말하는 **에이전트 경로** (BE docs/specs/52).
+ * 닫힌 4값이다 — 모르는 route는 `null`로 남겨 화면이 없는 진행을 지어내지 않는다.
+ */
+export type AgentRoute = 'GUIDELINE' | 'PATIENT' | 'COMPOSITE' | 'OTHER';
+
 export interface StreamError {
   code: string;
   message: string;
@@ -61,6 +67,10 @@ export interface StreamState {
   retrievalStage: RetrievalStage | null;
   /** `stage=searched`가 싣는 후보 수. 다른 stage에는 실리지 않으므로 대개 null이다 */
   retrievalCandidates: number | null;
+  /** `agent.progress stage=routed`가 정한 경로 (BE docs/specs/52). 에이전트 경로가 아니면 null */
+  agentRoute: AgentRoute | null;
+  /** `agent.progress stage=patient_loaded`가 도착했는가 — 환자 기록을 읽었다는 사실 (§52) */
+  patientLoaded: boolean;
   /** answer.delta 누적 본문 */
   content: string;
   /** 다음에 기대하는 seq — 불일치 delta는 무시 */
@@ -92,6 +102,8 @@ export const initialStreamState: StreamState = {
   evidenceCount: null,
   retrievalStage: null,
   retrievalCandidates: null,
+  agentRoute: null,
+  patientLoaded: false,
   content: '',
   nextSeq: 0,
   message: null,

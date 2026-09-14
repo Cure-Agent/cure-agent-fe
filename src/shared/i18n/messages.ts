@@ -106,6 +106,10 @@ const ko = {
    * 상태 안내이므로 답변 내용물이 아니라 **표시 언어**를 따른다 (§44의 콘텐츠 축과 갈린다).
    */
   draftingAnswer: '지침 근거 {count}건을 바탕으로 답변을 작성하는 중…',
+  // 에이전트 경로의 환자 단계 문구 (BE docs/specs/52) — 값은 구현이 채운다
+  agentReadingPatient: '(spec 52 미구현)',
+  agentDraftingFromPatient: '(spec 52 미구현)',
+  agentDraftingComposite: '(spec 52 미구현)',
   /**
    * 대기 문구 뒤에 붙는 **경과 시간** — 두 단계 문구가 공유한다.
    *
@@ -505,6 +509,9 @@ const en: Record<MessageKey, string> = {
   retrievalStageSearched: 'Selecting evidence from {count} candidates…',
   retrievalStageReranked: 'Organizing the evidence…',
   draftingAnswer: 'Drafting the answer from {count} guideline sources…',
+  agentReadingPatient: '(spec 52 not implemented)',
+  agentDraftingFromPatient: '(spec 52 not implemented)',
+  agentDraftingComposite: '(spec 52 not implemented)',
   waitElapsed: '({seconds}s)',
   answerInProgress: 'Generating the answer…',
   answerNotArrived: 'The answer has not arrived yet.',
