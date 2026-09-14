@@ -48,7 +48,9 @@ pnpm api:generate  # Regenerate types from the committed local snapshot
 - CI regenerates the client and verifies zero drift in the OpenAPI snapshot and
   generated types.
 - A backend `main` merge dispatches the Contract Sync workflow, which automatically
-  opens or updates a synchronization PR.
+  opens or updates a synchronization PR. A PR that passes type checking is auto-merged
+  once the required checks pass; a breaking change is merged by hand after the
+  frontend is adapted.
 
 ## Testing
 

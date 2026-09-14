@@ -4,11 +4,18 @@ name: Contract Sync
 # - repository_dispatch: BE가 openapi/ 변경 push 시 즉시 트리거 (contract-notify.yml)
 #   토큰 문제로 dispatch가 실패하면 BE 쪽 job이 빨갛게 실패한다 — cron 폴백은 두지 않는다
 # - 변경이 없으면 PR을 만들지 않는다 (no-op)
+# - 비파괴(typecheck 통과)면 동기화 PR에 auto-merge를 예약한다 — breaking이면 적응 커밋을 쌓고 사람이 머지한다
 
 on:
   repository_dispatch:
     types: [contract-updated]
   workflow_dispatch: # 재시도·검증용 수동 트리거
+
+# 런을 줄 세운다 — 늦게 끝난 옛 런이 새 스펙을 옛 스펙으로 덮고 auto-merge까지 예약하는 역전을 막는다.
+# 대기 중인 런은 더 새 런으로 대체되지만, 런마다 BE main의 최신 스펙을 fetch하므로 빠지는 변경은 없다.
+concurrency:
+  group: contract-sync
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -29,12 +36,14 @@ jobs:
         run: pnpm api:sync
       # 동기화 PR은 PAT로 생성되어 pull_request CI가 정상 트리거된다 — 정식 판정은
       # PR CI + main 브랜치 보호(required checks)가 한다. 이 typecheck는 조기 신호다:
-      # breaking이면 이 run을 빨갛게 만들어 PR 열람 전에 알리고, PR 본문에 판정을 남긴다.
+      # breaking이면 이 run을 빨갛게 만들어 PR 열람 전에 알리고, PR 본문에 판정을 남기며,
+      # auto-merge 예약 여부를 정한다.
       - name: typecheck (breaking 조기 신호)
         id: typecheck
         continue-on-error: true
         run: pnpm typecheck
       - name: 동기화 PR 생성/갱신
+        id: cpr
         uses: peter-evans/create-pull-request@v7
         with:
           # GITHUB_TOKEN이 만든 PR에는 pull_request CI가 트리거되지 않으므로(재귀 방지) PAT를 쓴다 —
@@ -54,7 +63,28 @@ jobs:
             - 트리거: `${{ github.event_name }}`
             - BE 커밋: `${{ github.event.client_payload.sha || 'n/a' }}`
             - **typecheck 조기 신호: `${{ steps.typecheck.outcome }}`** (정식 판정은 이 PR의 CI — main 보호 규칙의 required checks가 머지를 강제)
-            - `failure`면 breaking change → FE 적응 커밋을 이 브랜치에 쌓은 뒤 머지하세요 (architecture.md §1)
+            - `success`면 auto-merge가 예약된다 — required checks가 모두 통과하면 GitHub가 squash 머지한다
+            - `failure`면 breaking change → auto-merge를 걸지 않는다. FE 적응 커밋을 이 브랜치에 쌓은 뒤 머지하세요 (architecture.md §1)
+      # 예약은 「체크가 통과하면 머지하라」는 뜻이다 — 머지 판정은 여전히 main 보호 규칙의 required checks가 한다.
+      # 즉시 머지(--auto 없이)는 체크 대기 중이라 거부되고, --admin은 그 체크를 건너뛰므로 쓰지 않는다.
+      # PAT로 건다: GITHUB_TOKEN으로 예약하면 머지 커밋에 main push CI가 트리거되지 않는다.
+      # breaking이면 앞선 비파괴 런이 걸어 둔 예약을 푼다 — 적응 커밋을 쌓는 도중 체크가 초록이 되는 순간 머지되지 않게.
+      # PR 번호는 열린 PR이 있을 때만 나온다 — 차이가 사라져 브랜치를 지운 런에서는 비어 있어 건너뛴다.
+      - name: auto-merge 예약/해제
+        if: steps.cpr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.CONTRACT_SYNC_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ steps.cpr.outputs.pull-request-number }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+        run: |
+          # 이미 걸린 예약에 다시 거는 동작에 기대지 않도록 현재 상태를 먼저 본다
+          AUTO=$(gh pr view "$PR" --json autoMergeRequest --jq '.autoMergeRequest != null')
+          if [ "$TYPECHECK" = success ]; then
+            [ "$AUTO" = true ] || gh pr merge "$PR" --auto --squash
+          else
+            [ "$AUTO" = false ] || gh pr merge "$PR" --disable-auto
+          fi
       - name: breaking change 신호
         if: steps.typecheck.outcome == 'failure'
         run: |
