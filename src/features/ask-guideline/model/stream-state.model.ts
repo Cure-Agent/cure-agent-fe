@@ -35,6 +35,12 @@ export type StreamPhase =
  */
 export type RetrievalStage = 'embedded' | 'searched' | 'reranked';
 
+/**
+ * `agent.progress { stage: 'routed', route }`가 말하는 **에이전트 경로** (BE docs/specs/52).
+ * 닫힌 4값이다 — 모르는 route는 `null`로 남겨 화면이 없는 진행을 지어내지 않는다.
+ */
+export type AgentRoute = 'GUIDELINE' | 'PATIENT' | 'COMPOSITE' | 'OTHER';
+
 export interface StreamError {
   code: string;
   message: string;
@@ -61,6 +67,10 @@ export interface StreamState {
   retrievalStage: RetrievalStage | null;
   /** `stage=searched`가 싣는 후보 수. 다른 stage에는 실리지 않으므로 대개 null이다 */
   retrievalCandidates: number | null;
+  /** `agent.progress stage=routed`가 정한 경로 (BE docs/specs/52). 에이전트 경로가 아니면 null */
+  agentRoute: AgentRoute | null;
+  /** `agent.progress stage=patient_loaded`가 도착했는가 — 환자 기록을 읽었다는 사실 (§52) */
+  patientLoaded: boolean;
   /** answer.delta 누적 본문 */
   content: string;
   /** 다음에 기대하는 seq — 불일치 delta는 무시 */
@@ -92,6 +102,8 @@ export const initialStreamState: StreamState = {
   evidenceCount: null,
   retrievalStage: null,
   retrievalCandidates: null,
+  agentRoute: null,
+  patientLoaded: false,
   content: '',
   nextSeq: 0,
   message: null,
@@ -157,8 +169,38 @@ function toRetrievalStage(value: unknown): RetrievalStage | null {
     : null;
 }
 
+const AGENT_ROUTES: readonly string[] = ['GUIDELINE', 'PATIENT', 'COMPOSITE', 'OTHER'];
+
+/** 계약이 아는 route만 통과시킨다. 모르는 값은 `null` — 호출부가 이벤트째 무시한다 */
+function toAgentRoute(value: unknown): AgentRoute | null {
+  return typeof value === 'string' && AGENT_ROUTES.includes(value) ? (value as AgentRoute) : null;
+}
+
+/**
+ * `agent.progress` (BE docs/specs/52) — **상태를 만들지 않는 진행 이벤트**라 `phase`를 건드리지
+ * 않는다. 그래서 §8 복구 기준점(`assistantMessageId`)도, PATIENT 경로가 `accepted`에서 첫 델타로
+ * 곧장 `streaming`이 되는 것도 그대로다. 단계는 `stage`로 쪼개고, 모르는 stage·모르는 route는
+ * **같은 참조를 돌려** 화면이 없는 진행을 지어내지 않게 한다 (spec 46 규약 · §3 전방 호환).
+ */
+function applyAgentProgress(state: StreamState, event: StreamEvent): StreamState {
+  switch (event.stage) {
+    case 'routed': {
+      const route = toAgentRoute(event.route);
+      // 모르는 route는 이미 아는 경로를 지우지도 않는다 — 에이전트가 경로를 늘려도 화면은 그대로다
+      if (!route) return state;
+      return { ...state, agentRoute: route };
+    }
+    case 'patient_loaded':
+      return state.patientLoaded ? state : { ...state, patientLoaded: true };
+    default:
+      return state;
+  }
+}
+
 function applyEvent(state: StreamState, event: StreamEvent): StreamState {
   switch (event.eventType) {
+    case 'agent.progress':
+      return applyAgentProgress(state, event);
     case 'message.accepted': {
       // 재시도 대비 초기화하되, 이미 그려둔 내 질문은 서버 id로 갱신만 한다
       const userMessageId = (event.userMessageId as string) ?? null;
