@@ -698,6 +698,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/conversations/{conversationId}/messages/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 일반 대화(GUIDELINE_QA) 질문 전송 + SSE 스트리밍 답변 — 에이전트가 서빙 (문서 전용 경로)
+         * @description **BE가 서빙하지 않는다** — nginx가 같은 오리진에서 이 경로를 에이전트 서비스로 보낸다. GUIDELINE_QA 대화의 전송은 이 경로로, PATIENT_GUIDANCE 대화는 `POST /conversations/{conversationId}/messages/stream` 그대로다. 이벤트 계약은 채팅 스트림과 같고 **agent.progress**(stage)가 더해진다 — 단계는 stage 필드로 쪼개며 모르는 stage·모르는 route는 무시한다(진행 이벤트는 상태를 만들지 않는다). 공통: message.accepted → agent.progress(stage=routed, route=GUIDELINE|PATIENT|COMPOSITE|OTHER). 지침(GUIDELINE): retrieval.started → retrieval.progress(stage) → answer.started → retrieval.evidence × N → retrieval.completed → answer.delta(seq) → answer.completed | answer.abstained | error. 환자(PATIENT): agent.progress(stage=patient_loaded) → answer.delta × N → answer.completed. 복합(COMPOSITE): agent.progress(stage=patient_loaded) → retrieval.* (answer.started는 evidenceCount를 싣는다) → retrieval.evidence × N → retrieval.completed → answer.delta × N → answer.completed | answer.abstained. 기타(OTHER): answer.abstained(out_of_scope) — 환자·복합의 라벨 해석 실패는 answer.abstained(patient_unresolved). 스트림 전 실패는 SSE가 아니라 공통 응답 봉투다: 401 AUTH_TOKEN_EXPIRED(선검사 — FE는 refresh 뒤 1회 재시도) · 404 NOT_FOUND(대화 없음·타 클리닉) · 409 DUPLICATE_CLIENT_REQUEST · 422 VALIDATION_FAILED · 502 AGENT_BACKEND_UNAVAILABLE(에이전트가 BE에 닿지 못함 — retryable). 15초 heartbeat 주석 전송.
+         */
+        post: operations["AgentStream_streamMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1339,6 +1359,16 @@ export interface components {
             /** @enum {string} */
             decision: "ACCEPTED" | "MODIFIED" | "REJECTED";
             note?: string;
+        };
+        AcceptAgentTurnRequestDto: {
+            content: string;
+            /** @description 중복 생성 방지 키 — 재시도 시 같은 값 사용 (§8 복구 계약) */
+            clientRequestId: string;
+            /**
+             * @default ko
+             * @enum {string}
+             */
+            responseLang: "ko" | "en";
         };
     };
     responses: never;
@@ -2483,6 +2513,87 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiResponseDto"] & {
                         data?: components["schemas"]["ClinicalGuidanceResponseDto"];
+                    };
+                };
+            };
+        };
+    };
+    AgentStream_streamMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptAgentTurnRequestDto"];
+            };
+        };
+        responses: {
+            /** @description SSE 이벤트 스트림 (architecture.md §8 에이전트 스트림) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description AUTH_TOKEN_EXPIRED — 만료된 토큰입니다. (스트림 전 선검사) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: unknown;
+                    };
+                };
+            };
+            /** @description NOT_FOUND — 대상을 찾을 수 없습니다. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: unknown;
+                    };
+                };
+            };
+            /** @description DUPLICATE_CLIENT_REQUEST — 이미 처리 중인 요청입니다. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: unknown;
+                    };
+                };
+            };
+            /** @description VALIDATION_FAILED — 입력값이 올바르지 않습니다. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: unknown;
+                    };
+                };
+            };
+            /** @description AGENT_BACKEND_UNAVAILABLE — 서버 응답을 받지 못했습니다. 잠시 후 다시 시도해주세요. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseDto"] & {
+                        data?: unknown;
                     };
                 };
             };
