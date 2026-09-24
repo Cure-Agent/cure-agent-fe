@@ -1,6 +1,6 @@
 # CureAgent Frontend
 
-[English](README.md) | [한국어](README.ko.md)
+[English](README.md) · **한국어**
 
 CureAgent의 프론트엔드 애플리케이션. CureAgent는 의료 가이드라인에서 근거를 검색하고
 인용에 기반한 답변을 생성하는 임상 RAG 어시스턴트다.

@@ -1,6 +1,6 @@
 # CureAgent Frontend
 
-[English](README.md) | [한국어](README.ko.md)
+**English** · [한국어](README.ko.md)
 
 Frontend application for CureAgent, a clinical RAG assistant that retrieves
 evidence from medical guidelines and generates citation-grounded answers.
