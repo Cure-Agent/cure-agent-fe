@@ -200,6 +200,15 @@ export function ChatPanel({
   useEffect(() => {
     if (state.phase === 'completed' || state.phase === 'abstained' || state.phase === 'error') {
       void queryClient.invalidateQueries({ queryKey: messagesKey(conversationId) });
+      /**
+       * 대화 목록도 한 번 더 읽는다 — **에이전트 경로는 제목을 수락 뒤에 붙이기 때문이다**
+       * (BE docs/specs/51). 에이전트는 `message.accepted`를 먼저 보내고 분류로 경로가 정해진
+       * 뒤에야 BE가 제목을 확정하므로, 아래 수락 시점 재조회는 제목이 붙기 전의 목록을 받아
+       * 사이드바가 「새 대화」에 머문다. 종결 이벤트는 그 확정 뒤에 오므로 여기서 읽으면
+       * 새로고침 없이 제목이 선다. 진행 이벤트마다 읽지 않는 이유는 delta가 답변 하나에 수십
+       * 개라서다 — 질문 하나에 수락 1회, 종결 1회.
+       */
+      void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
     }
     /**
      * 둘러보기의 마지막 단계는 **답변을 기다리는 것**이라 사용자가 끝낼 수 없다 — 종결이
@@ -213,10 +222,11 @@ export function ChatPanel({
   }, [state.phase, conversationId, queryClient]);
 
   /**
-   * 대화 목록도, 메시지 목록도 답변 종결이 아니라 **질문 수락 시점**에 갱신한다 — 둘이
+   * 대화 목록도, 메시지 목록도 답변 종결을 기다리지 않고 **질문 수락 시점**에 갱신한다 — 둘이
    * 보여주는 것이 서버에서 이미 그때 확정되기 때문이다. 수락 tx가 lastMessageAt을 올려 정렬을
-   * 정하고, 기본 제목인 대화라면 첫 질문으로 제목까지 같은 tx에서 확정한다.
-   * (목록은 lastMessagePreview를 그리지 않는다 — 그리게 되면 종결 시점 재조회가 다시 필요하다.)
+   * 정하고, BE 채팅 경로라면 기본 제목인 일반 대화의 제목까지 같은 tx에서 확정한다.
+   * 에이전트 경로의 제목은 분류 뒤에 붙어 이 시점엔 아직 없다 — 그 몫은 위 종결 effect가 다시 읽는다.
+   * (목록은 lastMessagePreview를 그리지 않는다 — 그리게 되더라도 그 종결 재조회가 받아 온다.)
    *
    * 메시지 목록이 여기 함께 있는 이유가 이 버그의 핵심이다. **내 질문은 전송 직후 로컬
    * state(`pendingUser`)에만 산다** — 서버는 본문을 되돌려주지 않으므로 화면이 그것을 들고 있는
