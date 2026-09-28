@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
+// docs/specs/56 FE 수용 기준 26 ⑵ 동결 테스트 — 구현 중 수정 금지
 
-import { act, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { setUiLang, UI_LANG_STORAGE_KEY } from '@/shared/i18n/ui-lang';
+import { UI_LANG_STORAGE_KEY } from '@/shared/i18n/ui-lang';
 import { envelope, server, useMswServer } from '@/shared/test/msw';
 import { renderWithProviders } from '@/shared/test/render';
 import { stubNavigatorLanguage, stubStoredUiLang } from '@/shared/test/ui-lang-env';
@@ -16,7 +16,6 @@ useMswServer();
 const PAGE = { size: 20, hasNext: false, nextCursor: null };
 const GUIDANCE_CONVERSATION_ID = 'conversation-guidance-title';
 const KO_TITLE = 'CASE-001 임상 참고 (8/4 14:30)';
-const EN_TITLE = 'CASE-001 Clinical guidance (8/4 14:30)';
 
 function conversation(
   title: string,
@@ -55,63 +54,19 @@ beforeEach(() => {
   localStorage.clear();
 });
 
-describe('ConversationList 환자 맞춤 제목의 표시 언어', () => {
-  it('한국어로 만든 환자 맞춤 제목을 영문 화면에서 영문 라벨로 그린다', async () => {
+describe('ConversationList 환자 맞춤 제목은 저장값 그대로', () => {
+  it('기준 26 ⑵: 영문 화면의 환자 맞춤 행은 FE 틀 제목을 저장값 그대로 그린다', async () => {
     setLanguageInputs('en-US', 'en');
-    mockConversations([conversation(KO_TITLE)]);
+    mockConversations([conversation(KO_TITLE, 'PATIENT_GUIDANCE')]);
     renderList();
 
     const list = await screen.findByRole('list');
-    expect(await within(list).findByRole('button', { name: EN_TITLE })).toHaveTextContent(
-      EN_TITLE,
-    );
-    expect(within(list).queryByText('임상 참고')).not.toBeInTheDocument();
-  });
-
-  it('영문으로 만든 환자 맞춤 제목을 한국어 화면에서 한국어 라벨로 그린다', async () => {
-    setLanguageInputs('ko-KR', 'ko');
-    mockConversations([conversation(EN_TITLE)]);
-    renderList();
-
-    const list = await screen.findByRole('list');
-    expect(await within(list).findByRole('button', { name: KO_TITLE })).toHaveTextContent(
-      KO_TITLE,
-    );
-  });
-
-  it('표시 언어를 바꾸면 라벨만 따라 바뀌고 케이스 라벨과 시각은 그대로다', async () => {
-    setLanguageInputs('ko-KR', 'ko');
-    mockConversations([conversation(KO_TITLE)]);
-    renderList();
-
-    const list = await screen.findByRole('list');
-    await within(list).findByRole('button', { name: KO_TITLE });
-
-    act(() => {
-      setUiLang('en');
+    const titleButton = await within(list).findByRole('button', {
+      name: 'CASE-001 임상 참고 (8/4 14:30)',
     });
-
-    await waitFor(() => {
-      expect(within(list).getByRole('button', { name: EN_TITLE })).toHaveTextContent(
-        'CASE-001 Clinical guidance (8/4 14:30)',
-      );
-      expect(within(list).queryByRole('button', { name: KO_TITLE })).not.toBeInTheDocument();
-    });
-  });
-
-  it('환자 맞춤 대화의 이름 변경을 열면 입력 초기값이 화면 언어의 제목이다', async () => {
-    setLanguageInputs('en-US', 'en');
-    mockConversations([conversation(KO_TITLE)]);
-    const user = userEvent.setup();
-    renderList(GUIDANCE_CONVERSATION_ID);
-
-    const list = await screen.findByRole('list');
-    await within(list).findByRole('button', { name: EN_TITLE });
-    await user.click(screen.getByRole('button', { name: 'Rename' }));
-
-    expect(await screen.findByRole('textbox', { name: 'Conversation title' })).toHaveValue(
-      EN_TITLE,
-    );
+    expect(titleButton).toHaveAccessibleName('CASE-001 임상 참고 (8/4 14:30)');
+    expect(titleButton.textContent).toBe('CASE-001 임상 참고 (8/4 14:30)');
+    expect(list).not.toHaveTextContent('Clinical guidance');
   });
 
   it('같은 모양이어도 일반 질의 대화의 제목은 저장된 그대로 그린다', async () => {
