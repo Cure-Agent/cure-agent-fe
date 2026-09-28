@@ -13,15 +13,12 @@ import { useUiLang } from '@/shared/i18n/ui-lang';
 
 export interface RequestGuidanceButtonProps {
   patientId: string;
-  /** 대화 제목이 될 케이스 라벨 (예: CASE-001) */
-  caseLabel: string;
   /** 생성된 대화 id로 이동 콜백 — 미지정 시 /assistant?conversation={id}로 이동 */
   onStarted?: (conversationId: string) => void;
 }
 
 export function RequestGuidanceButton({
   patientId,
-  caseLabel,
   onStarted,
 }: RequestGuidanceButtonProps): ReactElement {
   const lang = useUiLang();
@@ -32,7 +29,7 @@ export function RequestGuidanceButton({
   const handleClick = (): void => {
     if (requestGuidance.isPending) return;
     requestGuidance.mutate(
-      { patientId, caseLabel },
+      { patientId },
       {
         onSuccess: (conversation) => {
           /**
