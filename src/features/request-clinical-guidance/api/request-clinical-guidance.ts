@@ -17,8 +17,8 @@ export type ConversationSummary = components['schemas']['ConversationSummaryResp
 
 export interface RequestGuidanceInput {
   patientId: string;
-  /** 제목에 실을 케이스 라벨 — 목록에서 이 대화를 환자로 찾는 축이다 */
-  caseLabel: string;
+  /** 제목에 실을 케이스 라벨 — spec 56 스텁: 선택으로 풀어 두고 구현에서 걷어낸다 */
+  caseLabel?: string;
 }
 
 export function useRequestClinicalGuidance(): UseMutationResult<
@@ -34,7 +34,7 @@ export function useRequestClinicalGuidance(): UseMutationResult<
           type: 'PATIENT_GUIDANCE',
           patientId,
           // 표시 언어는 **호출 시점에** 읽는다 — 모듈 로드 시점에 굳히면 토글이 반영되지 않는다
-          title: buildGuidanceTitle(caseLabel, resolveUiLang()),
+          title: buildGuidanceTitle(caseLabel ?? '', resolveUiLang()),
         },
       });
       return unwrap<ConversationSummary>(result);

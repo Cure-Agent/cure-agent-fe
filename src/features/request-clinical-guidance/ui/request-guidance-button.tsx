@@ -13,8 +13,8 @@ import { useUiLang } from '@/shared/i18n/ui-lang';
 
 export interface RequestGuidanceButtonProps {
   patientId: string;
-  /** 대화 제목이 될 케이스 라벨 (예: CASE-001) */
-  caseLabel: string;
+  /** 대화 제목이 될 케이스 라벨 (예: CASE-001) — spec 56 스텁: 선택으로 풀어 두고 구현에서 걷어낸다 */
+  caseLabel?: string;
   /** 생성된 대화 id로 이동 콜백 — 미지정 시 /assistant?conversation={id}로 이동 */
   onStarted?: (conversationId: string) => void;
 }
