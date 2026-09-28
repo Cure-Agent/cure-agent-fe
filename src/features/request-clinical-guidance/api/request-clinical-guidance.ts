@@ -10,15 +10,11 @@ import { CONVERSATIONS_KEY } from '@/features/manage-conversation/api/conversati
 import { api } from '@/shared/api/api-client';
 import { unwrap } from '@/shared/api/api-error';
 import type { components } from '@/shared/api/generated/schema';
-import { resolveUiLang } from '@/shared/i18n/ui-lang';
-import { buildGuidanceTitle } from '../lib/guidance-title';
 
 export type ConversationSummary = components['schemas']['ConversationSummaryResponseDto'];
 
 export interface RequestGuidanceInput {
   patientId: string;
-  /** 제목에 실을 케이스 라벨 — spec 56 스텁: 선택으로 풀어 두고 구현에서 걷어낸다 */
-  caseLabel?: string;
 }
 
 export function useRequestClinicalGuidance(): UseMutationResult<
@@ -28,14 +24,12 @@ export function useRequestClinicalGuidance(): UseMutationResult<
 > {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ patientId, caseLabel }: RequestGuidanceInput) => {
+    mutationFn: async ({ patientId }: RequestGuidanceInput) => {
       const result = await api.POST('/api/v1/conversations', {
-        body: {
-          type: 'PATIENT_GUIDANCE',
-          patientId,
-          // 표시 언어는 **호출 시점에** 읽는다 — 모듈 로드 시점에 굳히면 토글이 반영되지 않는다
-          title: buildGuidanceTitle(caseLabel ?? '', resolveUiLang()),
-        },
+        // 제목을 싣지 않는다 — BE가 케이스 라벨을 기본 제목으로 두고, 첫 질문이 수락되면
+        // `<라벨> · <첫 질문>`으로 완성한다(BE docs/specs/56). 제목을 실으면 BE가 사람이
+        // 지은 이름으로 굳혀 그 자동 제목이 영영 걸리지 않는다.
+        body: { type: 'PATIENT_GUIDANCE', patientId },
       });
       return unwrap<ConversationSummary>(result);
     },

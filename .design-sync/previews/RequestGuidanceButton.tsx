@@ -4,7 +4,6 @@ import { RequestGuidanceButton } from 'cure-agent-fe';
 export const Default = () => (
   <RequestGuidanceButton
     patientId="pat_01HQ8ZP5C1"
-    caseLabel="CASE-001"
     onStarted={() => undefined}
   />
 );

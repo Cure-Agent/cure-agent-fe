@@ -9,13 +9,6 @@
  *   알 수 없다. 언어별 메타데이터가 필요해지면 URL에 언어를 실어야 하고, 그건 다른 결정이다
  * - BE가 봉투에 실어 보내는 오류 문구 — 소유자가 BE다. FE는 봉투에 문구가 없을 때의
  *   폴백만 든다
- *
- * **`guidanceTitleTemplate`은 양방향으로 쓰인다.** 생성 시점에 제목을 조립해 서버에 저장하고,
- * 목록이 그 제목을 되읽어 화면 언어로 다시 그린다. 「저장되는 제목이라 손대지 않는다」가
- * 한때의 근거였는데, 그 말이 지키는 건 **사람이 고른 이름**이지 우리가 케이스 라벨과 시각
- * 사이에 기계적으로 끼워 넣은 라벨이 아니다. 라벨은 「새 대화」와 같은 UI 문구라 화면 언어를
- * 따르고, 그 사람의 데이터인 케이스 라벨·시각은 그대로 실려 나간다
- * (`manage-conversation/lib/conversation-title.ts`).
  */
 import { Fragment, type ReactNode, createElement } from 'react';
 import type { UiLang } from './ui-lang';
@@ -429,15 +422,6 @@ const ko = {
 
   startPatientConversation: '환자 맞춤 대화 시작',
   startPatientConversationFailed: '환자 맞춤 대화 생성에 실패했습니다.',
-  /**
-   * 환자 맞춤 대화의 기본 제목 틀. `{case}`는 케이스 라벨, `{when}`은 월/일 시:분.
-   *
-   * **쓰는 자리가 둘이고 방향이 반대다** — `buildGuidanceTitle`이 생성 시점에 이 틀로 제목을
-   * 조립해 저장하고, `resolveConversationTitle`이 저장된 제목을 이 틀로 되읽어 화면 언어로
-   * 다시 그린다. 되읽는 쪽이 틀을 **정규식으로 파생**하므로, 문구를 고치면 알아보는 쪽도
-   * 같이 따라간다. 자리 이름(`{case}`·`{when}`)은 그 계약이라 언어끼리 어긋나면 안 된다.
-   */
-  guidanceTitleTemplate: '{case} 임상 참고 ({when})',
   pickConversationOrStart: '왼쪽에서 대화를 선택하거나 새 대화를 시작하세요',
 
   // 온보딩 둘러보기 (features/onboarding-tour)
@@ -796,7 +780,6 @@ const en: Record<MessageKey, string> = {
 
   startPatientConversation: 'Start patient-specific conversation',
   startPatientConversationFailed: 'Could not start the patient-specific conversation.',
-  guidanceTitleTemplate: '{case} Clinical guidance ({when})',
   pickConversationOrStart: 'Pick a conversation on the left, or start a new one',
 
   tourWelcomeHeading: 'Get started with Cure Agent',
