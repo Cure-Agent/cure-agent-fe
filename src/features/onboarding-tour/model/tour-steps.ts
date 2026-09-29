@@ -82,7 +82,7 @@ export const TOUR_PATHS: Record<TourPath, readonly TourStep[]> = {
     },
   ],
   patient: [
-    // 사이드바는 모든 보호 화면에 있다 — 어디서 시작하든 이 단계는 그 자리에서 된다
+    // 사이드바(좁은 화면은 메뉴 드로어)는 모든 보호 화면에 있다 — 어디서 시작하든 이 단계는 그 자리에서 된다
     {
       anchor: 'nav-patients',
       titleKey: 'tourPatientStep1Title',

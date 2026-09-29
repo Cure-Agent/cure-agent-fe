@@ -469,7 +469,9 @@ const ko = {
     '답변 아래의 [1] 같은 인용 번호를 누르면 오른쪽 패널이 그 지침 원문을 펴서 보여줍니다.',
 
   tourPatientStep1Title: '환자 화면 열기',
-  tourPatientStep1Body: '왼쪽 사이드바의 「환자」를 누르세요.',
+  // 「사이드바」라고 적지 않는다 — 좁은 화면에는 사이드바가 없고 왼쪽 위 메뉴 버튼이 드로어를 연다.
+  // 「왼쪽 메뉴」는 두 화면 모두에 맞고, 좁은 화면에서는 강조 링이 메뉴 버튼을 짚는다
+  tourPatientStep1Body: '왼쪽 메뉴의 「환자」를 누르세요.',
   tourPatientStep2Title: '환자 고르기',
   tourPatientStep2Body: '목록에서 환자를 하나 누르면 진단·투약이 담긴 상세가 열립니다.',
   tourPatientStep3Title: '환자 맞춤 대화 시작',
@@ -833,7 +835,7 @@ const en: Record<MessageKey, string> = {
     'Click a citation number like [1] under the answer and the right-hand panel opens that guideline passage.',
 
   tourPatientStep1Title: 'Open the Patients screen',
-  tourPatientStep1Body: 'Click “Patients” in the left sidebar.',
+  tourPatientStep1Body: 'Choose “Patients” in the left menu.',
   tourPatientStep2Title: 'Pick a patient',
   tourPatientStep2Body:
     'Click a patient in the list to open the record with diagnoses and medications.',
