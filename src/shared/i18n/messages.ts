@@ -164,6 +164,13 @@ const ko = {
   mainMenu: '주요 메뉴',
   closeSidebar: '사이드바 닫기',
   openSidebar: '사이드바 열기',
+  /**
+   * 좁은 화면의 메뉴 드로어. 사이드바 열기·닫기와 **키를 가른다** — 저건 자리를 차지하는
+   * 사이드바를 접는 취향(저장된다)이고, 이건 화면 위에 잠깐 덮이는 메뉴(저장하지 않는다)다.
+   */
+  menu: '메뉴',
+  openMenu: '메뉴 열기',
+  closeMenu: '메뉴 닫기',
   myProfile: '내 프로필',
   logout: '로그아웃',
   /**
@@ -424,6 +431,11 @@ const ko = {
   startPatientConversationFailed: '환자 맞춤 대화 생성에 실패했습니다.',
   pickConversationOrStart: '왼쪽에서 대화를 선택하거나 새 대화를 시작하세요',
 
+  // 좁은 화면의 채팅방 — 목록과 채팅이 한 화면씩 번갈아 선다
+  backToConversations: '대화 목록으로',
+  showEvidence: '인용 근거 보기',
+  closeEvidence: '인용 근거 닫기',
+
   // 온보딩 둘러보기 (features/onboarding-tour)
   // 단계 문구는 「무엇을 누르는지」와 「그래서 무엇이 일어나는지」를 한 문장씩 나눠 든다 —
   // 앞만 있으면 시키는 대로 누르기만 하고, 뒤만 있으면 어디를 눌러야 할지 모른다
@@ -535,6 +547,9 @@ const en: Record<MessageKey, string> = {
   mainMenu: 'Main menu',
   closeSidebar: 'Collapse sidebar',
   openSidebar: 'Expand sidebar',
+  menu: 'Menu',
+  openMenu: 'Open menu',
+  closeMenu: 'Close menu',
   myProfile: 'My profile',
   logout: 'Log out',
   displayLanguage: 'Display language',
@@ -781,6 +796,10 @@ const en: Record<MessageKey, string> = {
   startPatientConversation: 'Start patient-specific conversation',
   startPatientConversationFailed: 'Could not start the patient-specific conversation.',
   pickConversationOrStart: 'Pick a conversation on the left, or start a new one',
+
+  backToConversations: 'Back to conversations',
+  showEvidence: 'Show cited evidence',
+  closeEvidence: 'Close cited evidence',
 
   tourWelcomeHeading: 'Get started with Cure Agent',
   tourWelcomeLead: 'Take one of the two walkthroughs — each step points at what to click.',
