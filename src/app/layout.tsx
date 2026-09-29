@@ -30,6 +30,11 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: '#047857',
+  // 안드로이드 크롬은 키보드가 올라와도 레이아웃 뷰포트를 그대로 둔다(기본 resizes-visual) —
+  // 화면 맨 아래 붙은 채팅 입력창이 키보드 뒤로 들어가고, 브라우저가 화면을 밀어 올리면서
+  // 채팅방 머리가 밖으로 나간다. 레이아웃째 줄여 입력창이 키보드 바로 위에 서게 한다.
+  // iOS 사파리는 이 값을 읽지 않는다.
+  interactiveWidget: 'resizes-content',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }): React.ReactElement {

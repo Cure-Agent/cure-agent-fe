@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { type ReactNode, useCallback, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Clinician, useLogout } from '@/features/auth/api/auth.api';
 import { completeTourStep, useTourHighlight } from '@/features/onboarding-tour/model/tour-state';
 import type { TourAnchor } from '@/features/onboarding-tour/model/tour-steps';
@@ -37,6 +37,21 @@ const PanelIcon = iconSvg(
   <>
     <rect x="3" y="3" width="18" height="18" rx="2" />
     <path d="M9 3v18" />
+  </>,
+);
+
+const MenuIcon = iconSvg(
+  <>
+    <path d="M4 6h16" />
+    <path d="M4 12h16" />
+    <path d="M4 18h16" />
+  </>,
+);
+
+const CloseIcon = iconSvg(
+  <>
+    <path d="m18 6-12 12" />
+    <path d="m6 6 12 12" />
   </>,
 );
 
@@ -124,6 +139,169 @@ function railIconClass(active: boolean): string {
   }`;
 }
 
+/**
+ * 주요 메뉴 링크 — 넓은 화면의 사이드바와 좁은 화면의 드로어가 같은 목록을 쓴다.
+ * 둘이 따로 적히면 한쪽에만 항목이 늘거나 둘러보기 강조가 한쪽에서 빠진다.
+ */
+function NavLinks({
+  pathname,
+  patientsHighlight,
+  onNavigate,
+}: {
+  pathname: string;
+  patientsHighlight: string;
+  onNavigate?: () => void;
+}): React.ReactElement {
+  const t = messagesFor(useUiLang());
+  return (
+    <nav className="flex-1 space-y-1 p-3">
+      {NAV_ITEMS.map((item) => {
+        const active = pathname.startsWith(item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={() => {
+              if (item.tourAnchor) completeTourStep(item.tourAnchor);
+              onNavigate?.();
+            }}
+            className={`block rounded-lg px-3 py-2 text-sm font-medium ${
+              active
+                ? 'bg-emerald-50 text-emerald-800'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+            } ${item.tourAnchor === 'nav-patients' ? patientsHighlight : ''}`}
+          >
+            {t[item.labelKey]}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+/** 표시 언어 · 프로필 진입 · 로그아웃 — 사이드바 하단과 드로어 하단이 같은 블록을 쓴다 */
+function AccountBlock({
+  me,
+  onNavigate,
+  onLogout,
+  logoutPending,
+}: {
+  me: Clinician;
+  onNavigate?: () => void;
+  onLogout: () => void;
+  logoutPending: boolean;
+}): React.ReactElement {
+  const t = messagesFor(useUiLang());
+  return (
+    <div className="border-t border-gray-200 p-4">
+      <LanguageSwitch className="mb-2" />
+      {/* 계정 정보 블록이 프로필 진입점이다. -mx-2 px-2: 글자 위치는 그대로 두고 호버 영역만 넓힌다.
+          되돌릴 수 없는 계정 동작(회원탈퇴)은 이 자리가 아니라 프로필 안에 둔다 — 로그아웃과
+          나란히 두면 나가려다 지우는 오조작이 만들어진다 */}
+      <Link
+        href="/profile"
+        aria-label={t.myProfile}
+        onClick={onNavigate}
+        className="-mx-2 block rounded-lg px-2 py-1.5 hover:bg-gray-100"
+      >
+        <p className="truncate text-sm font-medium text-gray-900">{me.displayName}</p>
+        {/* 소셜 계정에서 받은 이메일이 이 계정의 식별자다 — 어느 계정으로 들어와 있는지 알려 준다 */}
+        <p className="truncate text-xs text-gray-500">{me.email}</p>
+        <p className="truncate text-xs text-gray-500">{me.clinic.name}</p>
+      </Link>
+      <button
+        type="button"
+        onClick={onLogout}
+        disabled={logoutPending}
+        className="mt-1.5 w-full rounded-lg border border-gray-300 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+      >
+        {t.logout}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * 좁은 화면의 메뉴 드로어 — 사이드바가 들어설 폭이 없는 화면에서 같은 메뉴·계정 블록을
+ * 화면 위에 잠깐 덮어 보여 준다. 열릴 때만 그린다.
+ *
+ * 열리면 닫기 버튼에 초점을 준다 — 드로어가 화면을 덮는 동안 초점이 그 뒤에 남으면 보이지
+ * 않는 곳을 조작하게 된다. 닫는 길은 넷이다: 닫기 버튼·배경·Esc·메뉴 이동.
+ */
+function MobileNavDrawer({
+  me,
+  pathname,
+  patientsHighlight,
+  onClose,
+  onNavigate,
+  onLogout,
+  logoutPending,
+}: {
+  me: Clinician;
+  pathname: string;
+  patientsHighlight: string;
+  /** 닫기 버튼·배경·Esc — 여는 버튼으로 초점을 돌려준다 */
+  onClose: () => void;
+  /** 메뉴를 골라 화면을 옮길 때 — 초점은 옮겨 간 화면의 몫이다 */
+  onNavigate: () => void;
+  onLogout: () => void;
+  logoutPending: boolean;
+}): React.ReactElement {
+  const t = messagesFor(useUiLang());
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 lg:hidden">
+      <div
+        data-testid="mobile-nav-backdrop"
+        className="absolute inset-0 bg-gray-900/40"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t.menu}
+        className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-white shadow-xl"
+      >
+        <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-gray-200 px-4">
+          <LogoMark className="h-6 w-auto shrink-0 text-emerald-700" />
+          <p className="min-w-0 flex-1 truncate text-base font-bold text-emerald-800">Cure Agent</p>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label={t.closeMenu}
+            className="shrink-0 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <NavLinks pathname={pathname} patientsHighlight={patientsHighlight} onNavigate={onNavigate} />
+        </div>
+        <AccountBlock
+          me={me}
+          onNavigate={onNavigate}
+          onLogout={onLogout}
+          logoutPending={logoutPending}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function AppShell({
   me,
   children,
@@ -137,6 +315,12 @@ export function AppShell({
   const lang = useUiLang();
   const t = messagesFor(lang);
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
+  /**
+   * 좁은 화면의 메뉴 드로어. 사이드바 접힘과 달리 **저장하지 않는다** — 저건 자리를 차지하는
+   * 배치의 취향이고, 이건 화면 위에 잠깐 덮이는 메뉴다. 다음 방문에 메뉴가 열린 채 시작하면 안 된다.
+   */
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   // 훅은 map 안에서 부를 수 없다 — 강조 여부를 미리 읽어 두고 해당 항목에서만 쓴다
   const patientsHighlight = useTourHighlight('nav-patients');
 
@@ -150,6 +334,11 @@ export function AppShell({
     }
   }, []);
 
+  const closeMobileNav = useCallback((): void => {
+    setMobileNavOpen(false);
+    menuButtonRef.current?.focus();
+  }, []);
+
   const handleLogout = async (): Promise<void> => {
     try {
       await logout.mutateAsync();
@@ -159,11 +348,28 @@ export function AppShell({
   };
 
   return (
-    // h-screen + overflow-hidden: 화면 크기를 고정하고 스크롤은 각 페이지 내부 영역이 맡는다
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    // h-dvh + overflow-hidden: 화면 크기를 고정하고 스크롤은 각 페이지 내부 영역이 맡는다.
+    // 100vh(h-screen)가 아니라 dvh인 이유 — 모바일 사파리의 100vh는 툴바가 접힌 높이라,
+    // 문서가 스크롤되지 않는 이 셸에서는 툴바가 펼쳐진 채 맨 아래(채팅 입력창)를 가린다
+    <div className="flex h-dvh flex-col overflow-hidden bg-gray-50 lg:flex-row">
+      {/* 좁은 화면의 상단바 — 사이드바가 들어설 폭이 없는 화면에서 메뉴로 가는 유일한 길이다.
+          둘러보기가 「환자 메뉴」를 짚으면 그 링크는 닫힌 드로어 안에 있으므로 여는 버튼이 대신 짚는다 */}
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-gray-200 bg-white px-2 lg:hidden">
+        <button
+          ref={menuButtonRef}
+          type="button"
+          onClick={() => setMobileNavOpen(true)}
+          aria-label={t.openMenu}
+          className={`rounded-lg p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 ${patientsHighlight}`}
+        >
+          <MenuIcon className="h-5 w-5" />
+        </button>
+        <LogoMark className="h-6 w-auto shrink-0 text-emerald-700" />
+        <p className="text-base font-bold text-emerald-800">Cure Agent</p>
+      </header>
       <aside
         inert={!sidebarOpen}
-        className={`flex w-60 shrink-0 flex-col border-r border-gray-200 bg-white transition-[margin] duration-200 ease-in-out ${
+        className={`hidden w-60 shrink-0 flex-col border-r border-gray-200 bg-white transition-[margin] duration-200 ease-in-out lg:flex ${
           sidebarOpen ? 'ml-0' : '-ml-60'
         }`}
       >
@@ -189,54 +395,13 @@ export function AppShell({
             <PanelIcon className="h-5 w-5" />
           </button>
         </div>
-        <nav className="flex-1 space-y-1 p-3">
-          {NAV_ITEMS.map((item) => {
-            const active = pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => item.tourAnchor && completeTourStep(item.tourAnchor)}
-                className={`block rounded-lg px-3 py-2 text-sm font-medium ${
-                  active
-                    ? 'bg-emerald-50 text-emerald-800'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                } ${item.tourAnchor === 'nav-patients' ? patientsHighlight : ''}`}
-              >
-                {t[item.labelKey]}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="border-t border-gray-200 p-4">
-          <LanguageSwitch className="mb-2" />
-          {/* 계정 정보 블록이 프로필 진입점이다. -mx-2 px-2: 글자 위치는 그대로 두고 호버 영역만 넓힌다.
-              되돌릴 수 없는 계정 동작(회원탈퇴)은 이 자리가 아니라 프로필 안에 둔다 — 로그아웃과
-              나란히 두면 나가려다 지우는 오조작이 만들어진다 */}
-          <Link
-            href="/profile"
-            aria-label={t.myProfile}
-            className="-mx-2 block rounded-lg px-2 py-1.5 hover:bg-gray-100"
-          >
-            <p className="truncate text-sm font-medium text-gray-900">{me.displayName}</p>
-            {/* 소셜 계정에서 받은 이메일이 이 계정의 식별자다 — 어느 계정으로 들어와 있는지 알려 준다 */}
-            <p className="truncate text-xs text-gray-500">{me.email}</p>
-            <p className="truncate text-xs text-gray-500">{me.clinic.name}</p>
-          </Link>
-          <button
-            type="button"
-            onClick={handleLogout}
-            disabled={logout.isPending}
-            className="mt-1.5 w-full rounded-lg border border-gray-300 py-1.5 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50"
-          >
-            {t.logout}
-          </button>
-        </div>
+        <NavLinks pathname={pathname} patientsHighlight={patientsHighlight} />
+        <AccountBlock me={me} onLogout={handleLogout} logoutPending={logout.isPending} />
       </aside>
       {/* 접힘 상태: 떠 있는 버튼 대신 레이아웃 폭을 차지하는 아이콘 레일 —
           본문(대화 목록 등)과 겹치지 않고, 탭을 열지 않아도 바로 이동할 수 있다 */}
       {!sidebarOpen && (
-        <div className="flex w-14 shrink-0 flex-col items-center border-r border-gray-200 bg-white">
+        <div className="hidden w-14 shrink-0 flex-col items-center border-r border-gray-200 bg-white lg:flex">
           {/* 열림 헤더와 같은 h-18 + border-b — 접었을 때도 상단 영역 높이·구분선이 일치한다 */}
           <div className="flex h-18 w-full items-center justify-center border-b border-gray-200">
             <button
@@ -297,7 +462,18 @@ export function AppShell({
         </div>
       )}
       {/* 스크롤 금지 — 각 페이지가 h-full 안에서 자체 스크롤 영역을 만든다 */}
-      <main className="flex-1 overflow-hidden p-8">{children}</main>
+      <main className="min-h-0 flex-1 overflow-hidden p-4 lg:p-8">{children}</main>
+      {mobileNavOpen && (
+        <MobileNavDrawer
+          me={me}
+          pathname={pathname}
+          patientsHighlight={patientsHighlight}
+          onClose={closeMobileNav}
+          onNavigate={() => setMobileNavOpen(false)}
+          onLogout={handleLogout}
+          logoutPending={logout.isPending}
+        />
+      )}
       {/* 둘러보기는 화면이 아니라 셸에 붙는다 — 환자 맞춤 경로가 세 화면을 건너다니므로
           페이지마다 두면 그 이동 중에 안내가 끊긴다. 꺼져 있으면 아무것도 그리지 않는다 */}
       <OnboardingTour />

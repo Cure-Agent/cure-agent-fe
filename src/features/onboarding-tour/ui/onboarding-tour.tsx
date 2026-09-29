@@ -19,6 +19,7 @@ import { dismissTour, startTourPath, useTourState } from '../model/tour-state';
 import {
   TOUR_PATHS,
   TOUR_PATH_NAME_KEYS,
+  type TourAnchor,
   type TourPath,
   otherTourPath,
 } from '../model/tour-steps';
@@ -34,9 +35,34 @@ const PATH_CARDS = [
   leadKey: MessageKey;
 }[];
 
-/** 진행·완료 카드가 공유하는 자리와 껍데기 — 두 카드가 같은 지점에서 이어지게 한다 */
+/**
+ * 진행·완료 카드가 공유하는 자리와 껍데기 — 두 카드가 같은 지점에서 이어지게 한다.
+ *
+ * 넓은 화면은 우하단 한 자리다(`TourGuide` 주석). 좁은 화면에는 그런 구석이 없다 — 목록
+ * 화면은 위쪽(새 대화·메뉴)을, 채팅방은 아래쪽(예시·전송)을 눌러야 한다. 그래서 전폭 카드를
+ * **지금 짚는 대상의 반대편**에 세운다(`narrowEdge`).
+ */
 const FLOATING_CARD =
-  'fixed bottom-6 right-6 z-40 w-72 rounded-xl border border-emerald-200 bg-white p-4 shadow-lg';
+  'fixed inset-x-3 z-40 rounded-xl border border-emerald-200 bg-white p-4 shadow-lg lg:inset-x-auto lg:top-auto lg:bottom-6 lg:right-6 lg:w-72';
+
+/** 좁은 화면의 위 자리 — 채팅방 머리(h-14) 바로 아래다. 넓은 화면에서는 `lg:`가 덮는다 */
+const NARROW_TOP = 'top-16';
+const NARROW_BOTTOM = 'bottom-3';
+
+/**
+ * 좁은 화면에서 짚는 대상이 **화면 아래**에 있는 단계 — 카드가 위로 비킨다. 예시 질의문과
+ * 전송은 채팅방 입력창 곁에 있고, 답변은 그 위로 쌓여 내려온다. 나머지(새 대화·메뉴·환자 행·
+ * 환자 맞춤 대화 시작)는 화면 위쪽이라 카드가 아래에 선다.
+ */
+const ANCHORS_NEAR_BOTTOM: ReadonlySet<TourAnchor> = new Set([
+  'suggested-prompt',
+  'send-question',
+  'answer',
+]);
+
+function narrowEdge(anchor: TourAnchor): string {
+  return ANCHORS_NEAR_BOTTOM.has(anchor) ? NARROW_TOP : NARROW_BOTTOM;
+}
 
 const CLOSE_BUTTON = 'shrink-0 rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600';
 
@@ -161,9 +187,9 @@ function TourWelcome({ t }: { t: Messages }): ReactElement {
 /**
  * 진행 중 카드.
  *
- * 우하단에 두는 이유는 이 앱에서 **짚을 것이 하나도 없는 유일한 구석**이라서다 — 어시스턴트
- * 3단 화면에서 눌러야 할 것들(새 대화·예시·전송)은 전부 왼쪽과 가운데에 있고, 환자 상세의
- * 「환자 맞춤 대화 시작」은 오른쪽 위에 있다.
+ * 넓은 화면에서 우하단에 두는 이유는 이 앱에서 **짚을 것이 하나도 없는 유일한 구석**이라서다 —
+ * 어시스턴트 3단 화면에서 눌러야 할 것들(새 대화·예시·전송)은 전부 왼쪽과 가운데에 있고, 환자
+ * 상세의 「환자 맞춤 대화 시작」은 오른쪽 위에 있다. 좁은 화면은 단계마다 자리를 고른다(`narrowEdge`).
  */
 function TourGuide({
   path,
@@ -181,7 +207,7 @@ function TourGuide({
   const offRoute = step.route !== null && !pathname.startsWith(step.route.href);
 
   return (
-    <div className={FLOATING_CARD}>
+    <div className={`${FLOATING_CARD} ${narrowEdge(step.anchor)}`}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-medium text-emerald-700">
           {t[TOUR_PATH_NAME_KEYS[path]]}
@@ -239,6 +265,9 @@ function TourGuide({
  *
  * 닫기 수단(✕·「닫기」)은 그대로 남긴다 — 물러나는 것은 배려이지 강제가 아니므로, 기다리지
  * 않고 지우려는 사람의 길을 막지 않는다.
+ *
+ * 좁은 화면에서는 위에 선다 — 두 경로 모두 답변을 받는 단계로 끝나므로, 완료 카드가 뜨는 곳은
+ * 언제나 입력창이 아래에 있는 채팅방이다.
  */
 function TourAllFinished({ t }: { t: Messages }): ReactElement {
   useEffect(() => {
@@ -248,7 +277,7 @@ function TourAllFinished({ t }: { t: Messages }): ReactElement {
 
   return (
     <div
-      className={`${FLOATING_CARD} tour-card-fade`}
+      className={`${FLOATING_CARD} ${NARROW_TOP} tour-card-fade`}
       role="status"
       style={{ '--tour-card-fade-duration': `${TOUR_FINISH_AUTO_CLOSE_MS}ms` } as CSSProperties}
     >
@@ -272,11 +301,11 @@ function TourAllFinished({ t }: { t: Messages }): ReactElement {
   );
 }
 
-/** 한 경로를 마친 자리 — 같은 카드 자리에서 다른 경로를 권한다 */
+/** 한 경로를 마친 자리 — 같은 카드 자리에서 다른 경로를 권한다 (좁은 화면의 위치는 `TourAllFinished`와 같은 이유) */
 function TourFinished({ path, t }: { path: TourPath; t: Messages }): ReactElement {
   const next = otherTourPath(path);
   return (
-    <div className={FLOATING_CARD} role="status">
+    <div className={`${FLOATING_CARD} ${NARROW_TOP}`} role="status">
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium text-emerald-800">{t.tourFinishedHeading}</p>
         <button type="button" onClick={dismissTour} aria-label={t.tourClose} className={CLOSE_BUTTON}>
