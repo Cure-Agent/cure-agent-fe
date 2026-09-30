@@ -3,6 +3,10 @@
 /**
  * 임상 가이던스 카드 + 의료인 검토 폼 (docs/specs/10 기준 10~12).
  * "처방 확정"이 아닌 근거 기반 참고안 — DRAFT에서만 검토를 받고 1회로 종결한다 (§5.6).
+ *
+ * **카드가 답변을 품는다** (BE docs/specs/57). 참고안을 낳은 답변은 말풍선이 아니라 이 카드의
+ * 헤더 아래에 선다. 참고안의 틀(헤더·검토 상태)이 검토 항목에만 걸리고 답변은 일반 말풍선으로
+ * 서면, 검토 대상인 답변이 확정 답변처럼 읽힌다.
  */
 import { FormEvent, useId, useState, type ReactElement, type ReactNode } from 'react';
 import { EvidenceFullText } from '@/features/filter-guidelines/ui/evidence-full-text';
@@ -167,27 +171,85 @@ function CitationList({
  * 반면 **검토 폼은 앱 크롬**이라 UI 토글을 따른다 — 한국어 UI 사용자가 영문 질의 한 번에
  * 자기가 누를 버튼까지 영어가 되는 것은 과하다.
  */
-export function GuidanceCard({ guidance, lang }: GuidanceCardProps): ReactElement | null {
-  // spec 57 스텁 — 참고안 없는 틀·답변 슬롯·조회 실패 안내는 구현이 채운다
-  if (!guidance) return null;
-  return <GuidanceCardContent guidance={guidance} lang={lang} />;
-}
-
-function GuidanceCardContent({
+export function GuidanceCard({
   guidance,
+  loadFailed = false,
+  answer,
   lang: contentLang,
-}: {
-  guidance: ClinicalGuidance;
-  lang?: UiLang;
-}): ReactElement {
+}: GuidanceCardProps): ReactElement {
   const headingId = useId();
   const uiLang = useUiLang();
   // 참고안 단건 화면 등 대화 맥락 없이 열리는 자리는 UI 토글로 떨어진다
   const lang = contentLang ?? uiLang;
   const t = messagesFor(lang);
   const tUi = messagesFor(uiLang);
-  const review = useReviewClinicalGuidance(guidance.id);
-  const [current, setCurrent] = useState(guidance);
+  /**
+   * 검토로 바뀐 참고안. 참고안 자체는 상태로 복사해 두지 않는다 — 처음 받은 값으로 굳으면, 틀을
+   * 먼저 세운 복원 경로에서 뒤늦게 도착한 참고안이 반영되지 않는다 (BE docs/specs/57 위험 ⑵).
+   * 그래서 참고안은 늘 prop에서 읽고, 검토 결과는 **그 참고안의 것일 때만** 덮어 쓴다.
+   */
+  const [reviewed, setReviewed] = useState<ClinicalGuidance | null>(null);
+  const current = guidance && reviewed?.id === guidance.id ? reviewed : guidance;
+
+  return (
+    // 카드는 헤딩 이름의 region이다 — 한 대화에 카드와 말풍선이 섞여 서도 카드를 이름으로 가리킬 수 있다
+    <section
+      aria-labelledby={headingId}
+      className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 text-sm"
+    >
+      <div className="mb-2 flex items-center justify-between">
+        <h3 id={headingId} className="font-semibold text-emerald-900">
+          {t.guidanceHeading}
+        </h3>
+        {current && (
+          <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-emerald-300">
+            {t[STATUS_LABELS[current.reviewStatus]]}
+          </span>
+        )}
+      </div>
+
+      {/*
+        summary가 서던 자리다. summary는 요약이 아니라 답변 앞 200자라 그리지 않는다 — 그대로
+        두면 답변과 겹치고 200자를 넘는 답변은 문장 중간에서 잘린다. 그 자리에 답변 전문이 선다.
+      */}
+      {answer && <div className="text-gray-800">{answer}</div>}
+
+      {current ? (
+        <GuidanceBody
+          key={current.id}
+          guidance={current}
+          lang={lang}
+          onReviewed={setReviewed}
+        />
+      ) : (
+        // 틀은 조회 결과로 바뀌지 않는다 — 조회 중·실패는 이 한 줄만 갈린다. 안내는 참고안의
+        // 내용이 아니라 앱의 상태라, 카드 안에 서도 앱 크롬처럼 UI 토글을 따른다
+        <p className={`mt-3 ${loadFailed ? 'text-red-500' : 'text-gray-400'}`}>
+          {loadFailed ? tUi.guidanceLoadFailed : tUi.guidanceLoading}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * 도착한 참고안의 내용물 — 검토 항목·안전 경고·누락 정보·검토 폼.
+ * 참고안이 있어야만 서는 부분이라 한데 묶는다. 틀만 선 카드(조회 중·실패)는 이것 없이 서고,
+ * 검토 요청도 참고안이 도착한 뒤에야 열린다 — 그 전에는 검토할 대상이 없다.
+ */
+function GuidanceBody({
+  guidance: current,
+  lang,
+  onReviewed,
+}: {
+  guidance: ClinicalGuidance;
+  /** 카드 내용물의 언어 — 카드가 정한 값을 그대로 받는다 */
+  lang: UiLang;
+  onReviewed: (updated: ClinicalGuidance) => void;
+}): ReactElement {
+  const t = messagesFor(lang);
+  const tUi = messagesFor(useUiLang());
+  const review = useReviewClinicalGuidance(current.id);
   const [decision, setDecision] = useState<ReviewDecision | null>(null);
   const [note, setNote] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -201,7 +263,7 @@ function GuidanceCardContent({
     review.mutate(
       { decision, ...(note ? { note } : {}) },
       {
-        onSuccess: (updated) => setCurrent(updated),
+        onSuccess: (updated) => onReviewed(updated),
         onError: (error) => {
           // 폼이 낸 오류는 폼과 같은 축에 선다 — 검토 폼은 UI 토글을 따른다
           setErrorMessage(
@@ -213,22 +275,7 @@ function GuidanceCardContent({
   };
 
   return (
-    // 카드는 헤딩 이름의 region이다 — 한 대화에 카드와 말풍선이 섞여 서도 카드를 이름으로 가리킬 수 있다
-    <section
-      aria-labelledby={headingId}
-      className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 text-sm"
-    >
-      <div className="mb-2 flex items-center justify-between">
-        <h3 id={headingId} className="font-semibold text-emerald-900">
-          {t.guidanceHeading}
-        </h3>
-        <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-emerald-300">
-          {t[STATUS_LABELS[current.reviewStatus]]}
-        </span>
-      </div>
-
-      <p className="whitespace-pre-wrap text-gray-800">{current.summary}</p>
-
+    <>
       {current.considerations.length > 0 && (
         <div className="mt-3">
           <h4 className="text-xs font-semibold text-gray-500">{t.guidanceReviewItems}</h4>
@@ -357,6 +404,6 @@ function GuidanceCardContent({
           </div>
         </form>
       )}
-    </section>
+    </>
   );
 }
