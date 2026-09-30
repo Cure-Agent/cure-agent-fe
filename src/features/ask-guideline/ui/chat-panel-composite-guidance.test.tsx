@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
-// spec 54 FE 수용 기준 48·49·50 동결 테스트(가드). 구현 중 수정 금지.
-import { cleanup, screen, waitFor } from '@testing-library/react';
+// spec 54 FE 수용 기준 48·49·50 동결 테스트(가드) — spec 57 기준 6·7·13이 48·49의 summary 단언과 50의 순서 단언을 대체했다. 구현 중 수정 금지.
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { SendMessageArgs } from '../api/send-message';
-import type { GuidanceDto, MessageDto } from '../model/stream-state.model';
+import type { AnswerCitation, GuidanceDto, MessageDto } from '../model/stream-state.model';
 import { resetAllStreams } from '../model/stream-store';
 import { setUnauthorizedHandler } from '@/shared/api/http';
 import { envelope, errorEnvelope } from '@/shared/test/msw';
@@ -29,11 +29,42 @@ const QUESTION = '합성진단-54a 기록의 검토 항목을 정리해 주세�
 const PAGE = { size: 50, hasNext: false, nextCursor: null };
 const DATE = '2026-09-15T00:00:00.000Z';
 
+const citations: AnswerCitation[] = [
+  {
+    marker: 1,
+    evidenceId: 'ev-composite-54a',
+    guidelineTitle: '합성 기록 비교 지침',
+    guidelineVersion: '1.0',
+    sectionPath: ['합성 비교'],
+    quote: '합성 관찰 시점을 비교합니다.',
+    sourceUrl: 'https://example.test/composite-54a',
+  },
+  {
+    marker: 2,
+    evidenceId: 'ev-composite-54b',
+    guidelineTitle: '합성 기록 보완 지침',
+    guidelineVersion: '2.0',
+    sectionPath: ['합성 보완'],
+    quote: '합성 기록의 빈 항목을 구분합니다.',
+    sourceUrl: 'https://example.test/composite-54b',
+  },
+];
+
+// 완료 이벤트의 메시지에는 guidanceId가 없다. 복원 fixture에서만 추가한다.
+const completedMessage: MessageDto = {
+  id: 'assistant-composite-synthetic-54',
+  role: 'ASSISTANT',
+  content: '합성진단-54a 기록은 관찰 시점별로 분류하고 서로 다른 합성 측정 조건을 먼저 정리합니다 [1]. 첫 번째 자료에는 관찰 기간이 있으나 비교 자료에는 그 기간이 빠져 있어 같은 조건의 결과로 묶기 전에 기록을 보완해야 합니다. 합성알레르기-54b 항목은 별도의 확인 대상으로 남겨 두며 검토자가 확인한 시각과 보완한 내용을 함께 기록합니다 [2]. 이 답변의 각 문장은 합성 자료의 구조를 설명하기 위한 것으로 검토 항목과 누락 정보를 연결하여 읽습니다. 마지막으로 합성 비교 기록의 확인 결과를 검토 의견에 남깁니다.',
+  status: 'COMPLETED',
+  citations,
+  createdAt: DATE,
+};
+
 const guidance: GuidanceDto = {
   id: 'guidance-composite-synthetic-54',
   patientId: 'patient-synthetic-54',
   patientProfileSnapshotId: 'snapshot-synthetic-54',
-  summary: '합성진단-54a 기록에 대한 합성 참고안입니다.',
+  summary: `${completedMessage.content.slice(0, 200)}…`,
   considerations: [{
     title: '합성진단-54a 검토 항목',
     rationale: '합성 기록의 추가 확인 항목입니다.',
@@ -47,16 +78,6 @@ const guidance: GuidanceDto = {
   missingInformation: ['합성 관찰 항목'],
   reviewStatus: 'DRAFT',
   generatedAt: DATE,
-};
-
-// 완료 이벤트의 메시지에는 guidanceId가 없다. 복원 fixture에서만 추가한다.
-const completedMessage: MessageDto = {
-  id: 'assistant-composite-synthetic-54',
-  role: 'ASSISTANT',
-  content: '합성 기록의 검토 항목을 정리한 답변입니다.',
-  status: 'COMPLETED',
-  citations: [],
-  createdAt: DATE,
 };
 
 function completionEvents() {
@@ -179,7 +200,7 @@ afterEach(() => {
   setUnauthorizedHandler(null);
 });
 
-it('48: GUIDELINE_QA 완료 이벤트의 참고안 카드와 내용을 표시한다', async () => {
+it('기준 7 (§54 기준 48 대체): GUIDELINE_QA 완료 이벤트 뒤 카드 안에 답변 전문이 있고 카드 밖에는 그 본문이 없다', async () => {
   installFetch(() => sse(completionEvents()));
   sendMessageStreamMock.mockImplementation(async (args) => {
     for (const event of completionEvents()) args.onEvent(event);
@@ -188,7 +209,11 @@ it('48: GUIDELINE_QA 완료 이벤트의 참고안 카드와 내용을 표시한
   await submit();
 
   expect(await screen.findByText('임상 참고안')).toBeInTheDocument();
-  expect(screen.getByText(guidance.summary)).toBeInTheDocument();
+  const card = screen.getByRole('region', { name: '임상 참고안' });
+  expect(within(card).getByText(completedMessage.content)).toBeInTheDocument();
+  const answers = screen.getAllByText(completedMessage.content);
+  expect(answers).toHaveLength(1);
+  expect(card.contains(answers[0])).toBe(true);
   expect(screen.getByText(guidance.considerations[0].title)).toBeInTheDocument();
   expect(screen.getByText(guidance.safetyAlerts[0].description)).toBeInTheDocument();
   expect(sendMessageStreamMock).toHaveBeenCalledWith(expect.objectContaining({
@@ -205,7 +230,7 @@ it('49: GUIDELINE_QA 스트림 카드의 검토를 해당 guidance.id 경로와 
 
   const user = await submit();
   expect(await screen.findByText('임상 참고안')).toBeInTheDocument();
-  expect(screen.getByText(guidance.summary)).toBeInTheDocument();
+  expect(within(screen.getByRole('region', { name: '임상 참고안' })).getByText(completedMessage.content)).toBeInTheDocument();
   const note = '합성 관찰 항목을 추가하여 검토했습니다.';
   await user.click(screen.getByRole('radio', { name: 'MODIFIED' }));
   await user.type(screen.getByLabelText('검토 의견'), note);
@@ -223,22 +248,21 @@ it('49: GUIDELINE_QA 스트림 카드의 검토를 해당 guidance.id 경로와 
   expect(await screen.findByText('수정 반영')).toBeInTheDocument();
 });
 
-it('50: GUIDELINE_QA를 새로 열면 guidanceId로 조회한 카드를 해당 메시지 아래에 복원한다', async () => {
+it('50: GUIDELINE_QA를 새로 열면 guidanceId로 조회한 카드가 답변을 품고 복원된다', async () => {
   const restoredMessage: MessageDto = { ...completedMessage, guidanceId: guidance.id };
   installFetch(() => sse([]), [restoredMessage]);
 
   renderWithProviders(<ChatPanel conversationId={ID} />);
 
-  const messageNode = await screen.findByText(restoredMessage.content);
-  const cardNode = await screen.findByText('임상 참고안');
-  const summaryNode = screen.getByText(guidance.summary);
-  expect(cardNode).toBeInTheDocument();
-  expect(summaryNode).toBeInTheDocument();
-  expect(messageNode.compareDocumentPosition(cardNode) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(messageNode.compareDocumentPosition(summaryNode) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(calls.some((call) =>
-    call.method === 'GET' && pathOf(call) === `/api/v1/clinical-guidance/${restoredMessage.guidanceId}`,
-  )).toBe(true);
+  const card = await screen.findByRole('region', { name: '임상 참고안' });
+  expect(within(card).getByText(restoredMessage.content)).toBeInTheDocument();
+  expect(screen.getAllByText(restoredMessage.content)).toHaveLength(1);
+  expect(await within(card).findByText(guidance.considerations[0].title)).toBeInTheDocument();
+  await waitFor(() => {
+    expect(calls.some((call) =>
+      call.method === 'GET' && pathOf(call) === `/api/v1/clinical-guidance/${restoredMessage.guidanceId}`,
+    )).toBe(true);
+  });
   expect(sendMessageStreamMock).not.toHaveBeenCalled();
   expect(calls.filter((call) => call.method === 'POST')).toHaveLength(0);
 });

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 // 새로고침 후 임상 참고안 카드 복원 — 저장된 메시지의 guidanceId로 카드를 다시 그린다
-import { screen, waitFor } from '@testing-library/react';
+// spec 57 기준 8이 1번의 summary 단언을 답변 본문 단언으로 대체했다 — 구현 중 수정 금지
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -64,9 +65,9 @@ describe('ChatPanel 임상 참고안 복원', () => {
     renderWithProviders(<ChatPanel conversationId="conversation-1" />);
 
     expect(await screen.findByText('임상 참고안')).toBeTruthy();
-    expect(screen.getByText('침 치료 병행을 고려할 수 있습니다.')).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: '임상 참고안' })).getByText('환자 상태를 고려한 답변입니다.')).toBeTruthy();
     // 서버의 현재 검토 상태를 그대로 보여준다 (스트림 시점의 DRAFT가 아니라)
-    expect(screen.getByText('승인됨')).toBeTruthy();
+    expect(await screen.findByText('승인됨')).toBeTruthy();
   });
 
   it('스트림 직후에는 카드가 중복 표시되지 않는다', async () => {
