@@ -4,7 +4,7 @@
  * 임상 가이던스 카드 + 의료인 검토 폼 (docs/specs/10 기준 10~12).
  * "처방 확정"이 아닌 근거 기반 참고안 — DRAFT에서만 검토를 받고 1회로 종결한다 (§5.6).
  */
-import { FormEvent, useState, type ReactElement } from 'react';
+import { FormEvent, useId, useState, type ReactElement, type ReactNode } from 'react';
 import { EvidenceFullText } from '@/features/filter-guidelines/ui/evidence-full-text';
 import { ApiError } from '@/shared/api/api-error';
 import { type MessageKey, messagesFor } from '@/shared/i18n/messages';
@@ -18,7 +18,18 @@ import {
 type GuidanceCitation = ClinicalGuidance['considerations'][number]['citations'][number];
 
 export interface GuidanceCardProps {
-  guidance: ClinicalGuidance;
+  /**
+   * 참고안. **없을 수 있다** — 새로고침 복원은 조회를 기다리지 않고 카드 틀부터 세운다
+   * (BE docs/specs/57). 없는 동안 카드는 헤더·답변·조회 안내만 그린다.
+   */
+  guidance?: ClinicalGuidance;
+  /** 참고안 조회가 실패했는가 — `guidance`가 없을 때의 안내 문구를 가른다 */
+  loadFailed?: boolean;
+  /**
+   * 이 참고안을 낳은 답변 — 헤더 아래·검토 항목 위에 선다 (BE docs/specs/57).
+   * 본문과 인용 칩은 대화 화면이 그려 넘긴다 — 칩이 근거 패널로 가는 동선이 그쪽 것이라서다.
+   */
+  answer?: ReactNode;
   /**
    * 이 참고안이 **생성된 언어** — 그 메시지의 `responseLang`이다 (BE docs/specs/44).
    * 본문·인용·필드 라벨이 이 값을 따르고, 검토 폼은 앱 크롬이라 `useUiLang()`을 따른다.
@@ -156,7 +167,20 @@ function CitationList({
  * 반면 **검토 폼은 앱 크롬**이라 UI 토글을 따른다 — 한국어 UI 사용자가 영문 질의 한 번에
  * 자기가 누를 버튼까지 영어가 되는 것은 과하다.
  */
-export function GuidanceCard({ guidance, lang: contentLang }: GuidanceCardProps): ReactElement {
+export function GuidanceCard({ guidance, lang }: GuidanceCardProps): ReactElement | null {
+  // spec 57 스텁 — 참고안 없는 틀·답변 슬롯·조회 실패 안내는 구현이 채운다
+  if (!guidance) return null;
+  return <GuidanceCardContent guidance={guidance} lang={lang} />;
+}
+
+function GuidanceCardContent({
+  guidance,
+  lang: contentLang,
+}: {
+  guidance: ClinicalGuidance;
+  lang?: UiLang;
+}): ReactElement {
+  const headingId = useId();
   const uiLang = useUiLang();
   // 참고안 단건 화면 등 대화 맥락 없이 열리는 자리는 UI 토글로 떨어진다
   const lang = contentLang ?? uiLang;
@@ -189,9 +213,15 @@ export function GuidanceCard({ guidance, lang: contentLang }: GuidanceCardProps)
   };
 
   return (
-    <section className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 text-sm">
+    // 카드는 헤딩 이름의 region이다 — 한 대화에 카드와 말풍선이 섞여 서도 카드를 이름으로 가리킬 수 있다
+    <section
+      aria-labelledby={headingId}
+      className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 text-sm"
+    >
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="font-semibold text-emerald-900">{t.guidanceHeading}</h3>
+        <h3 id={headingId} className="font-semibold text-emerald-900">
+          {t.guidanceHeading}
+        </h3>
         <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-emerald-300">
           {t[STATUS_LABELS[current.reviewStatus]]}
         </span>
