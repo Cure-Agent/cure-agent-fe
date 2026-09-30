@@ -3,6 +3,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import {
   FormEvent,
+  Fragment,
   KeyboardEvent,
   useCallback,
   useEffect,
@@ -342,6 +343,44 @@ export function ChatPanel({
     onSelectMarker?.(marker);
   };
 
+  /**
+   * 방금 스트림으로 받은 참고안. 종결 이벤트의 `message`에는 `guidanceId`가 없을 수 있어,
+   * 이 답변이 참고안인지는 종결이 참고안을 싣고 왔는지로 가른다 (BE docs/specs/57).
+   */
+  const streamGuidance = state.phase === 'completed' ? state.guidance : null;
+  /**
+   * 그 답변은 목록에 들어와도 스트림 카드가 계속 잇는다. 목록 쪽에서 다시 그리면 복원 카드가 같은
+   * 참고안을 한 번 더 조회하며 스트림 카드를 갈아 끼우고, 그 사이 적던 검토가 날아간다. 스트림
+   * 카드의 자리는 목록 끝인데, 방금 끝난 답변은 언제나 대화의 마지막이라 그곳이 곧 그 답변의 자리다.
+   */
+  const streamGuidanceMessageId = streamGuidance ? state.message?.id : undefined;
+
+  /**
+   * 저장된 답변 한 건의 그릇 — **데이터가 정한다** (BE docs/specs/57. §54와 같은 축이라 대화 타입을
+   * 보지 않는다). `guidanceId`가 있으면 그 답변은 참고안이라 말풍선 대신 카드 하나로 서고, 본문·칩은
+   * 그 카드 안에 든다. 조회를 기다리지 않고 틀부터 세운다. 그 밖은 오늘의 말풍선이다.
+   */
+  const renderPersisted = (message: MessageDto): React.ReactElement => {
+    const contentLang = messageLang(message);
+    if (message.guidanceId) {
+      return (
+        <GuidanceCardLoader
+          guidanceId={message.guidanceId}
+          lang={contentLang}
+          answer={<MessageContent message={message} onCite={handleCite} lang={contentLang} />}
+        />
+      );
+    }
+    return (
+      <MessageBubble
+        message={message}
+        onCite={handleCite}
+        t={messagesFor(contentLang)}
+        lang={contentLang}
+      />
+    );
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
       <div
@@ -355,20 +394,12 @@ export function ChatPanel({
         {messages.isFetchingNextPage && (
           <p className="text-center text-xs text-gray-400">{t.loadingOlderMessages}</p>
         )}
-        {persisted.map((message) => (
-          <div key={message.id} className="space-y-4">
-            <MessageBubble
-              message={message}
-              onCite={handleCite}
-              t={messagesFor(messageLang(message))}
-              lang={messageLang(message)}
-            />
-            {/* 새로고침 복원 경로 — 방금 스트림으로 받은 카드(아래)가 있으면 중복 표시하지 않는다 */}
-            {message.guidanceId && message.id !== state.message?.id && (
-              <GuidanceCardLoader guidanceId={message.guidanceId} lang={messageLang(message)} />
-            )}
-          </div>
-        ))}
+        {persisted.map((message) =>
+          // 방금 스트림으로 받은 참고안의 답변은 아래 스트림 카드가 잇는다 — 여기서 다시 그리지 않는다
+          message.id === streamGuidanceMessageId ? null : (
+            <Fragment key={message.id}>{renderPersisted(message)}</Fragment>
+          ),
+        )}
 
         {/* 내 질문은 내가 쓴 그대로다 — 유도한 응답 언어가 이 블록의 축이다 */}
         {localUser && (
@@ -380,7 +411,8 @@ export function ChatPanel({
           />
         )}
 
-        {localFinal && (
+        {/* 참고안을 싣고 온 종결은 아래 카드가 답변을 품는다 — 말풍선을 따로 세우지 않는다 */}
+        {localFinal && !streamGuidance && (
           <MessageBubble
             message={localFinal}
             onCite={handleCite}
@@ -389,8 +421,17 @@ export function ChatPanel({
           />
         )}
 
-        {state.phase === 'completed' && state.guidance && (
-          <GuidanceCard key={state.guidance.id} guidance={state.guidance} lang={streamLang} />
+        {streamGuidance && (
+          <GuidanceCard
+            key={streamGuidance.id}
+            guidance={streamGuidance}
+            lang={streamLang}
+            answer={
+              state.message ? (
+                <MessageContent message={state.message} onCite={handleCite} lang={streamLang} />
+              ) : undefined
+            }
+          />
         )}
 
         {inFlight && (
@@ -720,23 +761,47 @@ function MessageBubble({
           isUser ? 'bg-emerald-700 text-white' : 'bg-gray-50 text-gray-800'
         }`}
       >
-        <p className="whitespace-pre-wrap">{message.content}</p>
-        {message.citations.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {message.citations.map((citation) => (
-              <button
-                key={citation.marker}
-                type="button"
-                onClick={() => onCite?.(message.citations, citation.marker, lang)}
-                className="rounded border border-emerald-300 bg-white px-1.5 py-0.5 font-mono text-xs text-emerald-700 hover:bg-emerald-50"
-                title={citation.guidelineTitle}
-              >
-                [{citation.marker}]
-              </button>
-            ))}
-          </div>
-        )}
+        <MessageContent message={message} onCite={onCite} lang={lang} />
       </div>
     </div>
+  );
+}
+
+/**
+ * 답변 본문 + 인용 칩 — 말풍선과 임상 참고안 카드가 같이 쓴다 (BE docs/specs/57).
+ *
+ * 칩은 어느 그릇에 담기든 근거 패널로 간다. 그 메시지의 인용 목록과 마커, 콘텐츠 언어를 넘긴다.
+ * 카드 안 검토 항목의 칩은 원문을 제자리에서 펼쳐 동선이 다르지만, 오늘도 한 화면에 함께 서던
+ * 두 동작이다 — 통일은 별도 결정이다.
+ */
+function MessageContent({
+  message,
+  onCite,
+  lang,
+}: {
+  message: MessageDto;
+  onCite?: (citations: AnswerCitation[], marker: number, lang: UiLang) => void;
+  /** 이 메시지의 콘텐츠 언어 — 인용을 넘길 때 함께 실린다 (§44) */
+  lang: UiLang;
+}): React.ReactElement {
+  return (
+    <>
+      <p className="whitespace-pre-wrap">{message.content}</p>
+      {message.citations.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {message.citations.map((citation) => (
+            <button
+              key={citation.marker}
+              type="button"
+              onClick={() => onCite?.(message.citations, citation.marker, lang)}
+              className="rounded border border-emerald-300 bg-white px-1.5 py-0.5 font-mono text-xs text-emerald-700 hover:bg-emerald-50"
+              title={citation.guidelineTitle}
+            >
+              [{citation.marker}]
+            </button>
+          ))}
+        </div>
+      )}
+    </>
   );
 }

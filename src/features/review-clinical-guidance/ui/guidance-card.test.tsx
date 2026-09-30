@@ -1,7 +1,7 @@
-// docs/specs/10 수용 기준 10~12 동결 테스트 — 구현 중 수정 금지
+// docs/specs/10 수용 기준 10~12 · docs/specs/57 수용 기준 14·15 동결 테스트 — 구현 중 수정 금지
 // @vitest-environment happy-dom
 
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
@@ -14,6 +14,8 @@ import {
 } from '../../../shared/test/msw';
 import { renderWithProviders } from '../../../shared/test/render';
 import { GuidanceCard } from './guidance-card';
+
+const CARD_ANSWER = 'CASE-057 합성 관찰 기록을 바탕으로 검토할 내용을 정리한 답변입니다.';
 
 const draftGuidance = {
   id: 'g-1',
@@ -43,9 +45,9 @@ useMswServer();
 
 describe('GuidanceCard', () => {
   it('임상 참고안의 내용과 검토 대기 상태를 렌더링한다', () => {
-    renderWithProviders(<GuidanceCard guidance={draftGuidance} />);
+    renderWithProviders(<GuidanceCard guidance={draftGuidance} answer={<p>{CARD_ANSWER}</p>} />);
 
-    expect(screen.getByText('만성 요통 관리 참고안')).toBeInTheDocument();
+    expect(screen.getByText(CARD_ANSWER)).toBeInTheDocument();
     expect(screen.getByText('요통 지침 — 침치료')).toBeInTheDocument();
     expect(
       screen.getByText('침 치료를 시행할 것을 권고한다'),
@@ -126,5 +128,27 @@ describe('GuidanceCard', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       '이미 검토가 완료된 항목입니다.',
     );
+  });
+
+  it('기준 14: 헤더 아래 카드 안에 답변 슬롯을 그리고 summary는 그리지 않는다', () => {
+    renderWithProviders(<GuidanceCard guidance={draftGuidance} answer={<p>{CARD_ANSWER}</p>} />);
+
+    const card = screen.getByRole('region', { name: '임상 참고안' });
+    const heading = within(card).getByRole('heading', { name: '임상 참고안' });
+    const answer = within(card).getByText(CARD_ANSWER);
+    expect(heading.compareDocumentPosition(answer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(answer).toBeInTheDocument();
+    expect(screen.queryByText(draftGuidance.summary)).toBeNull();
+  });
+
+  it('기준 15: 조회 중 카드에 헤딩과 답변이 있고 검토 폼은 없다', () => {
+    renderWithProviders(<GuidanceCard answer={<p>{CARD_ANSWER}</p>} />);
+
+    const card = screen.getByRole('region', { name: '임상 참고안' });
+    expect(within(card).getByRole('heading', { name: '임상 참고안' })).toBeInTheDocument();
+    expect(within(card).getByText(CARD_ANSWER)).toBeInTheDocument();
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    expect(screen.queryByRole('button', { name: '검토 확정' })).toBeNull();
+    expect(screen.queryByText('의료인 검토')).toBeNull();
   });
 });
