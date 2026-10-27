@@ -18,7 +18,7 @@ const { DsPreviewProvider, AppShell, CLINICIAN } = window.CureAgentFe;
 `AppShell`·`OnboardingForm` 은 라우터 컨텍스트가 없어 예외를 던진다.
 
 `pathname` prop 으로 활성 내비 항목을 바꾼다: `<DsPreviewProvider pathname="/patients">`.
-경로는 `/assistant` `/guidelines` `/patients` `/history` 넷뿐이다.
+경로는 `/assistant` `/guidelines` `/patients` `/profile` 넷뿐이다.
 
 ### 2. 데모 데이터는 번들에 들어 있다 — 지어내지 말 것
 
@@ -30,8 +30,8 @@ DTO 를 props 로 받는 컴포넌트에는 `window.CureAgentFe` 의 값을 쓴�
 ### 3. 스타일 = Tailwind v4 유틸리티. 커스텀 토큰은 없다
 
 `@theme` 커스터마이즈가 없어 **디자인 언어는 Tailwind 기본 스케일 위의 관례**로만 존재한다.
-`var(--color-*)` 를 직접 쓰지 말 것 — `_ds_bundle.css` 의 그 변수들은 Tailwind 가 생성한 내부 변수다.
-클래스로 쓴다.
+`tokens.json` 의 토큰은 Tailwind 가 쓰인 클래스만큼 내보낸 테마 변수를 이름 그대로 옮긴 참고표다 —
+값과 쓰임을 확인할 때 보고, 코드에서는 `var(--color-*)` 대신 클래스로 쓴다.
 
 | 역할 | 실제 클래스 |
 |---|---|
@@ -54,15 +54,15 @@ DTO 를 props 로 받는 컴포넌트에는 `window.CureAgentFe` 의 값을 쓴�
 ### 4. 화면 조립 패턴
 
 - 보호 화면은 `AppShell` 안에 본문을 넣는다. 본문 폭은 `mx-auto max-w-3xl` 이 기본.
-- 어시스턴트는 3단: `grid grid-cols-[16rem_1fr_20rem] gap-4` → `ConversationList` | `ChatPanel` | `EvidenceInspector`.
-- 히스토리는 2단: `grid grid-cols-[20rem_1fr] gap-4`.
+- 어시스턴트는 `lg` 이상에서 3단: `grid grid-cols-1 gap-4 lg:grid-cols-[16rem_1fr_20rem]` → `ConversationList` | `ChatPanel` | `EvidenceInspector`.
+  좁은 화면에서는 대화 목록과 채팅방이 한 화면씩 선다.
 - `EvidenceInspector` 는 `h-full` 이라 높이가 확정된 부모가 필요하다. 카드 안에서는 폭만 주고 높이는 비워 둔다.
 - 브랜드 헤더가 필요하면 아래 `LogoMark` 잠금을 쓴다 — 마크를 직접 그리거나 텍스트 로고로 대체하지 말 것.
 
 #### 브랜드 마크 `LogoMark`
 
 `window.CureAgentFe` export 중 **유일하게 카드가 없는 조각**이라 여기에 적는다 (화면 단위 패널이
-아니라 브랜드 프리미티브라서 `components/` 에 폴더가 없다 — `.prompt.md` 를 찾지 말 것).
+아니라 브랜드 프리미티브라서 `components/` 에 폴더가 없다 — `README.md` 를 찾지 말 것).
 
 색은 `currentColor` 를 상속하므로 `text-emerald-700` 로 제어한다. 마크에 색을 직접 넣거나 비율을
 바꾸지 말 것. 표준 조합(잠금)은 마크가 왼쪽, 오른쪽에 제품명 + 한 줄 설명이다:
@@ -87,6 +87,6 @@ const { LogoMark } = window.CureAgentFe;
 
 ### 5. 더 정확한 정보
 
-`styles.css`(→ `_ds_bundle.css`) 가 실제로 실린 스타일 전부다. 컴포넌트별 props 계약은
-`components/<group>/<Name>/<Name>.d.ts`, 쓰임새는 같은 폴더의 `<Name>.prompt.md` 에 있다.
+`components/bundle.css` 가 실제로 실린 스타일 전부다. 컴포넌트별 props 계약은
+`components/<Name>/<Name>.d.ts`(전부 모은 것은 `components/index.d.ts`), 쓰임새는 같은 폴더의 `README.md` 에 있다.
 추측하기 전에 이 파일들을 읽을 것.

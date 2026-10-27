@@ -38,8 +38,8 @@
 # 앵커가 없으면(새 클론 등) 2를 판정할 수 없으므로 DRIFT 로 본다.
 #
 # 게이트는 fail-closed다 — jq 부재나 git 조회 실패는 통과가 아니라 ERROR로 종료한다.
-# 재동기화 자체는 이 스크립트가 하지 않는다(Claude Code 전용 DesignSync 도구 + 사람이 승인하는
-# 업로드가 필요하다). 이 게이트는 "빠뜨렸다"는 사실만 알린다.
+# 재동기화 자체는 이 스크립트가 하지 않는다(Claude Code의 Artifact 도구로 Claude Design System
+# 아티팩트에 올리고 사람이 게시를 승인한다). 이 게이트는 "빠뜨렸다"는 사실만 알린다.
 #
 # 사용법: design-drift.sh [기준 ref]        # 기본값 origin/main
 # 종료 마커: DESIGN_DRIFT result=CLEAN|DRIFT|SKIP|ERROR

@@ -1,0 +1,52 @@
+<!-- @dsCard height=336 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Cure Agent Design System — cover</title>
+<style>
+  html, body { margin: 0; background: var(--color-gray-50); }
+  .cover { position: relative; width: 960px; height: 336px; overflow: hidden; font-family: var(--font-sans); }
+  .cover svg { position: absolute; left: 0; top: 0; }
+  .deep { fill: var(--color-emerald-900); }
+  .brand { fill: var(--color-emerald-700); }
+  .tint { fill: var(--color-emerald-200); }
+  .ground { fill: var(--color-gray-50); }
+  .r-xl { rx: var(--radius-xl); }
+  .r-lg { rx: var(--radius-lg); }
+  .r-md { rx: var(--radius-md); }
+  .name { position: absolute; left: 24px; top: 152px; margin: 0; font-size: 64px; line-height: .95; font-weight: 700; letter-spacing: -0.01em; color: var(--color-gray-900); }
+  .tagline { position: absolute; left: 24px; top: 286px; margin: 0; font-size: 14px; line-height: 18px; color: var(--color-gray-500); }
+</style>
+</head>
+<body>
+<div class="cover">
+  <svg width="960" height="336" viewBox="0 0 960 336" aria-hidden="true">
+    <!--
+      blocks: color-emerald-900 184x104, color-emerald-700 464x104, color-emerald-200 232x104, corners radius-xl
+      arrangement: a top band cut like the assistant workspace's three panes (16rem | 1fr | 20rem), gaps spacing-4
+      pattern: tiles cut by radius-lg / radius-md, some two-wide - list rows, answer lines, citation chips - because the product is a dense three-pane clinical workspace of bordered panels
+      steps & radii: spacing-4 (16) gaps and pane insets, 6 x spacing (24) outer inset, 5 x spacing (20) row pitch, radius-xl panes, radius-lg rows and lines, radius-md chips
+    -->
+    <rect class="deep r-xl" x="24" y="24" width="184" height="104"/>
+    <rect class="brand r-xl" x="224" y="24" width="464" height="104"/>
+    <rect class="tint r-xl" x="704" y="24" width="232" height="104"/>
+
+    <rect class="brand r-lg" x="40" y="40" width="152" height="12"/>
+    <rect class="brand r-lg" x="40" y="60" width="152" height="12"/>
+    <rect class="brand r-lg" x="40" y="80" width="152" height="12"/>
+    <rect class="brand r-lg" x="40" y="100" width="104" height="12"/>
+
+    <rect class="ground r-lg" x="512" y="40" width="160" height="16"/>
+    <rect class="ground r-lg" x="240" y="68" width="336" height="16"/>
+    <rect class="ground r-lg" x="240" y="96" width="256" height="16"/>
+
+    <rect class="brand r-md" x="720" y="40" width="40" height="14"/>
+    <rect class="brand r-md" x="768" y="40" width="152" height="14"/>
+    <rect class="brand r-md" x="720" y="62" width="200" height="14"/>
+    <rect class="brand r-md" x="720" y="84" width="40" height="14"/>
+    <rect class="brand r-md" x="768" y="84" width="112" height="14"/>
+  </svg>
+  <h1 class="name">Cure Agent<br>Design System</h1>
+  <p class="tagline">한의 임상 지침 어시스턴트</p>
+</div>
+</body>
+</html>

@@ -359,7 +359,7 @@ BE판의 「파괴적 DB 마이그레이션 2단계 배포」가 차지하던 �
 **배포보다 먼저 와야 하는 외부 절차**라는 점에서 성격이 같다.
 
 `.design-sync/config.json`의 `componentSrcMap`(및 `.design-sync/drift-watch.json`)에 등록된 컴포넌트를 고치면
-claude.ai/design 재동기화를 마쳐야 배포할 수 있다. 재동기화가 고치는 `config.json`·`previews/`가
+디자인 시스템(Claude Design System 아티팩트) 재동기화를 마쳐야 배포할 수 있다. 재동기화가 고치는 `config.json`·`previews/`가
 커밋 대상이라 같은 배포 커밋에 실려야 한다 (`automation/ship.md` 「워크플로우 전제」).
 
 - Phase 1에서 해결책이 등록된 컴포넌트를 건드리면 **그 사실을 해결책에 명시**한다.
@@ -367,7 +367,7 @@ claude.ai/design 재동기화를 마쳐야 배포할 수 있다. 재동기화가
   거기서 걸리면 Phase 5의 전 구간 검증(e2e 포함, 수 분)을 다 돌린 뒤 중단이다. 앞당겨 판정하면
   그 비용을 버리지 않는다.
 - `result=DRIFT` → 재동기화가 필요하다고 보고하고 대기한다. **재동기화 자체는 이 절차가 수행하지
-  않는다** — Claude Code 전용 도구와 사람이 승인하는 업로드가 필요해 하네스 중립이 아니다.
+  않는다** — Claude Code의 `Artifact` 도구로 올리고 사람이 게시를 승인해야 해 하네스 중립이 아니다.
   절차는 `.design-sync/NOTES.md`의 「재동기화 한 줄 요약」이 원천이다.
 
 ## 규칙

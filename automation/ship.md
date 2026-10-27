@@ -16,7 +16,7 @@
 - **라벨·담당자 자동화는 없다.** ship는 라벨·담당자를 부여하지 않는다 — 컨벤션에 맞는 PR 제목·브랜치명만 만든다.
 - **`main` = 프로덕션**. `main` push를 Vercel이 감지해 프로덕션 배포한다. 별도 CD 워크플로우는 없다.
 - **계약 동기화 PR(`chore/contract-sync`)은 ship 대상이 아니다** — Contract Sync 워크플로우가 자동 생성하고, 비파괴면 auto-merge를 예약해 required checks 통과 시 GitHub가 머지한다. breaking이면 FE 적응 커밋을 쌓은 뒤 사람이 머지한다 (architecture.md §3). 레포 설정의 auto-merge 허용은 이 워크플로우 몫이고, ship은 `--auto`를 쓰지 않는다 (`automation/pipeline.md` Step 1-5).
-- **디자인 시스템 재동기화가 배포보다 먼저다.** `.design-sync/config.json`의 `componentSrcMap`에 등록된 컴포넌트를 고쳤으면 claude.ai/design 재동기화를 마친 뒤 ship한다 — 재동기화가 고치는 `config.json`·`previews/`가 커밋 대상이라(`.gitignore`가 `.cache/`만 제외한다) 같은 배포 커밋에 실려야 한다. Preflight의 드리프트 게이트가 이 순서를 강제한다. **재동기화 자체는 ship이 수행하지 않는다** — Claude Code 전용 `DesignSync` 도구와 사람이 승인하는 업로드가 필요해 하네스 중립이 아니다. 게이트는 판정만 하고 중단한다. 재동기화 절차는 `.design-sync/NOTES.md`의 「재동기화 한 줄 요약」이 원천이다.
+- **디자인 시스템 재동기화가 배포보다 먼저다.** `.design-sync/config.json`의 `componentSrcMap`에 등록된 컴포넌트를 고쳤으면 디자인 시스템(Claude Design System 아티팩트) 재동기화를 마친 뒤 ship한다 — 재동기화가 고치는 `config.json`·`previews/`가 커밋 대상이라(`.gitignore`가 `.cache/`만 제외한다) 같은 배포 커밋에 실려야 한다. Preflight의 드리프트 게이트가 이 순서를 강제한다. **재동기화 자체는 ship이 수행하지 않는다** — Claude Code의 `Artifact` 도구로 올리고 사람이 게시를 승인해야 해 하네스 중립이 아니다. 게이트는 판정만 하고 중단한다. 재동기화 절차는 `.design-sync/NOTES.md`의 「재동기화 한 줄 요약」이 원천이다.
 
 ## Preflight
 
