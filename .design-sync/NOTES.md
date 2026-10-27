@@ -1,6 +1,45 @@
 # design-sync 노트 (cure-agent-fe)
 
-claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/design/p/9f248790-1f98-46b1-a575-d663ea90fe90
+Claude Design System 아티팩트: `Cure Agent Design System` — https://claude.ai/artifact/UHXTZ6sZErkia4SdT8k2Vy
+(2026-10-27부터. 그 전의 claude.ai/design 프로젝트 https://claude.ai/design/p/9f248790-1f98-46b1-a575-d663ea90fe90 은
+더 갱신하지 않는다 — 단독 Claude Design 이 2026-12-14에 닫힌다. 아래 「아티팩트로 옮긴 이유와 구조」.)
+
+## 아티팩트로 옮긴 이유와 구조 (2026-10-27)
+
+- **왜 손수 옮기나.** 단독 Claude Design(claude.ai/design)이 2026-12-14에 닫힌다(Claude Code 2.1.302 변경
+  기록, `DesignSync` 도구 설명). 잇는 자리는 claude.ai 아티팩트의 "Design System" 타입인데, **Claude Code
+  2.1.311의 `/design-sync` 는 여전히 claude.ai/design 에만 올린다**(내장 설명문 "Push your design system
+  components to claude.ai/design" — 바이너리에서 확인). 타입 문서(`from-code.md`)는 `/design-sync` 가 아티팩트를
+  채우는 모드(`"editing": "code"`)를 적어 두었지만 이 버전에는 그 길이 없다. 그래서 **빌드는 그대로 두고
+  마지막 한 걸음만 레포가 갖는다** — `.ds-sync/resync.mjs` → `ds-bundle/` 까지는 예전과 같고,
+  `.design-sync/artifact/build.mjs` 가 그 산출물을 타입의 파일 표(`project/**`)로 옮긴다. 옮기는 규칙은
+  타입의 `format.md` 「Aliases」가 design-sync 레이아웃에 대해 적어 둔 대응 그대로다.
+- **손으로 쓰는 입력은 `.design-sync/artifact/` 에 있다.** `target.json`(아티팩트 주소·`createdOnFiles`·올린 에셋),
+  `notes.json`(컴포넌트 요약 한 문장·카드 높이 고정값·글자 스타일·간격 단계·토큰마다 쓰임 메모), `cover.html`(표지),
+  `logos.md`. 시스템 README 는 **`conventions.md` 그대로**이고, build.mjs 가 「번들 싣기」 절만 덧붙인다 —
+  그래서 conventions.md 의 경로는 아티팩트 레이아웃(`components/<Name>/README.md`)을 가리킨다.
+- **`"editing": "code"`** — 페이지는 읽기 전용이고 위에 "코드를 고치고 `/design-sync` 를 다시 돌리라"는 띠가
+  선다. 이 레포에서 그 말은 아래 「재동기화 한 줄 요약」이다. 매 게시가 파일을 통째로 다시 쓴다.
+- **React 19 를 파일로 싣는다.** 타입이 jsDelivr 에서 대신 실어 주는 것은 react/react-dom **18** 뿐이다.
+  번들은 19.2.8 로 빌드됐으므로 컨버터의 `_vendor/react.js`(React·ReactDOM 이 함께 든 개발 빌드)를
+  `components/lib/react.js` 로, 빈 자리표시 `react-dom.js` 를 그 옆에 두고 색인 `libraries` 에 둘 다 적는다.
+- **`tokens.css` 는 동기화가 쓴다**(코드 동기화 시스템은 페이지가 저장하지 않는다 — `craft.md` 「One source」).
+  토큰 이름을 Tailwind 테마 변수 그대로(`color-emerald-700`, `radius-xl`, `spacing`, `font-sans`) 두었기 때문에
+  tokens.css 가 **같은 변수를 레이어 밖에서** 다시 선언한다. 값이 같아 카드는 그대로지만, 레이어 밖 선언은
+  `@layer` 안의 Tailwind 를 이긴다 — **글자 스타일 이름이 Tailwind 클래스와 겹치면**(`text-sm` 같은 이름)
+  tokens.css 의 `.text-sm` 이 같은 요소의 `md:text-base` 까지 덮는다. 그래서 스타일 이름은 `body`·`caption`
+  같은 별개의 이름이고, build.mjs 가 번들 CSS 와 겹치면 멈춘다.
+- **카드 높이는 `--check` 가 잰다.** 프레임을 흉내 낸 헤드리스 Chrome 에서 body 상자 높이를 재 마커에 쓴다.
+  `AppShell` 만 `notes.json` 에 860 으로 고정 — 화면을 꽉 채우는 레이아웃이라 잰 값이 뷰포트를 따라간다.
+- **`.d.ts` 는 게시 도구의 서빙 형식이 아니다** — `publish.json` 이 `contentType: text/plain` 을 붙여 둔다.
+- **SVG 업로드는 서버가 정리해 저장한다**(빈 요소를 여닫는 태그로 풀고 끝 줄바꿈을 뗀다 — `icon.svg` 340 B →
+  359 B). 색인의 `size` 는 저장본 크기, 바뀜 판정은 원본의 `sourceSha256` 으로 한다. 원본이 바뀌면 다시 올리고
+  `target.json` 을 고친다.
+- **게시는 더하고 바꾸기만 한다.** 컴포넌트를 지웠으면 `Artifact list scope:"files"` 와 `publish.json` 을 대조해
+  남은 `project/components/<Name>/…` 를 `null` 로 함께 보낸다.
+- **`.ds-sync/` 스테이징이 옛 컨버터의 유일한 사본이다**(gitignore, 이 기계에만 있다). 2026-12-14 뒤에도
+  `/design-sync` 가 Claude Code 에 남아 있을지는 모른다 — 지우지 말 것. 새 기계에서 빌드해야 하는데 스킬을 못
+  풀게 되면, `ds-bundle/` 를 만드는 단계를 esbuild·Tailwind CLI 로 직접 짜는 것이 다음 일이다.
 
 ## 이 레포의 특이점
 
@@ -207,9 +246,9 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 `.design-sync/.cache/remote-sync.json` 은 gitignore 된 머신 상태라 **직전 업로드가 아니라 그보다
 앞선 실행의 앵커가 남아 있을 수 있다.** 이번 실행에서 실제로 그랬다 — 로컬 캐시의 `styleSha` 는
 `434068…`, 원격 `_ds_sync.json` 은 `45b3f1…` 이었다. 그대로 `--remote` 에 넘겼다면 diff 가
-틀린 기준으로 계산된다. **매 재동기화마다 `DesignSync(get_file, "_ds_sync.json")` 으로 새로
-받아 덮어쓸 것** (한 줄 요약의 "원격 앵커 내려받기" 단계가 이것이다 — 생략 금지).
-`finalize_plan` 직전 한 번 더 받아 동시 동기화 여부도 확인한다.
+틀린 기준으로 계산된다. **매 재동기화마다 원격 앵커를 새로 받아 덮어쓸 것** — 지금은 아티팩트의
+`project/sync/ds-sync.json`(`Artifact read`, `path` 로), 2026-10-27 전에는 claude.ai/design 의 `_ds_sync.json` 이었다
+(한 줄 요약의 "원격 앵커 내려받기" 단계가 이것이다 — 생략 금지). 게시 직전 한 번 더 받아 동시 동기화 여부도 확인한다.
 
 **업로드를 마치면 이 캐시를 방금 올린 앵커로 갱신할 것** (2026-08-04 실측):
 `cp ds-bundle/_ds_sync.json .design-sync/.cache/remote-sync.json`.
@@ -286,6 +325,7 @@ claude.ai/design 프로젝트: `Cure Agent Design System` — https://claude.ai/
 로 풀린다. Claude 는 그 스킬을 부를 수 없다 (`disable-model-invocation`) — 스테이징 갱신이 필요하면
 사용자에게 실행을 요청할 것. 경로는 버전마다 달라지므로 적어 두지 말고 그때 받은 base directory 를 쓴다.
 **이미 깔린 스테이징으로 재동기화를 돌리는 것은 스킬 없이 된다** — 스킬이 필요한 것은 갱신뿐이다.
+**스테이징 갱신에 `/design-sync` 를 쓸 때는 업로드 단계 전에 멈출 것** — 그 스킬은 여전히 claude.ai/design 에 올린다.
 갱신 후에는 `_ds_sync.json` 의 `scriptsSha` 만 움직이는데, 그건 스테이징 지문이고
 `sync-hashes.mjs` 가 "informational — never a partition input" 이라 원격에 옛 값이 남아도 무해하다.
 
@@ -297,7 +337,8 @@ cp -r <skill>/package-build.mjs <skill>/package-validate.mjs <skill>/package-cap
 (cd .ds-sync && npm i esbuild ts-morph @types/react @tailwindcss/cli@4.3.3 && \
  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright)                 # 새 클론일 때만
 eval "$(python3 -c "import json;print(json.load(open('.design-sync/config.json'))['buildCmd'])")"
-# 원격 앵커 내려받기 → 로컬 캐시와 **대조** (같으면 덮어쓰지 말 것 — 아래 「받아 올 때는」 함정)
+# 원격 앵커 내려받기(Artifact read — url 은 .design-sync/artifact/target.json, path 는 project/sync/ds-sync.json)
+#   → 로컬 캐시와 **대조** (같으면 덮어쓰지 말 것 — 위 「받아 올 때는」 함정)
 DS_CHROMIUM_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
 node .ds-sync/resync.mjs --config .design-sync/config.json --node-modules ./node_modules \
   --entry ./.design-sync/ds-preview/entry.ts --out ./ds-bundle \
@@ -306,6 +347,9 @@ node .ds-sync/resync.mjs --config .design-sync/config.json --node-modules ./node
 # 카드 외형을 바꾼 걸 아는 상태라면 (컴포넌트 마크업·픽스처) 강제 재캡처 후 시트를 눈으로 볼 것:
 #   node .ds-sync/package-capture.mjs --out ./ds-bundle \
 #     --components <Name> --spot-check-components <Name>
-# DesignSync(finalize_plan → write_files) 로 업로드 (_ds_sync.json 을 마지막에)
+node .design-sync/artifact/build.mjs --check \
+  --remote-index <Artifact read 로 받은 project/design-system.json> --note "<한 줄>"   # 파일 표 + 렌더 확인 + 카드 높이
+# Artifact publish — .design-sync/.cache/artifact/publish.json 의 url·root·file_path·files 를 그대로 넘긴다
+#   (색인 design-system.json 이 file_path 라 같은 호출로 함께 간다. 지운 컴포넌트가 있으면 남은 경로를 null 로)
 cp ds-bundle/_ds_sync.json .design-sync/.cache/remote-sync.json   # 앵커 갱신 — 생략하면 게이트가 DRIFT
 ```

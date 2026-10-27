@@ -1,0 +1,23 @@
+{
+  "url": "https://claude.ai/artifact/UHXTZ6sZErkia4SdT8k2Vy",
+  "title": "Cure Agent Design System",
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-27T07:20:03Z"
+  },
+  "assets": {
+    "Logos": {
+      "tile": "l",
+      "readme": "logos.md",
+      "files": {
+        "icon.svg": {
+          "source": "src/app/icon.svg",
+          "blob": "0ed135ffc88b29a8ec34e7613ad18c09",
+          "size": 359,
+          "type": "image/svg+xml",
+          "sourceSha256": "e887ac60bc45fa224acc8e556d8f75a6539e32a070e708d219bc90598df29b79"
+        }
+      }
+    }
+  }
+}
